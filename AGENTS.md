@@ -179,25 +179,33 @@ Ver `apps/api/drizzle/0000_init.sql` (version de verdad) y `docs/04-reglas-negoc
 
 ### 6.1 `asistentes` (obligatorio)
 
-- `id` **TEXT PRIMARY KEY**: ID institucional, clave de negocio, **unico e inmutable**, normalizado
-  (trim, sin espacios, mayusculas si aplica). Formato validado con **expresion regular configurable**
-  (`asistentes.id_regex`), por defecto `^[A-Z0-9]{4,20}$`.
+- `id` **TEXT PRIMARY KEY**: ID institucional (cedula o codigo estudiantil), clave de negocio,
+  **unico e inmutable**, normalizado (trim, sin espacios, mayusculas). Formato validado con una
+  expresion regular **configurable** (`seminario_config.id_regex`, por defecto
+  `^[A-Z0-9]{4,20}$`).
+- `codigo_registro` **TEXT UNIQUE e inmutable**: codigo corto de 6 caracteres generado por el
+  sistema con el alfabeto `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (sin `O`, `I`, `0` ni `1`, para
+  que se pueda dictar sin ambiguedad). **Es lo que codifica el QR.** La unicidad la impone un
+  indice unico y la inmutabilidad un trigger.
+- `email` **TEXT NULL**: correo institucional. Es el destino del envio del codigo de registro y
+  del QR. Validado por formato, con indice parcial sobre `lower(email)`.
 - `nombres` TEXT NOT NULL, `apellidos` TEXT NOT NULL.
 - `semestre` INTEGER NULL: **obligatorio para estudiantes, nullable para docentes**.
 - `rol` ENUM('estudiante','docente') NOT NULL.
 - `created_at`, `updated_at` TIMESTAMPTZ NOT NULL DEFAULT now().
 - CHECK: `rol = 'estudiante' AND semestre IS NOT NULL` OR `rol = 'docente'`. Es decir:
   `(rol = 'estudiante') = (semestre IS NOT NULL)`.
-- El QR/codigo de barras de cada asistente **codifica ese `id`** (unico por estudiante). La
-  escarapela/carnet muestra QR, nombre, rol e ID en texto legible.
+- **La busqueda durante el registro acepta el `id` o el `codigo_registro`**: el operador nunca
+  tiene que saber cual de los dos digito.
 
 ### 6.2 Tablas
 
 1. `asistentes` (campos de 6.1 + timestamps).
 2. `seminario_config` (una sola fila, `id = 1`): nombre, fecha, `hora_fin_seminario` (TIMESTAMPTZ,
    **configurable por el administrador**), `tolerancia_minutos` (INTEGER), `exigir_ambas_jornadas`
-   (BOOLEAN), intensidad horaria (INTEGER), textos y firmas del certificado, `id_regex`, `url_publica`,
-   timestamps.
+   (BOOLEAN), intensidad horaria (INTEGER), `permitir_registro_fuera_de_ventana` (BOOLEAN), textos
+   del certificado, **`firmas` (JSONB, hasta 3 firmantes)**, lugar, facultad, contacto,
+   `id_regex`, `url_publica`, timestamps.
 3. `jornadas`: id, nombre (`manana`/`tarde` o texto libre), `inicio`, `fin`,
    `ventana_checkin_inicio`, `ventana_checkin_fin`, `orden`.
 4. `asistencias`: `asistente_id` FK, `jornada_id` FK, `hora_ingreso` TIMESTAMPTZ,
@@ -399,16 +407,25 @@ Convenciones: **ESLint + Prettier**, **commits convencionales**
 POST   /auth/login
 POST   /auth/refresh
 POST   /auth/logout
+GET    /auth/sesion
 GET    /asistentes            (paginacion + filtros + busqueda)
 POST   /asistentes
 PATCH  /asistentes/:id
 GET    /asistentes/:id
-POST   /asistentes/importar   (multipart CSV/XLSX, vista previa + reporte de errores)
-GET    /asistentes/carnets    (PDF masivo con QR)
+GET    /asistentes/verificar?codigo=...   (nombre del asistente antes de registrar)
+GET    /asistentes/plantilla              (plantilla XLSX de importacion)
+POST   /asistentes/importar/previa        (validacion fila a fila, sin escribir)
+POST   /asistentes/importar/confirmar     (aplica las filas validas)
+GET    /asistentes/carnets                (PDF de escarapelas con QR)
+GET    /asistentes/carta-qr               (PDF con el codigo y el QR para entregar)
+POST   /asistentes/enviar-qr              (envia codigo y QR por correo)
 POST   /asistencias/ingreso
 POST   /asistencias/salida
+POST   /asistencias/excepcion             (ingreso o salida manual, admin, con motivo)
+GET    /asistencias/asistente/:asistenteId
 POST   /refrigerios/entregar
 GET    /refrigerios/estado/:asistenteId
+GET    /refrigerios/tipos
 GET    /dashboard/resumen     (ETag / If-None-Match)
 GET    /reportes/*            (?formato=csv|xlsx|pdf)
 GET    /config
@@ -420,9 +437,15 @@ GET    /certificados
 POST   /certificados/emitir/:asistenteId
 POST   /certificados/emitir-lote
 GET    /certificados/lote/:loteId
+GET    /certificados/lote/:loteId/descarga   (ZIP)
 GET    /certificados/:asistenteId/pdf
 POST   /certificados/:id/revocar
 GET    /publico/verificar/:codigo
+GET    /publico/seminario       (datos publicos del evento)
+GET    /operador/contexto       (config, jornadas, jornada activa, refrigerios)
+GET    /usuarios
+POST   /usuarios
+PATCH  /usuarios/:id
 GET    /health/live
 GET    /health/ready
 ```

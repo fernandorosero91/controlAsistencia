@@ -99,7 +99,7 @@ const esquema = z.object({
     (valor) => (valor === '' || valor === undefined ? undefined : valor),
     z.string().min(8).optional(),
   ),
-  ADMIN_OPERADORES: z.coerce.number().int().min(0).max(50).default(0),
+  ADMIN_OPERADORES: z.coerce.number().int().min(0).max(50).default(6),
   SEED_ASISTENTES: z.coerce.number().int().min(0).max(5000).default(600),
 
   SEMINARIO_NOMBRE: z

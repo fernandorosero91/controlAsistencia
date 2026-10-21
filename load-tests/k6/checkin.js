@@ -23,6 +23,7 @@ import { Counter, Rate, Trend } from 'k6/metrics';
 const BASE = __ENV.BASE_URL || 'http://localhost:3000';
 const CORREO = __ENV.ADMIN_CORREO || 'admin@seminario.local';
 const CLAVE = __ENV.ADMIN_CLAVE || 'Seminario2026';
+const OPERADORES = Number(__ENV.NUM_OPERADORES || 6);
 const TOTAL_CHECKINS = Number(__ENV.TOTAL_CHECKINS || 600);
 const PREMISA_MINUTOS = Number(__ENV.PREMISA_MINUTOS || 3);
 const PREFIJO = __ENV.PREFIJO_CARGA || 'CARGA';
@@ -38,21 +39,27 @@ export const respuestas5xx = new Counter('respuestas_5xx');
 export const options = {
   scenarios: {
     ingresos: {
+      // Llegada realista: unas 600 entradas en 3 minutos (unos 3,3 por segundo),
+      // con una punta al inicio cuando se abre la puerta.
       executor: 'ramping-arrival-rate',
-      startRate: 10,
+      startRate: 2,
       timeUnit: '1s',
-      preAllocatedVUs: 60,
-      maxVUs: 300,
+      preAllocatedVUs: 30,
+      maxVUs: 120,
       exec: 'ingresos',
       tags: { escenario: 'ingresos' },
       stages: [
-        { target: 120, duration: `${PREMISA_MINUTOS}m` },
-        { target: 0, duration: '20s' },
+        { target: 5, duration: '60s' },
+        { target: 3, duration: '60s' },
+        { target: 1, duration: '60s' },
       ],
     },
     duplicados: {
+      // Varios operadores repiten el mismo ID a la vez: comprueba la alerta de
+      // duplicado y que nunca se crea un segundo registro. El ritmo se modera
+      // para no disparar el limite de 600 solicitudes por minuto y por operador.
       executor: 'constant-vus',
-      vus: 50,
+      vus: 8,
       duration: '1m',
       exec: 'repetirMismoId',
       startTime: '20s',
@@ -63,30 +70,42 @@ export const options = {
     'http_req_duration{escenario:ingresos}': ['p(95)<300'],
     'http_req_failed{escenario:ingresos}': ['rate<0.01'],
     'http_req_failed{escenario:duplicados}': ['rate<0.01'],
-    respuestas5xx: ['count==0'],
-    alertasDuplicado: ['rate>0.98'],
+    respuestas_5xx: ['count==0'],
+    respuesta_duplicado_correcta: ['rate>0.98'],
     'checks{escenario:ingresos}': ['rate>0.99'],
   },
 };
 
-let token = '';
-let jornadaId = 0;
-
 export function setup() {
-  const respuesta = http.post(
-    `${BASE}/auth/login`,
-    JSON.stringify({ email: CORREO, password: CLAVE }),
-    { headers: { 'Content-Type': 'application/json' } },
-  );
-  if (respuesta.status !== 200) {
-    throw new Error(`No se pudo iniciar sesion: ${respuesta.status} ${respuesta.body}`);
+  // Se simulan varios operadores, como en el evento: cada uno tiene su propio
+  // limite de solicitudes.
+  const tokens = [];
+  const cuentas = [CORREO];
+  for (let indice = 1; indice <= OPERADORES; indice += 1) {
+    cuentas.push(`operador${indice}@seminario.local`);
   }
-  token = respuesta.json('tokenAcceso');
+
+  for (const cuenta of cuentas) {
+    const respuesta = http.post(
+      `${BASE}/auth/login`,
+      JSON.stringify({ email: cuenta, password: CLAVE }),
+      { headers: { 'Content-Type': 'application/json' } },
+    );
+    if (respuesta.status !== 200) {
+      throw new Error(`No se pudo iniciar sesion de ${cuenta}: ${respuesta.status}`);
+    }
+    tokens.push(respuesta.json('tokenAcceso'));
+  }
+
   const contexto = http.get(`${BASE}/operador/contexto`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${tokens[0]}` },
   });
-  jornadaId = contexto.json('jornadaActiva.id');
-  return { token, jornadaId };
+  const jornadaId = contexto.json('jornadaActiva.id');
+  return { tokens, jornadaId };
+}
+
+function tokenDe(datos) {
+  return datos.tokens[exec.vu.idInTest % datos.tokens.length];
 }
 
 export function ingresos(datos) {
@@ -99,7 +118,7 @@ export function ingresos(datos) {
     {
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${datos.token}`,
+        Authorization: `Bearer ${tokenDe(datos)}`,
         'X-Dispositivo': 'k6',
       },
       tags: { escenario: 'ingresos' },
@@ -136,7 +155,7 @@ export function repetirMismoId(datos) {
     {
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${datos.token}`,
+        Authorization: `Bearer ${tokenDe(datos)}`,
         'X-Dispositivo': 'k6',
       },
       tags: { escenario: 'duplicados' },
@@ -156,5 +175,5 @@ export function repetirMismoId(datos) {
   if (cuerpo.resultado === 'duplicado') duplicados.add(1);
   else if (cuerpo.resultado === 'exito') exitos.add(1);
 
-  sleep(0.1);
+  sleep(0.25);
 }

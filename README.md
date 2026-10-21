@@ -19,6 +19,19 @@ horaria de negocio es `America/Bogota`.
 | **Certificados** | Administrador | Emision individual y masiva con barra de progreso, descarga en PDF o ZIP y revocacion auditada. |
 | **Verificacion publica** | Cualquiera | Pagina publica que confirma la autenticidad de un certificado mediante su codigo. |
 
+### Como identifica el sistema a un asistente
+
+Cada asistente tiene tres datos, cargados previamente por el administrador:
+
+| Dato | Origen | Uso |
+| --- | --- | --- |
+| **ID institucional** | Cedula o codigo estudiantil de la universidad | Clave de negocio, inmutable. |
+| **Codigo de registro** | **Lo genera el sistema**: 6 caracteres sin `O`, `I`, `0` ni `1` (por ejemplo `K7M4D2`) | Es lo que codifica el QR y lo que el operador dicta. Unico e inmutable. |
+| **Correo electronico** | Institucional del estudiante | Destino del codigo de registro y del QR. |
+
+La app del operador acepta **cualquiera de los dos** en el mismo campo y, antes de registrar,
+**muestra el nombre del asistente** para contrastarlo con la escarapela y con la persona.
+
 Reglas que el sistema garantiza y que no dependen del comportamiento de la interfaz:
 
 - Es **imposible** registrar dos ingresos en la misma jornada ni dos entregas del
@@ -30,7 +43,26 @@ Reglas que el sistema garantiza y que no dependen del comportamiento de la inter
 
 ---
 
-## 2. Arquitectura
+## 2. Evento de referencia
+
+El sistema se parametriza por evento. La configuracion de ejemplo corresponde al:
+
+| Dato | Valor |
+| --- | --- |
+| Evento | IV Seminario de Ingenieria de Software |
+| Organiza | Facultad de Ingenieria - Universidad Cooperativa de Colombia |
+| Fecha | 27 de octubre de 2026 |
+| Horario | 8:00 a.m. a 6:00 p.m. (8 horas) |
+| Modalidad | Presencial |
+| Lugar | Camara de Comercio - Pasto |
+| Contacto | 311 781 7327 |
+
+Todo esto se configura desde el panel (nombre, fecha, hora de fin, tolerancia, jornadas,
+lugar, facultad y **hasta tres firmantes** del certificado), no en el codigo.
+
+---
+
+## 3. Arquitectura
 
 ```mermaid
 flowchart TB
@@ -79,15 +111,15 @@ Detalle completo en [`docs/01-arquitectura.md`](docs/01-arquitectura.md).
 
 ---
 
-## 3. Puesta en marcha
+## 4. Puesta en marcha
 
-### 3.1 Requisitos
+### 4.1 Requisitos
 
 - Docker Desktop 24 o superior (con Compose v2).
 - Node.js 20.11 o superior (solo para desarrollo fuera de Docker).
 - 4 GB de RAM disponibles para los contenedores.
 
-### 3.2 Con Docker (camino recomendado)
+### 4.2 Con Docker (camino recomendado)
 
 ```bash
 git clone <repositorio> proyectoAsistencia
@@ -127,7 +159,7 @@ docker compose exec api node dist/db/seed.js
 Las credenciales iniciales salen de `ADMIN_EMAIL` y `ADMIN_PASSWORD` del `.env`.
 **Cambielas antes de usarlo en un evento real.**
 
-### 3.3 En desarrollo (sin Docker)
+### 4.3 En desarrollo (sin Docker)
 
 ```bash
 npm install
@@ -138,7 +170,7 @@ npm run seed
 npm run dev            # API en :3000 y web en :5173
 ```
 
-### 3.4 Scripts disponibles
+### 4.4 Scripts disponibles
 
 | Comando | Que hace |
 | --- | --- |
@@ -157,7 +189,7 @@ npm run dev            # API en :3000 y web en :5173
 
 ---
 
-## 4. Variables de entorno
+## 5. Variables de entorno
 
 Todas las variables estan documentadas en [`.env.example`](.env.example). Las
 obligatorias son:
@@ -176,12 +208,12 @@ Secretos adicionales recomendados en produccion: `POSTGRES_PASSWORD`,
 
 ---
 
-## 5. Manual del dia del evento
+## 6. Manual del dia del evento
 
 Resumen operativo; la version completa esta en
 [`docs/03-operacion-dia-evento.md`](docs/03-operacion-dia-evento.md).
 
-### 5.1 Antes de abrir las puertas (2 horas antes)
+### 6.1 Antes de abrir las puertas (2 horas antes)
 
 1. Verifique que `docker compose ps` muestre **todos** los servicios en `healthy`.
 2. Abra `http://localhost:8080/api/health/ready` y confirme `{"estado":"ok","baseDatos":true}`.
@@ -196,17 +228,20 @@ Resumen operativo; la version completa esta en
    solo: haga un registro de prueba y luego **borre ese registro** desde la base de
    datos o use un ID de prueba.
 
-### 5.2 Durante el evento
+### 6.2 Durante el evento
 
 - El operador elige el modo (**Ingreso**, **Refrigerio**, **Salida**) una sola vez y
-  despues solo digita o escanea el ID. El campo se limpia y se reenfoca solo.
+  despues solo digita o escanea el ID o el codigo de 6 caracteres.
+- La app **verifica y muestra el nombre** del asistente: el operador lo compara con la
+  escarapela y con la persona antes de confirmar. Es la barrera contra registrar a otra
+  persona.
 - Un duplicado **no es un error**: aparece una alerta ambar con la hora del registro
   original y el operador que lo hizo. Continúe con el siguiente estudiante.
 - Si un ID no existe, la pantalla ofrece la busqueda manual por nombre.
 - Al final de cada jornada, registre las **salidas** en el modo Salida: son las que
   determinan la elegibilidad del certificado.
 
-### 5.3 Al cerrar
+### 6.3 Al cerrar
 
 1. Registre todas las salidas pendientes.
 2. En **Certificados**, revise el filtro "No elegibles" y valide los motivos.
@@ -216,7 +251,7 @@ Resumen operativo; la version completa esta en
 
 ---
 
-## 6. Plan de contingencia
+## 7. Plan de contingencia
 
 | Falla | Detected en | Respuesta inmediata | Respuesta definitiva |
 | --- | --- | --- | --- |
@@ -230,7 +265,7 @@ Resumen operativo; la version completa esta en
 
 ---
 
-## 7. Seguridad y datos personales
+## 8. Seguridad y datos personales
 
 - Contrasenas con **argon2id**; nunca se registran en claro.
 - **JWT de 15 minutos** + refresh token rotativo en cookie `httpOnly`, `SameSite=Lax` y
@@ -247,7 +282,7 @@ Resumen operativo; la version completa esta en
 
 ---
 
-## 8. Estructura del repositorio
+## 9. Estructura del repositorio
 
 ```
 proyectoAsistencia/
@@ -269,7 +304,7 @@ proyectoAsistencia/
 
 ---
 
-## 9. Documentacion
+## 10. Documentacion
 
 | Documento | Contenido |
 | --- | --- |
