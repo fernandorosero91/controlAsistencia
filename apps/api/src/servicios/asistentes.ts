@@ -1,5 +1,5 @@
 import { and, asc, eq, or, sql } from 'drizzle-orm';
-import { generarCodigoRegistro, normalizarId } from '@seminario/shared';
+import { generarCodigoRegistro, normalizarCedula, normalizarId } from '@seminario/shared';
 import { db } from '../db/cliente.js';
 import { asistencias, asistentes, jornadas, usuariosSistema } from '../db/esquema.js';
 import { errores } from '../plugins/errores.js';
@@ -13,9 +13,9 @@ export function normalizarIdentificadorIngresado(valor: string): string {
 }
 
 /**
- * Busca un asistente por ID institucional o por codigo de registro.
- * Es la unica forma de buscar durante el registro: el operador nunca tiene que
- * saber cual de los dos digito.
+ * Busca un asistente por ID institucional, por codigo de registro o por cedula
+ * de ciudadania. Es la unica forma de buscar durante el registro: el operador
+ * nunca tiene que saber cual de los tres digito.
  */
 export async function buscarAsistentePorIdentificador(valor: string) {
   const normalizado = normalizarIdentificadorIngresado(valor);
@@ -29,6 +29,9 @@ export async function buscarAsistentePorIdentificador(valor: string) {
         eq(asistentes.id, normalizado),
         eq(asistentes.codigoRegistro, normalizado),
         eq(sql`upper(${asistentes.codigoRegistro})`, normalizado),
+        // La cedula tambien sirve para registrar: si la escarapela esta danada
+        // o mal impresa, el operador puede escribirla.
+        eq(asistentes.cedulaCiudadania, normalizarCedula(normalizado)),
       )!,
     )
     .limit(1);
@@ -59,8 +62,16 @@ export interface DatosCrearAsistente {
   apellidos: string;
   rol: 'estudiante' | 'docente';
   semestre: number | null;
+  cedulaCiudadania?: string | null;
   email?: string | null;
   activo: boolean;
+}
+
+/** Normaliza la cedula para guardarla: vacia si no se envio. */
+function cedulaNormalizada(valor: string | null | undefined): string | null {
+  if (!valor) return null;
+  const normalizada = normalizarCedula(valor);
+  return normalizada.length > 0 ? normalizada : null;
 }
 
 export async function crearAsistente(datos: DatosCrearAsistente) {
@@ -72,6 +83,7 @@ export async function crearAsistente(datos: DatosCrearAsistente) {
     .values({
       id,
       codigoRegistro,
+      cedulaCiudadania: cedulaNormalizada(datos.cedulaCiudadania),
       email: datos.email ? datos.email.toLowerCase() : null,
       nombres: datos.nombres,
       apellidos: datos.apellidos,
@@ -109,6 +121,7 @@ export async function crearAsistentesLote(lista: DatosCrearAsistente[]): Promise
     return {
       id: normalizarId(datos.id),
       codigoRegistro: codigo,
+      cedulaCiudadania: cedulaNormalizada(datos.cedulaCiudadania),
       email: datos.email ? datos.email.toLowerCase() : null,
       nombres: datos.nombres,
       apellidos: datos.apellidos,
@@ -178,6 +191,7 @@ export interface VerificacionAsistente {
   asistente: {
     id: string;
     codigoRegistro: string | null;
+    cedulaCiudadania: string | null;
     nombres: string;
     apellidos: string;
     rol: 'estudiante' | 'docente';
@@ -225,6 +239,7 @@ export async function verificarAsistente(valor: string): Promise<VerificacionAsi
     asistente: {
       id: asistente.id,
       codigoRegistro: asistente.codigoRegistro,
+      cedulaCiudadania: asistente.cedulaCiudadania,
       nombres: asistente.nombres,
       apellidos: asistente.apellidos,
       rol: asistente.rol,

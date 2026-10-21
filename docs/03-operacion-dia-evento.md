@@ -26,7 +26,7 @@ Si `baseDatos` es `false`, la API no puede registrar: revise `docker compose log
 
 1. Panel de administracion > **Importar**.
 2. Descargue la **plantilla** y envie el archivo XLSX con las columnas `id`, `nombres`,
-   `apellidos`, `rol`, `semestre` y `email`.
+   `apellidos`, `rol`, `semestre`, `cedula` y `email`.
 3. Revise la **vista previa**: el sistema informa fila por fila que es valida y que no. La
    tabla muestra las primeras 50 filas, pero el boton importa **todas** las filas validas del
    archivo (hasta 5000 por importacion).

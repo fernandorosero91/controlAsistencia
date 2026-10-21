@@ -6,6 +6,7 @@ export interface VerificacionAsistente {
   asistente: {
     id: string;
     codigoRegistro: string | null;
+    cedulaCiudadania: string | null;
     nombres: string;
     apellidos: string;
     rol: 'estudiante' | 'docente';
@@ -113,6 +114,15 @@ export function TarjetaVerificacion({ verificacion, cargando, jornadaId }: Props
             {asistente.codigoRegistro ?? '-'}
           </dd>
         </div>
+        {asistente.cedulaCiudadania ? (
+          <div className="flex items-center gap-1.5">
+            <IdCard className="h-4 w-4 shrink-0 text-neutro-500" aria-hidden="true" />
+            <dt className="sr-only">Cedula de ciudadania</dt>
+            <dd className="font-mono font-semibold text-neutro-800">
+              {asistente.cedulaCiudadania}
+            </dd>
+          </div>
+        ) : null}
       </dl>
 
       <ul className="divide-y divide-neutro-100 border-t border-neutro-100">

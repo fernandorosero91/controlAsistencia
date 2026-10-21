@@ -7,6 +7,7 @@ export const filaAsistenteImportadaSchema = z.object({
   apellidos: z.string().min(1, 'Los apellidos son obligatorios').max(80),
   rol: z.enum(ROLES_ASISTENTE),
   semestre: z.union([z.number().int().min(1).max(30), z.null()]).optional(),
+  cedulaCiudadania: z.string().trim().max(20).optional().or(z.literal('')),
   email: z
     .string()
     .trim()
@@ -61,6 +62,7 @@ export const confirmarImportacionSchema = z.object({
       apellidos: z.string().min(1).max(80),
       rol: z.enum(ROLES_ASISTENTE),
       semestre: z.union([z.number().int().min(1).max(30), z.null()]).optional(),
+      cedulaCiudadania: z.string().trim().max(20).optional().or(z.literal('')),
       email: z
         .string()
         .trim()

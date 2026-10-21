@@ -196,14 +196,15 @@ obligatorio de al menos 10 caracteres, y queda en la auditoria.
 
 El archivo (XLSX o CSV) tiene las columnas:
 
-| Columna     | Obligatoria      | Regla                                                                                         |
-| ----------- | ---------------- | --------------------------------------------------------------------------------------------- |
-| `id`        | Si               | ID institucional, se normaliza a mayusculas y se valida con la expresion regular configurada. |
-| `nombres`   | Si               | Texto, maximo 80 caracteres.                                                                  |
-| `apellidos` | Si               | Texto, maximo 80 caracteres.                                                                  |
-| `rol`       | Si               | `estudiante` o `docente`.                                                                     |
-| `semestre`  | Solo estudiantes | Entero entre 1 y 30. Vacio en docentes.                                                       |
-| `email`     | No               | Correo valido. Destino del QR.                                                                |
+| Columna     | Obligatoria      | Regla                                                                                                                      |
+| ----------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `id`        | Si               | ID institucional, se normaliza a mayusculas y se valida con la expresion regular configurada.                              |
+| `nombres`   | Si               | Texto, maximo 80 caracteres.                                                                                               |
+| `apellidos` | Si               | Texto, maximo 80 caracteres.                                                                                               |
+| `rol`       | Si               | `estudiante` o `docente`.                                                                                                  |
+| `semestre`  | Solo estudiantes | Entero entre 1 y 30. Vacio en docentes.                                                                                    |
+| `cedula`    | No               | Cedula de ciudadania: entre 5 y 20 caracteres alfanumericos, sin espacios ni guiones. **No puede repetirse** en el padron. |
+| `email`     | No               | Correo valido. Destino del QR.                                                                                             |
 
 El flujo es en **dos pasos**:
 
@@ -213,6 +214,10 @@ El flujo es en **dos pasos**:
 
 `codigo_registro` **no se importa**: lo genera el sistema. Tampoco se puede importar el
 padron ya existente con un ID distinto (el `id` es inmutable).
+
+La cedula se valida tambien contra el padron: la vista previa marca la fila con error si la
+cedula ya esta registrada (y no es el mismo asistente) o si se repite dentro del archivo. Esa
+fila no se importa, pero las demas si.
 
 ---
 

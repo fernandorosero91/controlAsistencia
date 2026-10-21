@@ -86,6 +86,7 @@ export function ImportarAsistentes() {
           apellidos: String(fila.datos.apellidos ?? ''),
           rol: String(fila.datos.rol ?? 'estudiante') as 'estudiante' | 'docente',
           semestre: (fila.datos.semestre ?? null) as number | null,
+          cedulaCiudadania: String(fila.datos.cedulaCiudadania ?? ''),
           email: String(fila.datos.email ?? ''),
         }));
       return api.crear<{ creados: number; actualizados: number; omitidos: number }>(
@@ -108,7 +109,7 @@ export function ImportarAsistentes() {
     <div className="space-y-4">
       <Tarjeta
         titulo="Importacion masiva de asistentes"
-        descripcion="Archivo XLSX o CSV con las columnas: id, nombres, apellidos, rol, semestre y email"
+        descripcion="Archivo XLSX o CSV con las columnas: id, nombres, apellidos, rol, semestre, cedula y email"
         accion={
           <button
             type="button"
@@ -209,6 +210,7 @@ export function ImportarAsistentes() {
                 <tr>
                   <th scope="col">Fila</th>
                   <th scope="col">ID</th>
+                  <th scope="col">Cedula</th>
                   <th scope="col">Nombre</th>
                   <th scope="col">Rol</th>
                   <th scope="col">Semestre</th>
@@ -220,6 +222,9 @@ export function ImportarAsistentes() {
                   <tr key={fila.fila}>
                     <td className="text-neutro-500">{fila.fila}</td>
                     <td className="font-mono">{String(fila.datos.id ?? '')}</td>
+                    <td className="font-mono text-neutro-700">
+                      {String(fila.datos.cedulaCiudadania ?? '')}
+                    </td>
                     <td>
                       {String(fila.datos.nombres ?? '')} {String(fila.datos.apellidos ?? '')}
                     </td>

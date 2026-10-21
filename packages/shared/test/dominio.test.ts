@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cumpleFormatoCedula,
   cumpleFormatoId,
   esCodigoRegistroValido,
   estadoVentanaCheckin,
@@ -7,6 +8,7 @@ import {
   generarCodigoRegistro,
   generarCodigoVerificacion,
   ID_REGEX_POR_DEFECTO,
+  normalizarCedula,
   normalizarId,
   sanitizarCeldaExportacion,
   validarSemestre,
@@ -28,9 +30,27 @@ describe('normalizacion del ID institucional', () => {
   });
 });
 
+describe('normalizacion de la cedula de ciudadania', () => {
+  it('recorta, elimina espacios y guiones y pasa a mayusculas', () => {
+    expect(normalizarCedula(' 1094 867-245 ')).toBe('1094867245');
+    expect(normalizarCedula('ab 12')).toBe('AB12');
+  });
+
+  it('acepta cedulas de 5 a 20 caracteres alfanumericos', () => {
+    expect(cumpleFormatoCedula('1094867245')).toBe(true);
+    expect(cumpleFormatoCedula('80123456')).toBe(true);
+    expect(cumpleFormatoCedula('E12345678')).toBe(true);
+  });
+
+  it('rechaza las cedulas demasiado cortas o con caracteres no validos', () => {
+    expect(cumpleFormatoCedula('1234')).toBe(false);
+    expect(cumpleFormatoCedula('1094$67245')).toBe(false);
+    expect(cumpleFormatoCedula('1094867245 000 000 000 000 000')).toBe(false);
+  });
+});
+
 describe('validacion del formato del ID', () => {
-  it('acepta los IDs que cumplen la expresion por defecto', () => {
-    expect(cumpleFormatoId('EST00001')).toBe(true);
+  it('acepta los IDs que cumplen la expresion por defecto', () => {    expect(cumpleFormatoId('EST00001')).toBe(true);
     expect(cumpleFormatoId('DOC0001')).toBe(true);
   });
 

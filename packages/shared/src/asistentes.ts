@@ -1,6 +1,16 @@
 import { z } from 'zod';
 import { ROLES_ASISTENTE } from './enums.js';
-import { normalizarId } from './dominio.js';
+import { CEDULA_REGEX, normalizarCedula, normalizarId } from './dominio.js';
+
+/** Cedula de ciudadania: opcional, entre 5 y 20 caracteres alfanumericos. */
+export const cedulaSchema = z
+  .string()
+  .trim()
+  .max(20, 'La cedula no puede tener mas de 20 caracteres')
+  .transform((valor) => normalizarCedula(valor))
+  .refine((valor) => valor.length === 0 || CEDULA_REGEX.test(valor), {
+    message: 'La cedula debe tener entre 5 y 20 caracteres, sin espacios ni guiones',
+  });
 
 export const asistenteSchema = z.object({
   id: z.string().min(1).max(32),
@@ -8,6 +18,7 @@ export const asistenteSchema = z.object({
   apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios').max(80),
   rol: z.enum(ROLES_ASISTENTE),
   semestre: z.number().int().min(1).max(30).nullable().optional(),
+  cedulaCiudadania: cedulaSchema.optional().or(z.literal('')),
   email: z
     .string()
     .trim()
@@ -44,6 +55,7 @@ export const asistenteUpdateSchema = z
     apellidos: z.string().trim().min(1).max(80).optional(),
     rol: z.enum(ROLES_ASISTENTE).optional(),
     semestre: z.number().int().min(1).max(30).nullable().optional(),
+    cedulaCiudadania: cedulaSchema.optional().or(z.literal('')),
     email: z
       .string()
       .trim()
@@ -65,6 +77,7 @@ export const asistenteLecturaSchema = z.object({
   codigoRegistro: z.string().nullable(),
   nombres: z.string(),
   apellidos: z.string(),
+  cedulaCiudadania: z.string().nullable(),
   email: z.string().nullable(),
   rol: z.enum(ROLES_ASISTENTE),
   semestre: z.number().int().nullable(),

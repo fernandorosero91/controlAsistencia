@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, inArray, or } from 'drizzle-orm';
+import { and, asc, count, eq, ilike, inArray, ne, or } from 'drizzle-orm';
 import ExcelJS from 'exceljs';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -7,6 +7,7 @@ import {
   asistenteUpdateSchema,
   busquedaManualSchema,
   filtrosAsistentesSchema,
+  normalizarCedula,
   normalizarId,
   type AsistenteLectura,
 } from '@seminario/shared';
@@ -30,6 +31,7 @@ import {
   parsearXlsx,
   validarFila,
   type FormatoImportacion,
+  type ValidacionFila,
 } from '../servicios/importacion.js';
 import { validarCuerpo, validarConsulta, validarParametros } from '../lib/validacion.js';
 import { limiteEscaneo } from '../config/limites.js';
@@ -37,10 +39,87 @@ import { cargarEntorno } from '../config/entorno.js';
 
 const parametrosAsistente = z.object({ id: z.string().min(1).max(32) });
 
+/**
+ * La cedula de ciudadania identifica a una persona: no puede repetirse en el
+ * padron. Se avisa con un conflicto claro en vez de dejar que el indice unico
+ * de la base de datos reventes la peticion con un error 500.
+ */
+async function verificarCedulaDisponible(cedula: string | null, exceptoId?: string): Promise<void> {
+  const normalizada = cedula ? normalizarCedula(cedula) : '';
+  if (normalizada.length === 0) return;
+
+  const condiciones = [eq(asistentes.cedulaCiudadania, normalizada)];
+  if (exceptoId) condiciones.push(ne(asistentes.id, exceptoId));
+
+  const existentes = await db
+    .select({ id: asistentes.id })
+    .from(asistentes)
+    .where(and(...condiciones))
+    .limit(1);
+
+  if (existentes.length > 0) {
+    throw errores.conflicto('Ya existe un asistente con esa cedula de ciudadania', [
+      { campo: 'cedulaCiudadania', mensaje: 'La cedula ya esta registrada en el padron' },
+    ]);
+  }
+}
+
+/**
+ * Marca las filas cuya cedula de ciudadania choca con otra: ya esta en el
+ * padron (y no es el mismo asistente) o se repite dentro del archivo. La fila
+ * queda con error y no se importa.
+ */
+async function marcarCedulasRepetidas(validaciones: ValidacionFila[]): Promise<void> {
+  const cedulas = validaciones
+    .map((validacion) => validacion.datos.cedulaCiudadania)
+    .filter((cedula): cedula is string => Boolean(cedula));
+  if (cedulas.length === 0) return;
+
+  const conteo = new Map<string, number>();
+  for (const cedula of cedulas) conteo.set(cedula, (conteo.get(cedula) ?? 0) + 1);
+  const repetidas = new Set(
+    [...conteo.entries()].filter(([, total]) => total > 1).map(([cedula]) => cedula),
+  );
+
+  const existentes = await db
+    .select({ id: asistentes.id, cedula: asistentes.cedulaCiudadania })
+    .from(asistentes)
+    .where(inArray(asistentes.cedulaCiudadania, [...new Set(cedulas)]));
+  const duena = new Map(existentes.map((fila) => [fila.cedula, fila.id]));
+
+  for (const validacion of validaciones) {
+    const cedula = validacion.datos.cedulaCiudadania;
+    if (!cedula) continue;
+
+    if (repetidas.has(cedula)) {
+      validacion.errores.push({
+        fila: validacion.fila,
+        campo: 'cedula',
+        mensaje: 'La cedula esta repetida en el archivo',
+        valor: cedula,
+      });
+      validacion.valida = false;
+      continue;
+    }
+
+    const dueno = duena.get(cedula);
+    if (dueno && dueno !== validacion.datos.id) {
+      validacion.errores.push({
+        fila: validacion.fila,
+        campo: 'cedula',
+        mensaje: 'La cedula ya esta registrada en el padron',
+        valor: cedula,
+      });
+      validacion.valida = false;
+    }
+  }
+}
+
 function aLectura(fila: typeof asistentes.$inferSelect): AsistenteLectura {
   return {
     id: fila.id,
     codigoRegistro: fila.codigoRegistro,
+    cedulaCiudadania: fila.cedulaCiudadania,
     nombres: fila.nombres,
     apellidos: fila.apellidos,
     email: fila.email,
@@ -76,6 +155,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
             ilike(asistentes.nombres, busqueda),
             ilike(asistentes.apellidos, busqueda),
             ilike(asistentes.id, busqueda),
+            ilike(asistentes.cedulaCiudadania, busqueda),
           )!,
         );
       }
@@ -207,14 +287,22 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
       libro.creator = 'Sistema de control de asistencia';
       const hoja = libro.addWorksheet('Asistentes');
 
-      hoja.addRow(['id', 'nombres', 'apellidos', 'rol', 'semestre', 'email']);
-      hoja.addRow(['EST00001', 'Ana', 'Acosta Lopez', 'estudiante', 3, 'ana@example.edu']);
-      hoja.addRow(['DOC0001', 'Luis', 'Perez Diaz', 'docente', '', 'luis@example.edu']);
+      hoja.addRow(['id', 'nombres', 'apellidos', 'rol', 'semestre', 'cedula', 'email']);
+      hoja.addRow([
+        'EST00001',
+        'Ana',
+        'Acosta Lopez',
+        'estudiante',
+        3,
+        '1094867245',
+        'ana@example.edu',
+      ]);
+      hoja.addRow(['DOC0001', 'Luis', 'Perez Diaz', 'docente', '', '80123456', 'luis@example.edu']);
 
       hoja.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
       hoja.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D31D4' } };
       hoja.columns.forEach((columna, indice) => {
-        columna.width = [16, 24, 24, 14, 12, 30][indice] ?? 18;
+        columna.width = [16, 24, 24, 14, 12, 16, 30][indice] ?? 18;
       });
       hoja.views = [{ state: 'frozen', ySplit: 1 }];
 
@@ -232,6 +320,11 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         'semestre',
         'Solo estudiantes',
         'Numero entre 1 y 30. Dejar vacio para docentes.',
+      ]);
+      ayuda.addRow([
+        'cedula',
+        'No',
+        'Cedula de ciudadania. No puede repetirse en el padron. El operador tambien puede registrar a la persona escribiendo su cedula.',
       ]);
       ayuda.addRow([
         'email',
@@ -448,16 +541,18 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         ]);
       }
 
+      await verificarCedulaDisponible(datos.cedulaCiudadania ?? null);
+
       const creado = await crearAsistente({
         id,
         nombres: datos.nombres,
         apellidos: datos.apellidos,
         rol: datos.rol,
         semestre: datos.semestre ?? null,
+        cedulaCiudadania: datos.cedulaCiudadania ? datos.cedulaCiudadania : null,
         email: datos.email ? datos.email : null,
         activo: datos.activo,
       });
-
       await registrarAuditoria(request, {
         accion: 'asistente.creado',
         entidad: 'asistentes',
@@ -513,6 +608,10 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         ]);
       }
 
+      if (datos.cedulaCiudadania !== undefined) {
+        await verificarCedulaDisponible(datos.cedulaCiudadania, idNormalizado);
+      }
+
       const actualizados = await db
         .update(asistentes)
         .set({
@@ -520,6 +619,10 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           ...(datos.apellidos !== undefined ? { apellidos: datos.apellidos } : {}),
           ...(datos.rol !== undefined ? { rol: datos.rol } : {}),
           ...(datos.semestre !== undefined ? { semestre: datos.semestre } : {}),
+          ...(datos.cedulaCiudadania !== undefined
+            ? { cedulaCiudadania: datos.cedulaCiudadania ? datos.cedulaCiudadania : null }
+            : {}),
+          ...(datos.email !== undefined ? { email: datos.email ? datos.email : null } : {}),
           ...(datos.activo !== undefined ? { activo: datos.activo } : {}),
         })
         .where(eq(asistentes.id, idNormalizado))
@@ -589,6 +692,10 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         : [];
       const existentesSet = new Set(existentes.map((fila) => fila.id));
 
+      // La cedula no puede repetirse: se marca la fila que choca, ya sea porque
+      // la cedula ya esta en el padron o porque se repite dentro del archivo.
+      await marcarCedulasRepetidas(validaciones);
+
       const nuevos = [...unicos].filter((id) => !existentesSet.has(id)).length;
       const actualizados = [...unicos].filter((id) => existentesSet.has(id)).length;
 
@@ -620,6 +727,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           apellidos: string;
           rol: string;
           semestre?: number | null;
+          cedulaCiudadania?: string;
           email?: string;
         }[];
         modo?: 'crear_actualizar' | 'solo_nuevos';
@@ -642,6 +750,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
             rol: fila.rol,
             semestre:
               fila.semestre === null || fila.semestre === undefined ? '' : String(fila.semestre),
+            cedula: fila.cedulaCiudadania ?? '',
             email: fila.email ?? '',
           },
           config.idRegex,
@@ -686,6 +795,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           apellidos: datos.apellidos!,
           rol: datos.rol!,
           semestre: datos.rol === 'docente' ? null : (datos.semestre ?? null),
+          cedulaCiudadania: datos.cedulaCiudadania ? datos.cedulaCiudadania : null,
           email: datos.email ? datos.email : null,
         };
 
@@ -699,6 +809,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
             apellidos: valores.apellidos,
             rol: valores.rol,
             semestre: valores.semestre,
+            cedulaCiudadania: valores.cedulaCiudadania,
             email: valores.email,
             activo: true,
           });

@@ -123,6 +123,7 @@ export const asistentes = pgTable(
   {
     id: text('id').primaryKey(),
     codigoRegistro: text('codigo_registro'),
+    cedulaCiudadania: text('cedula_ciudadania'),
     email: text('email'),
     nombres: text('nombres').notNull(),
     apellidos: text('apellidos').notNull(),
@@ -140,6 +141,10 @@ export const asistentes = pgTable(
     uniqueIndex('asistentes_codigo_registro_idx')
       .on(tabla.codigoRegistro)
       .where(sql`${tabla.codigoRegistro} IS NOT NULL`),
+    // La cedula identifica a una persona: no puede repetirse en el padron.
+    uniqueIndex('asistentes_cedula_ciudadania_idx')
+      .on(tabla.cedulaCiudadania)
+      .where(sql`${tabla.cedulaCiudadania} IS NOT NULL`),
     index('asistentes_email_idx')
       .on(sql`lower(${tabla.email})`)
       .where(sql`${tabla.email} IS NOT NULL`),

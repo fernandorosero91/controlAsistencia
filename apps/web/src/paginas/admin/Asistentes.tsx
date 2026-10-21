@@ -18,6 +18,7 @@ import {
 interface Asistente {
   id: string;
   codigoRegistro: string | null;
+  cedulaCiudadania: string | null;
   nombres: string;
   apellidos: string;
   email: string | null;
@@ -41,6 +42,16 @@ const esquemaFormulario = z
     apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios').max(80),
     rol: z.enum(['estudiante', 'docente']),
     semestre: z.number().int().min(1).max(30).nullable(),
+    cedulaCiudadania: z
+      .string()
+      .trim()
+      .max(20, 'La cedula no puede tener mas de 20 caracteres')
+      .refine(
+        (valor) => valor.length === 0 || /^[A-Za-z0-9]{5,20}$/.test(valor.replace(/[\s-]+/g, '')),
+        'La cedula debe tener entre 5 y 20 caracteres, sin espacios ni guiones',
+      )
+      .optional()
+      .or(z.literal('')),
     email: z
       .string()
       .trim()
@@ -88,6 +99,7 @@ export function Asistentes() {
         apellidos: datos.apellidos,
         rol: datos.rol,
         semestre: datos.rol === 'docente' ? null : datos.semestre,
+        cedulaCiudadania: datos.cedulaCiudadania?.trim() ? datos.cedulaCiudadania.trim() : '',
         email: datos.email?.trim() ? datos.email.trim() : '',
         activo: true,
       };
@@ -190,7 +202,14 @@ export function Asistentes() {
             <tbody className="tabla-cuerpo">
               {(data?.datos ?? []).map((asistente) => (
                 <tr key={asistente.id}>
-                  <td className="font-mono text-neutro-800">{asistente.id}</td>
+                  <td className="font-mono text-neutro-800">
+                    {asistente.id}
+                    {asistente.cedulaCiudadania ? (
+                      <span className="block text-xs text-neutro-500">
+                        C.C. {asistente.cedulaCiudadania}
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="font-mono tracking-wider text-primario-700">
                     {asistente.codigoRegistro ?? '-'}
                   </td>
@@ -234,6 +253,11 @@ export function Asistentes() {
                       {asistente.nombres} {asistente.apellidos}
                     </p>
                     <p className="font-mono text-xs text-neutro-600">{asistente.id}</p>
+                    {asistente.cedulaCiudadania ? (
+                      <p className="font-mono text-xs text-neutro-500">
+                        C.C. {asistente.cedulaCiudadania}
+                      </p>
+                    ) : null}
                     <p className="font-mono text-sm font-bold tracking-widest text-primario-700">
                       {asistente.codigoRegistro ?? 'Sin codigo'}
                     </p>
@@ -323,6 +347,7 @@ function FormularioAsistente({
       apellidos: asistente?.apellidos ?? '',
       rol: asistente?.rol ?? 'estudiante',
       semestre: asistente?.semestre ?? 1,
+      cedulaCiudadania: asistente?.cedulaCiudadania ?? '',
       email: asistente?.email ?? '',
     },
   });
@@ -395,20 +420,40 @@ function FormularioAsistente({
         </div>
       </div>
 
-      <div>
-        <label htmlFor="email" className="etiqueta-campo">
-          Correo electronico
-        </label>
-        <input
-          id="email"
-          type="email"
-          className="campo"
-          placeholder="Para enviarle el codigo de registro y el QR"
-          {...register('email')}
-        />
-        {errors.email ? (
-          <p className="mt-1 text-sm text-error-600">{errors.email.message}</p>
-        ) : null}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="cedula" className="etiqueta-campo">
+            Cedula de ciudadania
+          </label>
+          <input
+            id="cedula"
+            className="campo font-mono"
+            placeholder="1094867245"
+            autoComplete="off"
+            inputMode="numeric"
+            {...register('cedulaCiudadania', {
+              setValueAs: (valor) => String(valor).toUpperCase(),
+            })}
+          />
+          {errors.cedulaCiudadania ? (
+            <p className="mt-1 text-sm text-error-600">{errors.cedulaCiudadania.message}</p>
+          ) : null}
+        </div>
+        <div>
+          <label htmlFor="email" className="etiqueta-campo">
+            Correo electronico
+          </label>
+          <input
+            id="email"
+            type="email"
+            className="campo"
+            placeholder="Para enviarle el codigo de registro y el QR"
+            {...register('email')}
+          />
+          {errors.email ? (
+            <p className="mt-1 text-sm text-error-600">{errors.email.message}</p>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

@@ -2,7 +2,9 @@ import ExcelJS from 'exceljs';
 import { parse } from 'csv-parse/sync';
 import { z } from 'zod';
 import {
+  cumpleFormatoCedula,
   cumpleFormatoId,
+  normalizarCedula,
   normalizarId,
   ROLES_ASISTENTE,
   type ErrorImportacion,
@@ -11,6 +13,9 @@ import {
 } from '@seminario/shared';
 
 const ENCABEZADOS = ['id', 'nombres', 'apellidos', 'rol', 'semestre'] as const;
+
+/** Columnas opcionales que tambien se aceptan con su nombre completo. */
+const COLUMNAS_CEDULA = ['cedula', 'cedula_ciudadania', 'cedulaciudadania'] as const;
 
 export type FormatoImportacion = 'csv' | 'xlsx';
 
@@ -169,6 +174,22 @@ export function validarFila(
     });
   }
 
+  // Cedula de ciudadania: opcional, pero si viene debe tener formato valido.
+  const cedulaTexto = (
+    COLUMNAS_CEDULA.map((columna) => datos[columna] ?? '').find(
+      (valor) => valor.trim().length > 0,
+    ) ?? ''
+  ).trim();
+  const cedula = normalizarCedula(cedulaTexto);
+  if (cedulaTexto.length > 0 && !cumpleFormatoCedula(cedula)) {
+    errores.push({
+      fila,
+      campo: 'cedula',
+      mensaje: 'La cedula debe tener entre 5 y 20 caracteres, sin espacios ni guiones',
+      valor: cedulaTexto,
+    });
+  }
+
   let semestre: number | null = null;
   if (semestreTexto.length > 0) {
     const numero = Number(semestreTexto);
@@ -229,6 +250,7 @@ export function validarFila(
       apellidos,
       rol: rol.success ? rol.data : 'estudiante',
       semestre,
+      cedulaCiudadania: cedula,
       email: correo ?? '',
     },
     errores,

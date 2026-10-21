@@ -188,6 +188,10 @@ Ver `apps/api/drizzle/0000_init.sql` (version de verdad) y `docs/04-reglas-negoc
   **unico e inmutable**, normalizado (trim, sin espacios, mayusculas). Formato validado con una
   expresion regular **configurable** (`seminario_config.id_regex`, por defecto
   `^[A-Z0-9]{4,20}$`).
+- `cedula_ciudadania` **TEXT NULL**: cedula de ciudadania (5 a 20 caracteres alfanumericos,
+  normalizada sin espacios ni guiones). **Unica cuando existe** (indice unico parcial): dos
+  asistentes no pueden compartir cedula. Opcional: se importa y se edita desde el panel, y
+  tambien sirve como clave de busqueda en la app del operador.
 - `codigo_registro` **TEXT UNIQUE e inmutable**: codigo corto de 6 caracteres generado por el
   sistema con el alfabeto `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (sin `O`, `I`, `0` ni `1`, para
   que se pueda dictar sin ambiguedad). **Es lo que codifica el QR.** La unicidad la impone un

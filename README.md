@@ -21,15 +21,16 @@ horaria de negocio es `America/Bogota`.
 
 ### Como identifica el sistema a un asistente
 
-Cada asistente tiene tres datos, cargados previamente por el administrador:
+Cada asistente tiene estos datos, cargados previamente por el administrador:
 
-| Dato                   | Origen                                                                                 | Uso                                                                     |
-| ---------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **ID institucional**   | Cedula o codigo estudiantil de la universidad                                          | Clave de negocio, inmutable.                                            |
-| **Codigo de registro** | **Lo genera el sistema**: 6 caracteres sin `O`, `I`, `0` ni `1` (por ejemplo `K7M4D2`) | Es lo que codifica el QR y lo que el operador dicta. Unico e inmutable. |
-| **Correo electronico** | Institucional del estudiante                                                           | Destino del codigo de registro y del QR.                                |
+| Dato                     | Origen                                                                                 | Uso                                                                                             |
+| ------------------------ | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **ID institucional**     | Cedula o codigo estudiantil de la universidad                                          | Clave de negocio, inmutable.                                                                    |
+| **Codigo de registro**   | **Lo genera el sistema**: 6 caracteres sin `O`, `I`, `0` ni `1` (por ejemplo `K7M4D2`) | Es lo que codifica el QR y lo que el operador dicta. Unico e inmutable.                         |
+| **Cedula de ciudadania** | La que trae la universidad (opcional)                                                  | No puede repetirse en el padron. Tambien sirve para registrar cuando la escarapela esta danada. |
+| **Correo electronico**   | Institucional del estudiante                                                           | Destino del codigo de registro y del QR.                                                        |
 
-La app del operador acepta **cualquiera de los dos** en el mismo campo y, antes de registrar,
+La app del operador acepta **cualquiera de los tres** en el mismo campo y, antes de registrar,
 **muestra el nombre del asistente** para contrastarlo con la escarapela y con la persona.
 
 Reglas que el sistema garantiza y que no dependen del comportamiento de la interfaz:

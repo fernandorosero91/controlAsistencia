@@ -27,6 +27,26 @@ export function cumpleFormatoId(id: string, regex: string = ID_REGEX_POR_DEFECTO
 }
 
 /**
+ * Normaliza la cedula de ciudadania: recorta, elimina espacios y guiones, y
+ * pasa a mayusculas. Se aplica la misma regla al importar, al registrar y al
+ * buscar en la app del operador.
+ */
+export function normalizarCedula(valor: string): string {
+  return valor
+    .replace(/[\s-]+/g, '')
+    .trim()
+    .toUpperCase();
+}
+
+/** Formato de la cedula: entre 5 y 20 caracteres alfanumericos. */
+export const CEDULA_REGEX = /^[A-Z0-9]{5,20}$/;
+
+/** Indica si la cedula tiene un formato valido. */
+export function cumpleFormatoCedula(cedula: string): boolean {
+  return CEDULA_REGEX.test(normalizarCedula(cedula));
+}
+
+/**
  * El semestre es obligatorio para estudiantes y opcional (nulo) para docentes.
  * Se usa en la validacion de Zod, en la importacion masiva y en la UI.
  */
