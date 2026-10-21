@@ -15,7 +15,7 @@ import { asistentes } from '../db/esquema.js';
 import { errores } from '../plugins/errores.js';
 import { registrarAuditoria } from '../servicios/auditoria.js';
 import { obtenerConfig } from '../servicios/configuracion.js';
-import { crearAsistente, listarConCorreo } from '../servicios/asistentes.js';
+import { crearAsistente, listarConCorreo, verificarAsistente } from '../servicios/asistentes.js';
 import { correoConfigurado, enviarQrPorCorreo } from '../servicios/correo.js';
 import { generarCartaQrPDF, generarCarnetsPDF } from '../servicios/pdf.js';
 import {
@@ -373,6 +373,27 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         fallidos: resultados.filter((r) => !r.enviado).length,
         resultados,
       };
+    },
+  );
+
+  app.get(
+    '/asistentes/verificar',
+    {
+      onRequest: [app.autorizar(['admin', 'operador'])],
+      schema: {
+        tags: ['Asistentes'],
+        description:
+          'Verifica un ID o codigo de registro y devuelve el nombre del asistente ' +
+          'para compararlo con la escarapela antes de registrar',
+      },
+    },
+    async (request) => {
+      const consulta = request.query as { codigo?: string };
+      const codigo = (consulta.codigo ?? '').trim();
+      if (codigo.length === 0) {
+        throw errores.validacion('Indique el ID o el codigo de registro a verificar');
+      }
+      return verificarAsistente(codigo);
     },
   );
 

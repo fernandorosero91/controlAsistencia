@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Award, DoorOpen, TrendingUp, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Award, DoorOpen, ScanLine, TrendingUp, Users } from 'lucide-react';
 import clsx from 'clsx';
 import type { ResumenDashboard } from '@seminario/shared';
 import { BASE_API } from '../../lib/api';
@@ -82,6 +83,19 @@ export function Dashboard() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-neutro-900">Estado del seminario</h2>
+          <p className="text-sm text-neutro-600">
+            Indicadores actualizados cada 5 segundos.
+          </p>
+        </div>
+        <Link to="/operador" className="boton-primario">
+          <ScanLine className="h-4 w-4" aria-hidden="true" />
+          Abrir la app del operador
+        </Link>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Indicador
           titulo="Asistentes registrados"

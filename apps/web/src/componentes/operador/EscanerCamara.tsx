@@ -31,6 +31,17 @@ export function EscanerCamara({ abierto, alCerrar, alDetectar }: Props) {
     setIniciando(true);
     setError(null);
 
+    // La camara solo se puede abrir en un contexto seguro (HTTPS o localhost).
+    // En una red local sin TLS el operador debe digitar el codigo de 6 caracteres.
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      setError(
+        'Este sitio no usa HTTPS, asi que el navegador no permite abrir la camara. ' +
+          'Digite el codigo de 6 caracteres de la escarapela (por ejemplo K7M4D2).',
+      );
+      setIniciando(false);
+      return;
+    }
+
     const iniciar = async () => {
       try {
         const lector = new BrowserMultiFormatReader();
@@ -116,7 +127,7 @@ export function EscanerCamara({ abierto, alCerrar, alDetectar }: Props) {
           </p>
         ) : (
           <p className="text-sm text-neutro-300">
-            Encuadre el codigo QR de la escarapela dentro del marco.
+            Encuadre el codigo QR de la escarapela dentro del marco. El codigo tiene 6 caracteres.
           </p>
         )}
       </div>

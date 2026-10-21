@@ -1,7 +1,7 @@
-import { and, eq, or, sql } from 'drizzle-orm';
+import { and, asc, eq, or, sql } from 'drizzle-orm';
 import { generarCodigoRegistro, normalizarId } from '@seminario/shared';
 import { db } from '../db/cliente.js';
-import { asistentes } from '../db/esquema.js';
+import { asistencias, asistentes, jornadas, usuariosSistema } from '../db/esquema.js';
 import { errores } from '../plugins/errores.js';
 
 /**
@@ -107,4 +107,75 @@ export async function listarConCorreo(): Promise<
     })
     .from(asistentes)
     .where(and(eq(asistentes.activo, true), sql`${asistentes.email} IS NOT NULL`));
+}
+
+export interface VerificacionAsistente {
+  encontrado: boolean;
+  asistente: {
+    id: string;
+    codigoRegistro: string | null;
+    nombres: string;
+    apellidos: string;
+    rol: 'estudiante' | 'docente';
+    semestre: number | null;
+  } | null;
+  jornadas: {
+    jornadaId: number;
+    jornadaNombre: string;
+    tieneIngreso: boolean;
+    horaIngreso: string | null;
+    horaSalida: string | null;
+    registradoPor: string | null;
+  }[];
+}
+
+/**
+ * Verificacion previa de un asistente: devuelve el nombre para que el operador lo
+ * compare con la escarapela antes de registrar, y el estado de cada jornada.
+ */
+export async function verificarAsistente(valor: string): Promise<VerificacionAsistente> {
+  const [asistente, listaJornadas] = await Promise.all([
+    buscarAsistentePorIdentificador(valor),
+    db.select().from(jornadas).orderBy(asc(jornadas.orden), asc(jornadas.inicio)),
+  ]);
+
+  if (!asistente) {
+    return { encontrado: false, asistente: null, jornadas: [] };
+  }
+
+  const registros = await db
+    .select({
+      jornadaId: asistencias.jornadaId,
+      horaIngreso: asistencias.horaIngreso,
+      horaSalida: asistencias.horaSalida,
+      registradoPor: usuariosSistema.nombre,
+    })
+    .from(asistencias)
+    .leftJoin(usuariosSistema, eq(usuariosSistema.id, asistencias.registradoPor))
+    .where(eq(asistencias.asistenteId, asistente.id));
+
+  const porJornada = new Map(registros.map((registro) => [registro.jornadaId, registro]));
+
+  return {
+    encontrado: true,
+    asistente: {
+      id: asistente.id,
+      codigoRegistro: asistente.codigoRegistro,
+      nombres: asistente.nombres,
+      apellidos: asistente.apellidos,
+      rol: asistente.rol,
+      semestre: asistente.semestre,
+    },
+    jornadas: listaJornadas.map((jornada) => {
+      const registro = porJornada.get(jornada.id);
+      return {
+        jornadaId: jornada.id,
+        jornadaNombre: jornada.nombre,
+        tieneIngreso: Boolean(registro),
+        horaIngreso: registro?.horaIngreso.toISOString() ?? null,
+        horaSalida: registro?.horaSalida?.toISOString() ?? null,
+        registradoPor: registro?.registradoPor ?? null,
+      };
+    }),
+  };
 }

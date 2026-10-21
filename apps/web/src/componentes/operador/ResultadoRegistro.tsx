@@ -90,6 +90,7 @@ export function ResultadoRegistro({ resultado, alCerrar }: Props) {
       tabIndex={-1}
       role="status"
       aria-live="assertive"
+      data-testid="resultado-registro"
       className={clsx(
         'animate-entrada-resultado rounded-3xl border px-4 py-4 shadow-resultado outline-none',
         estilos.borde,

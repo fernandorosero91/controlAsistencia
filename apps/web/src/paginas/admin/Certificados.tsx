@@ -434,6 +434,7 @@ export function Certificados() {
                     <button
                       type="button"
                       className="boton-compacto bg-marca text-white shadow-marca"
+                      aria-label={`Emitir certificado a ${fila.asistenteNombre}`}
                       onClick={() =>
                         emitir.mutate({ asistenteId: fila.asistenteId, excepcionManual: false })
                       }
@@ -446,6 +447,7 @@ export function Certificados() {
                     <button
                       type="button"
                       className="boton-compacto bg-aviso-100 text-aviso-700"
+                      aria-label={`Emitir con excepcion a ${fila.asistenteNombre}`}
                       onClick={() => setExcepcion(fila)}
                     >
                       <Send className="h-4 w-4" aria-hidden="true" />
@@ -457,6 +459,7 @@ export function Certificados() {
                       <button
                         type="button"
                         className="boton-compacto bg-white text-neutro-700 shadow-tarjeta"
+                        aria-label={`Descargar certificado de ${fila.asistenteNombre}`}
                         onClick={() =>
                           void descargar(
                             `/certificados/${fila.asistenteId}/pdf`,
@@ -470,6 +473,7 @@ export function Certificados() {
                       <button
                         type="button"
                         className="boton-compacto bg-error-100 text-error-700"
+                        aria-label={`Revocar certificado de ${fila.asistenteNombre}`}
                         onClick={() => setRevocar(fila)}
                       >
                         <Ban className="h-4 w-4" aria-hidden="true" />

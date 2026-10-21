@@ -29,6 +29,10 @@ import {
 } from '../estado/colaOffline';
 import { EscanerCamara } from '../componentes/operador/EscanerCamara';
 import { ResultadoRegistro } from '../componentes/operador/ResultadoRegistro';
+import {
+  TarjetaVerificacion,
+  type VerificacionAsistente,
+} from '../componentes/operador/TarjetaVerificacion';
 import { Aviso, Esqueleto, Insignia, Modal } from '../componentes/comunes';
 
 interface ContextoOperador {
@@ -91,6 +95,9 @@ export function Operador() {
   const [jornadaId, setJornadaId] = useState<number | null>(null);
   const [tipoRefrigerioId, setTipoRefrigerioId] = useState<number | null>(null);
   const [idTexto, setIdTexto] = useState('');
+  const [codigoVerificado, setCodigoVerificado] = useState('');
+  const [verificacion, setVerificacion] = useState<VerificacionAsistente | null>(null);
+  const [verificando, setVerificando] = useState(false);
   const [resultado, setResultado] = useState<RespuestaRegistro | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [escaneando, setEscaneando] = useState(false);
@@ -200,6 +207,8 @@ export function Operador() {
         });
         setResultado(respuesta);
         setIdTexto('');
+        setVerificacion(null);
+        setCodigoVerificado('');
         enfocarCampo();
         registrarEnHistorial({
           id: clave,
@@ -225,6 +234,8 @@ export function Operador() {
           await refrescarCola();
           setResultado(null);
           setIdTexto('');
+          setVerificacion(null);
+          setCodigoVerificado('');
           enfocarCampo();
           registrarEnHistorial({
             id: clave,
@@ -263,11 +274,41 @@ export function Operador() {
     ],
   );
 
+  /**
+   * Verifica el codigo ingresado y muestra el nombre del asistente para que el
+   * operador lo compare con la escarapela antes de registrar.
+   */
+  const verificar = useCallback(async (codigo: string) => {
+    const limpio = codigo.replace(/\s+/g, '').trim().toUpperCase();
+    if (limpio.length === 0) return;
+    setVerificando(true);
+    try {
+      const datos = await api.obtener<VerificacionAsistente>(
+        `/asistentes/verificar?codigo=${encodeURIComponent(limpio)}`,
+      );
+      setVerificacion(datos);
+      setCodigoVerificado(limpio);
+    } catch {
+      setVerificacion({ encontrado: false, asistente: null, jornadas: [] });
+      setCodigoVerificado(limpio);
+    } finally {
+      setVerificando(false);
+    }
+  }, []);
+
   const manejarEnvio = useCallback(
     (evento?: React.FormEvent) => {
       evento?.preventDefault();
-      const id = idTexto.trim();
+      const id = idTexto.replace(/\s+/g, '').trim().toUpperCase();
       if (id.length === 0 || enviando) return;
+
+      // Si el texto cambio despues de verificar, se vuelve a verificar: nunca se
+      // registra a una persona sin haber visto antes su nombre.
+      if (codigoVerificado !== id) {
+        void verificar(id);
+        return;
+      }
+
       if (modo === 'refrigerio' && !tipoRefrigerioId) {
         setResultado({
           resultado: 'no_permitido',
@@ -290,15 +331,29 @@ export function Operador() {
       }
       void enviar(id, nuevoClaveIdempotencia());
     },
-    [enviando, enviar, idTexto, jornadaId, modo, tipoRefrigerioId],
+    [
+      codigoVerificado,
+      enviando,
+      enviar,
+      idTexto,
+      jornadaId,
+      modo,
+      tipoRefrigerioId,
+      verificar,
+    ],
   );
 
   const detectarEscaneo = useCallback(
     (texto: string) => {
-      setIdTexto(texto.trim().toUpperCase());
+      const limpio = texto.replace(/\s+/g, '').trim().toUpperCase();
+      setIdTexto(limpio);
+      setResultado(null);
       enfocarCampo();
+      // Al escanear se verifica de inmediato: el operador ve el nombre antes de
+      // confirmar el registro.
+      void verificar(limpio);
     },
-    [enfocarCampo],
+    [enfocarCampo, verificar],
   );
 
   const sincronizarPendientes = useCallback(async () => {
@@ -427,6 +482,7 @@ export function Operador() {
             type="button"
             className="boton-compacto text-neutro-600 hover:bg-neutro-100"
             onClick={() => {
+              void api.cerrarSesion();
               cerrarSesion();
               navegar('/login');
             }}
@@ -551,9 +607,16 @@ export function Operador() {
             id="campo-id"
             ref={inputRef}
             value={idTexto}
-            onChange={(evento) => setIdTexto(evento.target.value.toUpperCase())}
-            className="campo flex-1 text-lg font-mono"
-            placeholder="Ej: EST00001 o K7M4D2"
+            onChange={(evento) => {
+              const valor = evento.target.value.toUpperCase();
+              setIdTexto(valor);
+              if (valor.replace(/\s+/g, '').trim() !== codigoVerificado) {
+                setVerificacion(null);
+                setCodigoVerificado('');
+              }
+            }}
+            className="campo flex-1 text-lg font-mono tracking-wider"
+            placeholder="EST00001 o K7M4D2"
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
@@ -564,23 +627,45 @@ export function Operador() {
           <button
             type="button"
             className="boton-secundario px-3"
+            onClick={() => void verificar(idTexto)}
+            disabled={idTexto.trim().length === 0 || verificando}
+            aria-label="Verificar el nombre del asistente"
+            title="Verificar nombre"
+          >
+            <Search className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="boton-secundario px-3"
             onClick={() => setEscaneando(true)}
             aria-label="Escanear codigo QR con la camara"
+            title="Escanear codigo QR"
           >
             <ScanLine className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
         <p id="ayuda-id" className="mt-2 text-xs text-neutro-500">
-          Escriba el ID institucional (cedula o codigo estudiantil) o el codigo de registro de 6
-          caracteres que viene en el QR. El campo queda listo para el siguiente.
+          Escriba la cedula o el codigo estudiantil, o el codigo de 6 caracteres que trae el QR
+          (por ejemplo <span className="font-mono font-semibold">K7M4D2</span>). Pulse{" "}
+          <span className="font-semibold">Verificar</span> para comparar el nombre con la
+          escarapela antes de registrar.
         </p>
         <div className="mt-3 flex gap-2">
           <button
             type="submit"
             className="boton-primario flex-1"
-            disabled={enviando || idTexto.trim().length === 0}
+            disabled={
+              enviando ||
+              idTexto.trim().length === 0 ||
+              codigoVerificado !== idTexto.replace(/\s+/g, '').trim().toUpperCase() ||
+              !verificacion?.encontrado
+            }
           >
-            {enviando ? 'Registrando' : 'Registrar'}
+            {enviando
+              ? 'Registrando'
+              : verificacion?.encontrado && verificacion.asistente
+                ? `Registrar a ${verificacion.asistente.nombres} ${verificacion.asistente.apellidos}`
+                : 'Verifique primero el nombre'}
           </button>
           <button
             type="button"
@@ -592,6 +677,12 @@ export function Operador() {
           </button>
         </div>
       </form>
+
+      <TarjetaVerificacion
+        verificacion={verificacion}
+        cargando={verificando}
+        jornadaId={jornadaId}
+      />
 
       <ResultadoRegistro resultado={resultado} />
 
@@ -641,6 +732,7 @@ export function Operador() {
           setBuscando(false);
           setIdTexto(id);
           enfocarCampo();
+          void verificar(id);
         }}
       />
 

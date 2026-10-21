@@ -1,0 +1,230 @@
+# Reglas de negocio y elegibilidad del certificado
+
+Este documento es el contrato funcional del sistema. Si el codigo y este texto discrepan,
+prevalece el codigo, pero la discrepancia es un error que hay que corregir.
+
+---
+
+## 1. Asistentes
+
+### 1.1 Identificacion
+
+Cada asistente tiene tres identificadores:
+
+| Identificador | Origen | Uso |
+| --- | --- | --- |
+| `id` | Institucional (cedula o codigo estudiantil) | Clave primaria. Se normaliza a mayusculas sin espacios. |
+| `codigo_registro` | Generado por el sistema | 6 caracteres del alfabeto `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (sin `O`, `I`, `0` ni `1` para que se pueda dictar). **Unico e inmutable.** |
+| `email` | Institucional o institucional del estudiante | Destino del codigo de registro y del QR. Opcional. |
+
+- El `id` institucional es **inmutable** una vez creado.
+- El `codigo_registro` es **inmutable** (garantizado por trigger en la base de datos).
+- El formato del `id` se valida con una expresion regular **configurable** por el
+  administrador (`seminario_config.id_regex`, por defecto `^[A-Z0-9]{4,20}$`).
+- Al buscar durante el registro se acepta **cualquiera de los dos**: el operador puede
+  escribir la cedula o el codigo corto, indistintamente.
+
+### 1.2 Roles y semestre
+
+- `rol` es `estudiante` o `docente`.
+- El **semestre es obligatorio para estudiantes** y **nulo para docentes**. Lo garantiza un
+  `CHECK` en la base de datos: `(rol = 'estudiante') = (semestre IS NOT NULL)`.
+- El rango del semestre es de 1 a 30.
+
+---
+
+## 2. Registro de asistencia
+
+### 2.1 Ingreso
+
+1. El operador elige el modo **Ingreso** y escribe o escanea el ID o el codigo.
+2. La API busca al asistente (activo) por `id` o `codigo_registro`.
+3. Si **no existe**, responde `200` con `resultado: "no_encontrado"` y la interfaz ofrece la
+   busqueda manual por nombre o apellido. **Nunca** un error 500.
+4. Si **esta inactivo**, responde `resultado: "no_permitido"`.
+5. Si la jornada **no tiene abierta la ventana de check-in** y el administrador no habilito
+   "permitir registro fuera de ventana", responde `resultado: "fuera_de_ventana"` con el
+   horario de la ventana.
+6. La escritura es atomica:
+
+   ```sql
+   INSERT INTO asistencias (asistente_id, jornada_id, hora_ingreso, registrado_por, ...)
+   VALUES (...) ON CONFLICT (asistente_id, jornada_id) DO NOTHING RETURNING id;
+   ```
+
+7. Si se creo el registro: `resultado: "exito"`.
+8. Si no se creo porque ya existia: `resultado: "duplicado"` con la **hora del registro
+   original**, la **jornada** y **quien lo registro**.
+
+### 2.2 Salida (cierre)
+
+- Solo es posible si existe un ingreso en la misma jornada.
+- Es una unica operacion: `UPDATE ... WHERE hora_salida IS NULL`.
+- Si la salida ya existia: `resultado: "duplicado"` con la hora de la salida original.
+- Si no hay ingreso: `resultado: "no_permitido"`.
+
+### 2.3 Alertas de la interfaz
+
+| Situacion | Color | Icono | Mensaje |
+| --- | --- | --- | --- |
+| Registro creado | Verde | check | "Registro exitoso" |
+| Ya existia | Ambar | alerta | "Asistencia ya registrada" + hora y responsable |
+| ID no encontrado | Rojo | equis | "ID no encontrado" + busqueda manual |
+| Fuera de ventana | Ambar | informacion | Horario de la ventana y a quien llamar |
+| No permitido | Rojo | equis | Motivo (inactivo, sin asistencia...) |
+
+Un duplicado **nunca** es un error de servidor.
+
+---
+
+## 3. Refrigerios
+
+- Un refrigerio pertenece a una jornada (`tipos_refrigerio.jornada_id`).
+- Solo se entrega si el asistente **tiene asistencia registrada en esa jornada**.
+- La unicidad la impone `UNIQUE (asistente_id, tipo_refrigerio_id)`.
+- Un duplicado responde `resultado: "duplicado"` con la hora de la entrega previa y quien la
+  realizo.
+
+---
+
+## 4. Elegibilidad para el certificado
+
+La elegibilidad se **calcula en cada consulta**, nunca se persiste como un hecho
+irreversible. Por eso, cambiar la hora de fin o la tolerancia en el panel tiene efecto
+inmediato, sin migraciones ni scripts.
+
+### 4.1 Reglas
+
+Un asistente es **elegible** si cumple las tres condiciones:
+
+1. **Asistencia en todas las jornadas exigidas.**
+   - Si `exigir_ambas_jornadas = true`: debe tener ingreso en **las dos** jornadas.
+   - Si `exigir_ambas_jornadas = false`: basta con la asistencia en la **jornada de cierre**
+     (la de `fin` mas tardio).
+2. **Registro de salida** en una de las jornadas exigidas.
+3. **Permanencia hasta el final:** la salida debe cumplir
+
+   ```
+   hora_salida >= hora_fin_seminario - tolerancia_minutos
+   ```
+
+### 4.2 Motivos de inelegibilidad
+
+| Motivo | Significado |
+| --- | --- |
+| `falta_asistencia_jornada` | No tiene ingreso en una de las jornadas exigidas. |
+| `sin_registro_salida` | Tiene ingresos pero nunca registro su salida. |
+| `salida_antes_de_hora_fin` | Registro la salida antes de la hora de fin mas la tolerancia. |
+| `sin_jornadas_configuradas` | El seminario no tiene jornadas (error de configuracion). |
+
+El panel muestra estos motivos junto al nombre del asistente, para que la coordinacion
+sepa exactamente que falta.
+
+### 4.3 Ejemplo con los parametros del evento
+
+- Evento: 27 de octubre de 2026, 08:00 a 18:00, jornada de manana y jornada de tarde.
+- `hora_fin_seminario = 2026-10-27 18:00 (America/Bogota)`.
+- `tolerancia_minutos = 15`, por lo que el umbral de salida es **17:45**.
+
+| Escenario | Resultado |
+| --- | --- |
+| Entro a las 08:05 y salio a las 18:10 | Elegible |
+| Entro a las 08:05 y salio a las 17:40 | No elegible: `salida_antes_de_hora_fin` |
+| Entro a las 08:05 y no salio | No elegible: `sin_registro_salida` |
+| Entro solo a la manana | No elegible: `falta_asistencia_jornada` |
+| Entro a ambas y salio a las 18:10, con `exigir_ambas_jornadas = false` | Elegible |
+
+---
+
+## 5. Emision de certificados
+
+### 5.1 Quién puede emitir
+
+**Solo el rol `admin`.** El rol `operador` no puede listar, emitir, descargar ni revocar
+certificados: la API responde `403` y la interfaz no muestra esas acciones.
+
+### 5.2 Emision individual
+
+- Si el asistente es elegible: se emite.
+- Si **no** es elegible: la API responde `409` con los motivos y **no** emite.
+- El administrador puede forzar la emision con **excepcion manual**, que exige un **motivo de
+  al menos 10 caracteres**. La excepcion queda en la tabla de certificados (`excepcion_manual`,
+  `motivo_excepcion`) y en la auditoria.
+
+### 5.3 Emision en lote
+
+- El lote se crea con los asistentes elegibles y se procesa en segundo plano.
+- El panel muestra el progreso: total, procesados, exitosos, fallidos y porcentaje.
+- Un fallo individual no detiene el lote: queda registrado en `errores`.
+- Al terminar se puede descargar el **ZIP** con un PDF por asistente.
+
+### 5.4 Revocacion
+
+- Un certificado se puede revocar con un motivo obligatorio (minimo 10 caracteres).
+- Tras la revocacion, la verificacion publica responde "no valido".
+- La revocacion queda auditada con el estado anterior y el motivo.
+
+### 5.5 Regeneracion
+
+- Un certificado emitido puede **regenerarse** (por ejemplo, si cambian los datos del
+  evento). Se conserva el **mismo codigo de verificacion** y se actualiza el PDF y su hash.
+
+### 5.6 Verificacion publica
+
+`GET /publico/verificar/:codigo` (con rate limit por IP) devuelve **solo**:
+
+- Validez del certificado.
+- Nombre del titular, rol, seminario, fecha de emision, intensidad horaria y estado.
+
+No expone el ID institucional, el correo ni ningun dato de la lista de asistentes.
+
+---
+
+## 6. Excepciones manuales del administrador
+
+El administrador puede registrar un ingreso o una salida manual cuando el sistema no
+registro algo (por ejemplo, un ingreso por la puerta de servicio). **Siempre** con motivo
+obligatorio de al menos 10 caracteres, y queda en la auditoria.
+
+- No se puede crear un ingreso manual si ya existe uno para esa jornada: la API responde
+  `409`.
+- No se puede registrar una salida manual si no existe ingreso: la API responde `409`.
+
+---
+
+## 7. Importacion masiva
+
+El archivo (XLSX o CSV) tiene las columnas:
+
+| Columna | Obligatoria | Regla |
+| --- | --- | --- |
+| `id` | Si | ID institucional, se normaliza a mayusculas y se valida con la expresion regular configurada. |
+| `nombres` | Si | Texto, maximo 80 caracteres. |
+| `apellidos` | Si | Texto, maximo 80 caracteres. |
+| `rol` | Si | `estudiante` o `docente`. |
+| `semestre` | Solo estudiantes | Entero entre 1 y 30. Vacio en docentes. |
+| `email` | No | Correo valido. Destino del QR. |
+
+El flujo es en **dos pasos**:
+
+1. **Vista previa**: se valida fila a fila y se devuelve el informe de errores sin tocar la
+   base de datos.
+2. **Confirmacion**: se aplican solo las filas validas.
+
+`codigo_registro` **no se importa**: lo genera el sistema. Tampoco se puede importar el
+padron ya existente con un ID distinto (el `id` es inmutable).
+
+---
+
+## 8. Auditoria
+
+Quedan registradas, con usuario, IP, fecha y datos antes/despues:
+
+- Inicio y cierre de sesion.
+- Creacion y actualizacion de asistentes, e importacion masiva.
+- Registros de ingreso, salida y entrega de refrigerio.
+- Cambios de configuracion del seminario y de jornadas.
+- Emision, revocacion y regeneracion de certificados.
+- Envio de QR por correo.
+- Exportacion de reportes.
+- Operaciones administrativas sobre usuarios.

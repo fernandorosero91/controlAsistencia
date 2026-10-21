@@ -24,3 +24,6 @@ apps/web/dist/
 packages/*/dist/
 *.tsbuildinfo
 .env.backup
+
+e2e/.auth/
+

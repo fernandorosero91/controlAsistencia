@@ -64,6 +64,7 @@ export async function renovarToken(): Promise<boolean> {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
       });
       if (!respuesta.ok) return false;
       const datos = (await respuesta.json()) as {
@@ -185,6 +186,19 @@ export const api = {
     ejecutar<T>(ruta, { ...opciones, metodo: 'PUT', cuerpo }),
   eliminar: <T>(ruta: string, opciones?: Omit<OpcionesPeticion, 'metodo' | 'cuerpo'>) =>
     ejecutar<T>(ruta, { ...opciones, metodo: 'DELETE' }),
+  /** Cierra la sesion en el servidor: revoca el refresh token. */
+  cerrarSesion: async () => {
+    try {
+      await fetch(`${BASE}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+    } catch {
+      // Si el servidor no responde, la sesion local se cierra igual.
+    }
+  },
   descarga: async (ruta: string, opciones?: Omit<OpcionesPeticion, 'metodo' | 'cuerpo'>) => {
     const token = tokenActual();
     const respuesta = await fetch(`${BASE}${ruta}`, {

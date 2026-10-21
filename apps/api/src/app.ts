@@ -38,6 +38,26 @@ export async function construirAplicacion(): Promise<FastifyInstance> {
   await registrarManejadorErrores(app);
   await conectarCache();
 
+  // Fastify responde 415 cuando un POST no trae Content-Type. Varias rutas de la
+  // API (renovacion de sesion, cierre de sesion) se llaman sin cuerpo, asi que se
+  // acepta cualquier tipo de contenido y un cuerpo vacio se interpreta como {}.
+  app.addContentTypeParser(
+    '*',
+    { parseAs: 'string' },
+    (_request, cuerpo, done) => {
+      const texto = typeof cuerpo === 'string' ? cuerpo.trim() : '';
+      if (texto.length === 0) {
+        done(null, undefined);
+        return;
+      }
+      try {
+        done(null, JSON.parse(texto));
+      } catch {
+        done(new Error('El cuerpo de la peticion no es JSON valido'), undefined);
+      }
+    },
+  );
+
   await app.register(helmet, {
     contentSecurityPolicy: {
       directives: {
@@ -83,6 +103,7 @@ export async function construirAplicacion(): Promise<FastifyInstance> {
     ...(redis ? { redis } : {}),
     keyGenerator: (request) => request.usuario?.id ?? request.ip,
     errorResponseBuilder: (_request, context) => ({
+      statusCode: 429,
       codigo: 'LIMITE_TASA',
       mensaje: 'Se alcanzo el limite de solicitudes. Intenten de nuevo en un momento.',
       reintentarEnSegundos: Math.ceil(context.ttl / 1000),

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   Award,
   BarChart3,
@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   QrCode,
+  ScanLine,
   Settings,
   Upload,
   UserCheck,
@@ -15,13 +16,15 @@ import {
   X,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { api } from '../../lib/api';
 import { useSesion } from '../../estado/sesion';
 
 const SECCIONES = [
+  { ruta: '/operador', etiqueta: 'Tomar asistencia', Icono: ScanLine, exacto: false },
   { ruta: '/admin', etiqueta: 'Dashboard', Icono: LayoutDashboard, exacto: true },
   { ruta: '/admin/asistentes', etiqueta: 'Asistentes', Icono: Users, exacto: false },
   { ruta: '/admin/importar', etiqueta: 'Importar', Icono: Upload, exacto: false },
-  { ruta: '/admin/carnets', etiqueta: 'Carnets', Icono: QrCode, exacto: false },
+  { ruta: '/admin/carnets', etiqueta: 'Carnets y QR', Icono: QrCode, exacto: false },
   { ruta: '/admin/certificados', etiqueta: 'Certificados', Icono: Award, exacto: false },
   { ruta: '/admin/reportes', etiqueta: 'Reportes', Icono: FileSpreadsheet, exacto: false },
   { ruta: '/admin/configuracion', etiqueta: 'Configuracion', Icono: Settings, exacto: false },
@@ -65,11 +68,19 @@ export function PanelAdministracion() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              to="/operador"
+              className="boton-compacto hidden bg-white/15 text-white hover:bg-white/25 sm:inline-flex"
+            >
+              <ScanLine className="h-4 w-4" aria-hidden="true" />
+              Tomar asistencia
+            </Link>
             <BarChart3 className="hidden h-5 w-5 text-primario-300 sm:block" aria-hidden="true" />
             <button
               type="button"
               className="boton-compacto text-white hover:bg-white/10"
               onClick={() => {
+                void api.cerrarSesion();
                 cerrarSesion();
                 navegar('/login');
               }}

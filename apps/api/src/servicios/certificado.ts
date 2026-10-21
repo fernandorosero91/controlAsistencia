@@ -251,7 +251,7 @@ export async function generarCertificadoPDF(datos: DatosCertificado): Promise<Ui
     cursorY -= 8;
   }
 
-  pagina.drawText('Se certify que', {
+  pagina.drawText('Se certifica que', {
     x: MARGEN,
     y: cursorY,
     size: 12,
@@ -269,10 +269,10 @@ export async function generarCertificadoPDF(datos: DatosCertificado): Promise<Ui
 
   cursorY -= 6;
   const cuerpo =
-    `identificado(a) con el ID institucional ${datos.id}, participating como ${datos.rol}, ` +
-    `participo en el ${datos.nombreSeminario}, ` +
+    `identificado(a) con el ID institucional ${datos.id}, participó como ${datos.rol} ` +
+    `en el ${datos.nombreSeminario}, ` +
     `realizado el ${datos.fecha}, con una intensidad horaria de ${datos.intensidadHoraria} horas.`;
-  for (const linea of envolver(cuerpo.replace('participating como', 'participo como'), fuente, 11.5, 440)) {
+  for (const linea of envolver(cuerpo, fuente, 11.5, 440)) {
     pagina.drawText(linea, { x: MARGEN, y: cursorY, size: 11.5, font: fuente, color: AZUL_NOCHE });
     cursorY -= 16;
   }

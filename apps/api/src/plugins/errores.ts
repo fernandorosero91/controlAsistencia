@@ -70,20 +70,28 @@ export async function registrarManejadorErrores(app: FastifyInstance): Promise<v
         return;
       }
 
-      const status = (error as FastifyError).statusCode ?? 500;
+      const status = (error as { statusCode?: number }).statusCode ?? 500;
+
       if (status === 429) {
-        reply.status(429).send({
-          codigo: 'LIMITE_TASA',
-          mensaje: 'Se alcanzo el limite de solicitudes. Intenten de nuevo en un momento.',
-        });
+        const cuerpo = error as {
+          codigo?: CodigoError;
+          mensaje?: string;
+          reintentarEnSegundos?: number;
+        };
+        reply
+          .status(429)
+          .header('Retry-After', String(cuerpo.reintentarEnSegundos ?? 60))
+          .send({
+            codigo: 'LIMITE_TASA',
+            mensaje:
+              cuerpo.mensaje ??
+              'Se alcanzo el limite de solicitudes. Intenten de nuevo en un momento.',
+          });
         return;
       }
 
       const requestId = request.id;
-      logger.error(
-        { requestId, error: error.message, stack: error.stack },
-        'Error no controlado en la API',
-      );
+      logger.error({ requestId, err: error }, 'Error no controlado en la API');
 
       reply.status(status >= 500 ? 500 : status).send({
         codigo: 'INTERNO',
