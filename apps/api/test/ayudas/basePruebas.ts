@@ -6,13 +6,8 @@ import { db } from '../../src/db/cliente.js';
 import {
   asistencias,
   asistentes,
-  auditoria,
-  certificados,
-  certificadosLotes,
   entregasRefrigerio,
-  idempotencia,
   jornadas,
-  refreshTokens,
   seminarioConfig,
   tiposRefrigerio,
   usuariosSistema,

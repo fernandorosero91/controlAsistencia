@@ -11,20 +11,23 @@
   }
 
   body {
-    @apply bg-primario-50 text-neutro-900 font-sans text-base antialiased;
+    @apply font-sans text-base antialiased text-neutro-900;
+    background-color: #e7ecef;
+    background-image: var(--gradient-fondo), var(--gradient-malla);
+    background-attachment: fixed;
     margin: 0;
     min-height: 100dvh;
   }
 
   /* Foco visible y coherente en toda la aplicacion */
   :focus-visible {
-    outline: 2px solid var(--color-primary-500);
+    outline: 2px solid var(--color-acento-600);
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: 12px;
   }
 
   ::selection {
-    background-color: var(--color-primary-100);
+    background-color: var(--color-acento-200);
   }
 
   /* Los campos numericos en movil no deben mostrar flechas */
@@ -40,64 +43,115 @@
 }
 
 @layer components {
+  /* Superficie base: blanco con sombra difusa, sin bordes duros */
   .superficie {
-    @apply bg-white border border-neutro-200 rounded-xl shadow-tarjeta;
+    @apply rounded-3xl bg-white shadow-tarjeta;
+  }
+
+  .superficie-vacia {
+    @apply rounded-3xl border border-dashed border-neutro-300 bg-white/70;
   }
 
   .etiqueta-campo {
-    @apply block text-sm font-medium text-neutro-700 mb-1.5;
+    @apply mb-1.5 block text-sm font-semibold text-neutro-700;
   }
 
+  /* Campo con relleno suave: comodo en pantalla tactil y legible en exterior */
   .campo {
-    @apply w-full min-h-[48px] px-3.5 py-2.5 rounded-lg border border-neutro-300 bg-white
+    @apply min-h-[48px] w-full rounded-2xl border border-transparent bg-neutro-100 px-4 py-2.5
            text-md text-neutro-900 placeholder:text-neutro-400
-           focus:border-primario-500 focus:ring-2 focus:ring-primario-100
-           disabled:bg-neutro-100 disabled:text-neutro-500;
+           focus:border-acento-300 focus:bg-white focus:ring-4 focus:ring-acento-100
+           disabled:bg-neutro-200 disabled:text-neutro-500;
   }
 
   .boton {
-    @apply inline-flex items-center justify-center gap-2 min-h-[48px] px-4 py-2.5
-           rounded-lg font-medium text-base transition-colors
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl
+           px-5 py-2.5 text-base font-semibold transition-all
+           disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .boton-primario {
-    @apply boton bg-primario-700 text-white hover:bg-primario-800 active:bg-primario-900;
+    @apply boton bg-marca text-white shadow-marca hover:brightness-110 active:brightness-95;
   }
 
   .boton-secundario {
-    @apply boton bg-white text-neutro-800 border border-neutro-300 hover:bg-neutro-100;
+    @apply boton bg-white text-neutro-800 shadow-tarjeta hover:bg-acento-50 hover:text-acento-700;
   }
 
   .boton-peligro {
-    @apply boton bg-error-600 text-white hover:bg-error-700;
+    @apply boton bg-error-600 text-white shadow-[0_10px_24px_rgba(192,48,42,0.28)] hover:bg-error-700;
   }
 
   .boton-compacto {
-    @apply inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 py-1.5
-           rounded-lg text-sm font-medium transition-colors
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5
+           text-sm font-semibold transition-colors
+           disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Chip de icono con el degradado de marca */
+  .chip-marca {
+    @apply flex items-center justify-center rounded-2xl bg-marca text-white shadow-marca;
   }
 
   .insignia {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold;
+  }
+
+  .insignia-neutra {
+    @apply insignia bg-neutro-100 text-neutro-700;
+  }
+
+  .insignia-exito {
+    @apply insignia bg-exito-100 text-exito-700;
+  }
+
+  .insignia-aviso {
+    @apply insignia bg-aviso-100 text-aviso-700;
+  }
+
+  .insignia-error {
+    @apply insignia bg-error-100 text-error-700;
+  }
+
+  .insignia-marca {
+    @apply insignia bg-acento-100 text-acento-700;
+  }
+
+  .ficha-indicador {
+    @apply superficie relative overflow-hidden p-5;
+  }
+
+  .ficha-indicador::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 4px;
+    background-image: var(--gradient-marca);
+  }
+
+  .barra-progreso {
+    @apply h-2.5 w-full overflow-hidden rounded-full bg-neutro-200;
+  }
+
+  .barra-progreso-relleno {
+    @apply h-full rounded-full bg-acento transition-[width] duration-500;
   }
 
   .tabla {
-    @apply w-full text-sm border-collapse;
+    @apply w-full border-collapse text-sm;
   }
 
   .tabla-cabecera {
-    @apply text-left font-semibold text-neutro-700 bg-neutro-100 whitespace-nowrap;
+    @apply whitespace-nowrap text-left font-bold text-neutro-700;
   }
 
   .tabla-cabecera th,
   .tabla-cabecera td {
-    @apply px-3 py-2.5 border-b border-neutro-200;
+    @apply border-b border-neutro-100 px-3 py-3;
   }
 
   .tabla-cuerpo tr:nth-child(even) {
-    @apply bg-neutro-50;
+    @apply bg-neutro-50/70;
   }
 }
 
@@ -109,5 +163,12 @@
 
   .area-segura {
     padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .texto-gradiente-marca {
+    background-image: var(--gradient-marca-horizontal);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 }

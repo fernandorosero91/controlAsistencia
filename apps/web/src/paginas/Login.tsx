@@ -1,20 +1,33 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
-import { KeyRound, LogIn, ShieldCheck } from 'lucide-react';
-import { z } from 'zod';
+import { KeyRound, LogIn } from 'lucide-react';
 import { loginSchema } from '@seminario/shared';
+import type { LoginInput } from '@seminario/shared';
 import { api, ErrorPeticion } from '../lib/api';
 import { useSesion } from '../estado/sesion';
 import { Aviso } from '../componentes/comunes';
 
-type DatosLogin = z.infer<typeof loginSchema>;
+type DatosLogin = LoginInput;
 
 export function Login() {
   const navegar = useNavigate();
   const establecerSesion = useSesion((estado) => estado.establecerSesion);
   const [error, setError] = useState<string | null>(null);
+
+  const { data: evento } = useQuery({
+    queryKey: ['publico', 'seminario'],
+    queryFn: () =>
+      api.obtener<{ nombre: string; lugar: string | null; facultad: string | null }>(
+        '/publico/seminario',
+      ),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+
+  const seminarioNombre = evento?.nombre ?? 'Seminario';
 
   const {
     register,
@@ -55,12 +68,14 @@ export function Login() {
     <div className="flex min-h-dvh flex-col justify-center bg-primario-50 px-4 py-8">
       <div className="mx-auto w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primario-700 text-white">
-            <ShieldCheck className="h-6 w-6" aria-hidden="true" />
-          </div>
-          <h1 className="mt-3 text-xl font-bold text-primario-900">Control de asistencia</h1>
+          <img
+            src="/logo-ucc.svg"
+            alt="Universidad Cooperativa de Colombia"
+            className="mx-auto h-12 w-auto"
+          />
+          <h1 className="mt-4 text-xl font-bold text-primario-900">Control de asistencia</h1>
           <p className="mt-1 text-sm text-neutro-600">
-            Ingreso para administradores y operadores del seminario
+            {seminarioNombre} - Ingreso para administradores y operadores
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import {
   evaluarElegibilidad,
   sanitizarCeldaExportacion,
@@ -119,8 +119,7 @@ async function reporteAsistencia(filtros: FiltrosReporte): Promise<ResultadoRepo
   };
 }
 
-async function reporteAsistenciaParcial(filtros: FiltrosReporte): Promise<ResultadoReporte> {
-  const config = await obtenerConfig();
+async function reporteAsistenciaParcial(_filtros: FiltrosReporte): Promise<ResultadoReporte> {
   const [listaJornadas, listaAsistencias] = await Promise.all([
     db.select().from(jornadas).orderBy(asc(jornadas.orden)),
     db
@@ -491,7 +490,8 @@ export function reporteComoCsv(reporte: ResultadoReporte): Buffer {
   for (const fila of reporte.filas) {
     lineas.push(fila.map(escaparCsv).join(';'));
   }
-  return Buffer.from(`﻿${lineas.join('\r\n')}`, 'utf8');
+  // El BOM permite que Excel reconozca UTF-8 al abrir el archivo.
+  return Buffer.from(`\uFEFF${lineas.join('\r\n')}`, 'utf8');
 }
 
 export async function reporteComoXlsx(reporte: ResultadoReporte): Promise<Buffer> {

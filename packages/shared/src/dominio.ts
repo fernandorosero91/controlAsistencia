@@ -200,3 +200,27 @@ export function generarCodigoVerificacion(azar: () => number = Math.random): str
   }
   return bloques.join('-');
 }
+
+/**
+ * Alfabeto del codigo de registro: sin O, I, 0 ni 1 para que se pueda dictar
+ * sin ambiguedad en un aula con ruido.
+ */
+export const ALFABETO_CODIGO_REGISTRO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const LONGITUD_CODIGO_REGISTRO = 6;
+
+/**
+ * Genera el codigo de registro corto de un asistente: seis caracteres unicos
+ * y faciles de escribir. La unicidad definitiva la garantiza el indice unico
+ * `asistentes_codigo_registro_idx` de la base de datos.
+ */
+export function generarCodigoRegistro(azar: () => number = Math.random): string {
+  let codigo = '';
+  for (let i = 0; i < LONGITUD_CODIGO_REGISTRO; i += 1) {
+    codigo += ALFABETO_CODIGO_REGISTRO[Math.floor(azar() * ALFABETO_CODIGO_REGISTRO.length)];
+  }
+  return codigo;
+}
+
+export function esCodigoRegistroValido(valor: string): boolean {
+  return new RegExp(`^[${ALFABETO_CODIGO_REGISTRO}]{${LONGITUD_CODIGO_REGISTRO}}$`).test(valor);
+}

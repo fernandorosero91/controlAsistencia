@@ -11,33 +11,48 @@ interface Props {
 
 const ESTILOS = {
   exito: {
-    contenedor: 'border-exito-300 bg-exito-100',
+    borde: 'border-exito-200',
+    fondo: 'bg-exito',
+    chip: 'bg-exito-500',
     titulo: 'text-exito-700',
-    texto: 'text-exito-700',
+    texto: 'text-neutro-700',
+    fuerte: 'text-neutro-900',
     Icono: CheckCircle2,
   },
   duplicado: {
-    contenedor: 'border-aviso-300 bg-aviso-100',
+    borde: 'border-aviso-200',
+    fondo: 'bg-aviso',
+    chip: 'bg-aviso-500',
     titulo: 'text-aviso-700',
-    texto: 'text-aviso-700',
+    texto: 'text-neutro-700',
+    fuerte: 'text-neutro-900',
     Icono: AlertTriangle,
   },
   fuera_de_ventana: {
-    contenedor: 'border-aviso-300 bg-aviso-100',
+    borde: 'border-aviso-200',
+    fondo: 'bg-aviso',
+    chip: 'bg-aviso-500',
     titulo: 'text-aviso-700',
-    texto: 'text-aviso-700',
+    texto: 'text-neutro-700',
+    fuerte: 'text-neutro-900',
     Icono: Info,
   },
   no_permitido: {
-    contenedor: 'border-error-300 bg-error-100',
+    borde: 'border-error-200',
+    fondo: 'bg-error',
+    chip: 'bg-error-500',
     titulo: 'text-error-700',
-    texto: 'text-error-700',
+    texto: 'text-neutro-700',
+    fuerte: 'text-neutro-900',
     Icono: XCircle,
   },
   no_encontrado: {
-    contenedor: 'border-error-300 bg-error-100',
+    borde: 'border-error-200',
+    fondo: 'bg-error',
+    chip: 'bg-error-500',
     titulo: 'text-error-700',
-    texto: 'text-error-700',
+    texto: 'text-neutro-700',
+    fuerte: 'text-neutro-900',
     Icono: XCircle,
   },
 } as const;
@@ -65,13 +80,9 @@ export function ResultadoRegistro({ resultado, alCerrar }: Props) {
       }
     | null;
 
-  const hora =
-    existente?.horaIngreso ?? existente?.entregadoAt ?? existente?.horaSalida ?? null;
+  const hora = existente?.horaIngreso ?? existente?.entregadoAt ?? existente?.horaSalida ?? null;
   const responsable = existente?.registradoPor ?? existente?.entregadoPor ?? null;
-  const contexto =
-    existente?.tipoRefrigerioNombre ??
-    existente?.jornadaNombre ??
-    null;
+  const contexto = existente?.tipoRefrigerioNombre ?? existente?.jornadaNombre ?? null;
 
   return (
     <div
@@ -80,12 +91,20 @@ export function ResultadoRegistro({ resultado, alCerrar }: Props) {
       role="status"
       aria-live="assertive"
       className={clsx(
-        'animate-entrada-resultado rounded-xl border-2 px-4 py-4 shadow-resultado outline-none',
-        estilos.contenedor,
+        'animate-entrada-resultado rounded-3xl border px-4 py-4 shadow-resultado outline-none',
+        estilos.borde,
+        estilos.fondo,
       )}
     >
       <div className="flex items-start gap-3">
-        <Icono className={clsx('h-8 w-8 shrink-0', estilos.titulo)} aria-hidden="true" />
+        <span
+          className={clsx(
+            'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-tarjeta',
+            estilos.chip,
+          )}
+        >
+          <Icono className="h-6 w-6" aria-hidden="true" />
+        </span>
         <div className="min-w-0 flex-1">
           <p className={clsx('text-lg font-bold leading-tight', estilos.titulo)}>
             {resultado.resultado === 'exito'
@@ -103,19 +122,27 @@ export function ResultadoRegistro({ resultado, alCerrar }: Props) {
           {resultado.asistente ? (
             <dl className="mt-3 space-y-1 text-sm">
               <div className="flex gap-2">
-                <dt className="w-24 shrink-0 font-medium opacity-70">Nombre</dt>
-                <dd className={clsx('font-semibold', estilos.texto)}>
+                <dt className="w-20 shrink-0 font-semibold text-neutro-500 sm:w-24">Nombre</dt>
+                <dd className={clsx('font-bold', estilos.fuerte)}>
                   {resultado.asistente.nombres} {resultado.asistente.apellidos}
                 </dd>
               </div>
               <div className="flex gap-2">
-                <dt className="w-24 shrink-0 font-medium opacity-70">ID</dt>
-                <dd className={clsx('font-mono font-semibold', estilos.texto)}>
+                <dt className="w-20 shrink-0 font-semibold text-neutro-500 sm:w-24">ID</dt>
+                <dd className={clsx('font-mono font-bold', estilos.fuerte)}>
                   {resultado.asistente.id}
                 </dd>
               </div>
+              {resultado.asistente.codigoRegistro ? (
+                <div className="flex gap-2">
+                  <dt className="w-20 shrink-0 font-semibold text-neutro-500 sm:w-24">Codigo</dt>
+                  <dd className={clsx('font-mono font-bold tracking-wider', estilos.fuerte)}>
+                    {resultado.asistente.codigoRegistro}
+                  </dd>
+                </div>
+              ) : null}
               <div className="flex gap-2">
-                <dt className="w-24 shrink-0 font-medium opacity-70">Rol</dt>
+                <dt className="w-20 shrink-0 font-semibold text-neutro-500 sm:w-24">Rol</dt>
                 <dd className={estilos.texto}>
                   {nombreRol(resultado.asistente.rol)}
                   {resultado.asistente.semestre !== null
@@ -125,19 +152,19 @@ export function ResultadoRegistro({ resultado, alCerrar }: Props) {
               </div>
               {hora ? (
                 <div className="flex gap-2">
-                  <dt className="w-24 shrink-0 font-medium opacity-70">Hora</dt>
-                  <dd className={clsx('font-medium', estilos.texto)}>{formatearHora(hora)}</dd>
+                  <dt className="w-20 shrink-0 font-semibold text-neutro-500 sm:w-24">Hora</dt>
+                  <dd className={clsx('font-semibold', estilos.fuerte)}>{formatearHora(hora)}</dd>
                 </div>
               ) : null}
               {contexto ? (
                 <div className="flex gap-2">
-                  <dt className="w-24 shrink-0 font-medium opacity-70">Referencia</dt>
+                  <dt className="w-20 shrink-0 font-semibold text-neutro-500 sm:w-24">Referencia</dt>
                   <dd className={estilos.texto}>{contexto}</dd>
                 </div>
               ) : null}
               {responsable ? (
                 <div className="flex gap-2">
-                  <dt className="w-24 shrink-0 font-medium opacity-70">Registrado por</dt>
+                  <dt className="w-20 shrink-0 font-semibold text-neutro-500 sm:w-24">Registrado por</dt>
                   <dd className={estilos.texto}>{responsable}</dd>
                 </div>
               ) : null}
@@ -147,7 +174,11 @@ export function ResultadoRegistro({ resultado, alCerrar }: Props) {
       </div>
 
       {alCerrar ? (
-        <button type="button" onClick={alCerrar} className="boton-compacto mt-3 w-full border border-current/20 bg-white/60">
+        <button
+          type="button"
+          onClick={alCerrar}
+          className="boton-compacto mt-3 w-full bg-white/80 text-neutro-700 shadow-tarjeta hover:bg-white"
+        >
           Continuar
         </button>
       ) : null}

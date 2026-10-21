@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { codigoVerificacionSchema } from '@seminario/shared';
 import { verificarCodigoPublico } from '../servicios/certificados.js';
+import { obtenerConfig } from '../servicios/configuracion.js';
 import { validarParametros } from '../lib/validacion.js';
 
 const parametrosCodigo = z.object({
@@ -13,6 +14,24 @@ const parametrosCodigo = z.object({
  * certificado. No expone datos de asistentes ni de operaciones internas.
  */
 export async function registrarRutasPublico(app: FastifyInstance): Promise<void> {
+  app.get(
+    '/publico/seminario',
+    {
+      schema: {
+        tags: ['Publico'],
+        description: 'Datospublicos del evento para identificar el seminario en la pantalla de ingreso',
+      },
+    },
+    async () => {
+      const config = await obtenerConfig().catch(() => null);
+      return {
+        nombre: config?.nombre ?? 'Seminario',
+        lugar: config?.lugar ?? null,
+        facultad: config?.facultad ?? null,
+      };
+    },
+  );
+
   app.get(
     '/publico/verificar/:codigo',
     {

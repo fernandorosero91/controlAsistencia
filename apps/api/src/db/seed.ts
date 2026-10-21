@@ -1,5 +1,6 @@
 import argon2 from 'argon2';
 import { sql } from 'drizzle-orm';
+import { generarCodigoRegistro } from '@seminario/shared';
 import { cargarEntorno } from '../config/entorno.js';
 import { logger } from '../config/log.js';
 import { db, pool } from './cliente.js';
@@ -27,21 +28,24 @@ const APELLIDOS = [
   'Hoyos',
 ];
 
-/** Fecha del seminario: dentro de 30 dias, en la zona horaria de Bogota (UTC-5). */
+/** Fecha del seminario configurada para el evento. */
 function fechaSeminario(): Date {
   const entorno = cargarEntorno();
-  const base = new Date();
-  base.setDate(base.getDate() + 30);
-  const dia = base.toISOString().slice(0, 10);
-  return new Date(`${dia}T12:00:00.000Z`);
+  return new Date(`${entorno.SEMINARIO_FECHA}T12:00:00.000Z`);
 }
 
+/** Convierte una hora local de Bogota (UTC-5) a una marca de tiempo UTC. */
 function conHora(fecha: Date, hora: number, minuto = 0): Date {
   const anio = fecha.getUTCFullYear();
   const mes = fecha.getUTCMonth();
   const dia = fecha.getUTCDate();
   // Bogota es UTC-5 todo el ano (no aplica horario de verano).
   return new Date(Date.UTC(anio, mes, dia, hora + 5, minuto));
+}
+
+function horaDesdeTexto(texto: string): { hora: number; minuto: number } {
+  const [hora = '0', minuto = '0'] = texto.split(':');
+  return { hora: Number(hora), minuto: Number(minuto) };
 }
 
 export async function sembrarDatos(): Promise<void> {
@@ -77,25 +81,48 @@ export async function sembrarDatos(): Promise<void> {
 
   // ------------------------------------------------------- configuracion general
   const fecha = fechaSeminario();
-  const horaFin = conHora(fecha, 18, 0);
+  const inicio = horaDesdeTexto(entorno.SEMINARIO_HORA_INICIO);
+  const fin = horaDesdeTexto(entorno.SEMINARIO_HORA_FIN);
+  const duracionTotal = (fin.hora + fin.minuto / 60) - (inicio.hora + inicio.minuto / 60);
+  const mitad = Math.round(duracionTotal / 2);
+  const horaMedio = inicio.hora + mitad;
+  const horaFin = conHora(fecha, fin.hora, fin.minuto);
 
   await db
     .insert(seminarioConfig)
     .values({
       id: 1,
-      nombre: 'Seminario de actualizacion academica',
+      nombre: entorno.SEMINARIO_NOMBRE,
       fecha: fecha.toISOString().slice(0, 10),
       horaFinSeminario: horaFin,
-      toleranciaMinutos: 15,
+      toleranciaMinutos: entorno.SEMINARIO_TOLERANCIA_MINUTOS,
       exigirAmbasJornadas: true,
-      intensidadHoraria: 8,
+      intensidadHoraria: Math.round(duracionTotal),
       permitirRegistroFueraDeVentana: false,
-      textoEncabezado:
-        'Universidad sendo certifica la participacion en el seminario de actualizacion academica.',
-      textoCierre:
-        'Este certificado se expide por la coordinacion academica y puede verificarse en el sitio web del seminario.',
-      firmaNombre: 'Coordinacion academica',
-      firmaCargo: 'Seminario de actualizacion academica',
+      textoEncabezado: `${entorno.SEMINARIO_FACULTAD} - Universidad Cooperativa de Colombia certifica la participacion en el ${entorno.SEMINARIO_NOMBRE}.`,
+      textoCierre: `Realizado el ${entorno.SEMINARIO_FECHA.split('-').reverse().join('/')} en ${entorno.SEMINARIO_LUGAR}. Informacion: ${entorno.SEMINARIO_CONTACTO}.`,
+      lugar: entorno.SEMINARIO_LUGAR,
+      facultad: entorno.SEMINARIO_FACULTAD,
+      contacto: entorno.SEMINARIO_CONTACTO,
+      firmaNombre: 'Coordinacion de la Facultad de Ingenieria',
+      firmaCargo: entorno.SEMINARIO_FACULTAD,
+      firmas: [
+        {
+          nombre: 'Coordinacion de la Facultad de Ingenieria',
+          cargo: 'Facultad de Ingenieria',
+          entidad: 'Universidad Cooperativa de Colombia',
+        },
+        {
+          nombre: 'Direccion del Programa de Ingenieria de Software',
+          cargo: 'Programa de Ingenieria de Software',
+          entidad: 'Universidad Cooperativa de Colombia',
+        },
+        {
+          nombre: 'Coordinacion de Eventos Academicos',
+          cargo: 'Eventos academicos',
+          entidad: 'Universidad Cooperativa de Colombia',
+        },
+      ],
       idRegex: '^[A-Z0-9]{4,20}$',
       urlPublica: entorno.BASE_URL_PUBLICA,
     })
@@ -108,10 +135,10 @@ export async function sembrarDatos(): Promise<void> {
       .insert(jornadas)
       .values({
         nombre: 'Manana',
-        inicio: conHora(fecha, 7, 0),
-        fin: conHora(fecha, 12, 0),
-        ventanaCheckinInicio: conHora(fecha, 6, 30),
-        ventanaCheckinFin: conHora(fecha, 9, 0),
+        inicio: conHora(fecha, inicio.hora, inicio.minuto),
+        fin: conHora(fecha, horaMedio, 0),
+        ventanaCheckinInicio: conHora(fecha, Math.max(inicio.hora - 30, 0), inicio.minuto),
+        ventanaCheckinFin: conHora(fecha, inicio.hora + 60, inicio.minuto),
         orden: 1,
       })
       .returning({ id: jornadas.id });
@@ -120,10 +147,10 @@ export async function sembrarDatos(): Promise<void> {
       .insert(jornadas)
       .values({
         nombre: 'Tarde',
-        inicio: conHora(fecha, 13, 0),
-        fin: conHora(fecha, 18, 0),
-        ventanaCheckinInicio: conHora(fecha, 12, 30),
-        ventanaCheckinFin: conHora(fecha, 14, 30),
+        inicio: conHora(fecha, horaMedio, 0),
+        fin: conHora(fecha, fin.hora, fin.minuto),
+        ventanaCheckinInicio: conHora(fecha, Math.max(horaMedio - 30, 0), 0),
+        ventanaCheckinFin: conHora(fecha, horaMedio + 60, 0),
         orden: 2,
       })
       .returning({ id: jornadas.id });
@@ -143,11 +170,25 @@ export async function sembrarDatos(): Promise<void> {
       const docentes = Math.max(Math.round(total * 0.1), 1);
       const estudiantes = total - docentes;
       const filas = [];
+      const codigosUsados = new Set<string>();
+
+      const generarCodigoUnico = (): string => {
+        for (let intento = 0; intento < 50; intento += 1) {
+          const codigo = generarCodigoRegistro();
+          if (!codigosUsados.has(codigo)) {
+            codigosUsados.add(codigo);
+            return codigo;
+          }
+        }
+        throw new Error('No fue posible generar un codigo de registro unico para el sembrado');
+      };
 
       for (let indice = 0; indice < estudiantes; indice += 1) {
         const numero = String(indice + 1).padStart(5, '0');
         filas.push({
           id: `EST${numero}`,
+          codigoRegistro: generarCodigoUnico(),
+          email: `estudiante${numero}@seminario.local`,
           nombres: NOMBRES[indice % NOMBRES.length]!,
           apellidos: `${APELLIDOS[indice % APELLIDOS.length]!} ${APELLIDOS[(indice * 7) % APELLIDOS.length]!}`,
           rol: 'estudiante' as const,
@@ -159,6 +200,8 @@ export async function sembrarDatos(): Promise<void> {
         const numero = String(indice + 1).padStart(4, '0');
         filas.push({
           id: `DOC${numero}`,
+          codigoRegistro: generarCodigoUnico(),
+          email: `docente${numero}@seminario.local`,
           nombres: NOMBRES[(indice * 3) % NOMBRES.length]!,
           apellidos: `${APELLIDOS[(indice * 11) % APELLIDOS.length]!} ${APELLIDOS[(indice * 5) % APELLIDOS.length]!}`,
           rol: 'docente' as const,

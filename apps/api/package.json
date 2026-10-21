@@ -38,6 +38,7 @@
     "fastify": "^5.2.0",
     "ioredis": "^5.4.2",
     "jszip": "^3.10.2",
+    "nodemailer": "^10.1.7",
     "pdf-lib": "^1.17.1",
     "pg": "^8.13.1",
     "pino": "^9.6.0",
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.11.10",
     "@types/qrcode": "^1.5.5",
     "pino-pretty": "^13.0.0",

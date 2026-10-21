@@ -1,7 +1,6 @@
 import argon2 from 'argon2';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
 import { loginSchema } from '@seminario/shared';
 import { db } from '../db/cliente.js';
 import { refreshTokens, usuariosSistema } from '../db/esquema.js';

@@ -81,7 +81,7 @@ export async function registrarPluginAutenticacion(app: FastifyInstance): Promis
     sign: { expiresIn: entorno.JWT_ACCESS_TTL_SEGUNDOS },
   });
 
-  app.decorate('autenticar', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.decorate('autenticar', async (request: FastifyRequest, _reply: FastifyReply) => {
     try {
       const payload = payloadJwt.parse(await request.jwtVerify());
       const usuario = await db

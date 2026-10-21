@@ -97,7 +97,6 @@ export async function calcularResumen(): Promise<ResumenDashboard> {
     ]);
 
   const mapaJornadas = new Map(porJornada.map((fila) => [fila.jornadaId, fila]));
-  const totalJornadas = listaJornadas.length;
 
   const resumenPorJornada = listaJornadas.map((jornada) => {
     const datos = mapaJornadas.get(jornada.id);

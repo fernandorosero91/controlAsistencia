@@ -19,6 +19,7 @@ export type EntregaRefrigerioInput = z.infer<typeof entregaRefrigerioSchema>;
 
 export const asistenteResumenSchema = z.object({
   id: z.string(),
+  codigoRegistro: z.string().nullable().optional(),
   nombres: z.string(),
   apellidos: z.string(),
   rol: z.enum(ROLES_ASISTENTE),

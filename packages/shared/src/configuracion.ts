@@ -1,6 +1,15 @@
 import { z } from 'zod';
 import { ID_REGEX_POR_DEFECTO } from './dominio.js';
 
+/** Firmante del certificado: nombre, cargo y dependencia opcional. */
+export const firmanteSchema = z.object({
+  nombre: z.string().trim().min(3, 'Indique el nombre de quien firma').max(120),
+  cargo: z.string().trim().min(3, 'Indique el cargo de quien firma').max(120),
+  entidad: z.string().trim().max(120).optional().default(''),
+});
+
+export type Firmante = z.infer<typeof firmanteSchema>;
+
 export const seminarioConfigSchema = z.object({
   nombre: z.string().trim().min(3, 'El nombre del seminario es obligatorio').max(160),
   fecha: z.coerce.date(),
@@ -11,8 +20,13 @@ export const seminarioConfigSchema = z.object({
   permitirRegistroFueraDeVentana: z.boolean().default(false),
   textoEncabezado: z.string().trim().max(200).optional(),
   textoCierre: z.string().trim().max(600).optional(),
+  lugar: z.string().trim().max(160).optional(),
+  facultad: z.string().trim().max(160).optional(),
+  contacto: z.string().trim().max(80).optional(),
   firmaNombre: z.string().trim().max(120).optional(),
   firmaCargo: z.string().trim().max(120).optional(),
+  /** Hasta tres firmantes, en el orden en que aparecen en el certificado. */
+  firmas: z.array(firmanteSchema).max(3).default([]),
   idRegex: z.string().trim().min(1).max(120).default(ID_REGEX_POR_DEFECTO),
   urlPublica: z.string().trim().url().optional().or(z.literal('')),
 });

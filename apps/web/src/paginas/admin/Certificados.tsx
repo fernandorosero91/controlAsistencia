@@ -200,14 +200,14 @@ export function Certificados() {
                   <span className="font-semibold">{progreso?.porcentaje ?? 0}%</span>
                 </div>
                 <div
-                  className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-neutro-200"
+                  className="barra-progreso mt-1.5"
                   role="progressbar"
                   aria-valuenow={progreso?.porcentaje ?? 0}
                   aria-valuemin={0}
                   aria-valuemax={100}
                 >
                   <div
-                    className="h-full rounded-full bg-primario-600 transition-all"
+                    className="barra-progreso-relleno"
                     style={{ width: `${progreso?.porcentaje ?? 0}%` }}
                   />
                 </div>
@@ -314,7 +314,7 @@ export function Certificados() {
         ) : null}
 
         <div className="mt-4 overflow-x-auto sin-barra-espacial">
-          <table className="tabla">
+          <table className="tabla hidden md:table">
             <thead className="tabla-cabecera">
               <tr>
                 <th scope="col">ID</th>
@@ -407,15 +407,86 @@ export function Certificados() {
                   </td>
                 </tr>
               ))}
-              {data && data.datos.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-sm text-neutro-600">
-                    No hay asistentes que coincidan con el filtro.
-                  </td>
-                </tr>
-              ) : null}
             </tbody>
           </table>
+
+          {/* Vista de tarjetas para pantallas pequenas */}
+          <ul className="space-y-2 md:hidden">
+            {(data?.datos ?? []).map((fila) => (
+              <li key={fila.asistenteId} className="rounded-2xl bg-neutro-50 p-3.5">
+                <p className="text-sm font-bold text-neutro-900">{fila.asistenteNombre}</p>
+                <p className="font-mono text-xs text-neutro-600">
+                  {fila.asistenteIdInstitucional}
+                  {fila.codigoVerificacion ? ` - ${fila.codigoVerificacion}` : ''}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Insignia tono={ETIQUETAS[fila.estado].tono}>
+                    {ETIQUETAS[fila.estado].texto}
+                  </Insignia>
+                  <Insignia tono="neutro">{nombreRol(fila.rol)}</Insignia>
+                  {fila.excepcionManual ? <Insignia tono="aviso">Excepcion</Insignia> : null}
+                </div>
+                {fila.motivos.length > 0 ? (
+                  <p className="mt-2 text-xs text-neutro-600">{fila.motivos.join(', ')}</p>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {fila.estado === 'elegible' ? (
+                    <button
+                      type="button"
+                      className="boton-compacto bg-marca text-white shadow-marca"
+                      onClick={() =>
+                        emitir.mutate({ asistenteId: fila.asistenteId, excepcionManual: false })
+                      }
+                    >
+                      <Award className="h-4 w-4" aria-hidden="true" />
+                      Emitir
+                    </button>
+                  ) : null}
+                  {fila.estado === 'no_elegible' ? (
+                    <button
+                      type="button"
+                      className="boton-compacto bg-aviso-100 text-aviso-700"
+                      onClick={() => setExcepcion(fila)}
+                    >
+                      <Send className="h-4 w-4" aria-hidden="true" />
+                      Excepcion
+                    </button>
+                  ) : null}
+                  {fila.estado === 'emitido' ? (
+                    <>
+                      <button
+                        type="button"
+                        className="boton-compacto bg-white text-neutro-700 shadow-tarjeta"
+                        onClick={() =>
+                          void descargar(
+                            `/certificados/${fila.asistenteId}/pdf`,
+                            `certificado-${fila.asistenteIdInstitucional}.pdf`,
+                          )
+                        }
+                      >
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                        PDF
+                      </button>
+                      <button
+                        type="button"
+                        className="boton-compacto bg-error-100 text-error-700"
+                        onClick={() => setRevocar(fila)}
+                      >
+                        <Ban className="h-4 w-4" aria-hidden="true" />
+                        Revocar
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {data && data.datos.length === 0 ? (
+            <p className="py-8 text-center text-sm text-neutro-600">
+              No hay asistentes que coincidan con el filtro.
+            </p>
+          ) : null}
         </div>
 
         {data ? (

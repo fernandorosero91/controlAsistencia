@@ -9,7 +9,7 @@ import {
   revocarCertificadoSchema,
 } from '@seminario/shared';
 import { db } from '../db/cliente.js';
-import { asistentes, certificados, certificadosLotes } from '../db/esquema.js';import { errores } from '../plugins/errores.js';
+import { certificados, certificadosLotes } from '../db/esquema.js';import { errores } from '../plugins/errores.js';
 import { registrarAuditoria } from '../servicios/auditoria.js';
 import { ejecutarConIdempotencia } from '../servicios/idempotencia.js';
 import {
@@ -166,7 +166,6 @@ export async function registrarRutasCertificados(app: FastifyInstance): Promise<
     },
     async (request, reply) => {
       const { loteId } = validarParametros(parametrosLote, request.params);
-      const progreso = await obtenerProgresoLote(loteId);
 
       const certificadosLote = await db
         .select({
@@ -222,7 +221,7 @@ export async function registrarRutasCertificados(app: FastifyInstance): Promise<
     },
     async (request, reply) => {
       const { asistenteId } = validarParametros(parametrosAsistente, request.params);
-      const { pdf, codigoVerificacion } = await obtenerPdfCertificado(asistenteId);
+      const { pdf } = await obtenerPdfCertificado(asistenteId);
       return reply
         .header('Content-Type', 'application/pdf')
         .header(

@@ -4,7 +4,7 @@ import { db } from '../db/cliente.js';
 import { jornadas, seminarioConfig } from '../db/esquema.js';
 import { cache } from './cache.js';
 import { errores } from '../plugins/errores.js';
-import type { SeminarioConfigInput } from '@seminario/shared';
+import type { SeminarioConfigInput, Firmante } from '@seminario/shared';
 
 export interface ConfigSeminario {
   nombre: string;
@@ -16,8 +16,12 @@ export interface ConfigSeminario {
   permitirRegistroFueraDeVentana: boolean;
   textoEncabezado: string | null;
   textoCierre: string | null;
+  lugar: string | null;
+  facultad: string | null;
+  contacto: string | null;
   firmaNombre: string | null;
   firmaCargo: string | null;
+  firmas: Firmante[];
   idRegex: string;
   urlPublica: string | null;
 }
@@ -61,8 +65,12 @@ export async function obtenerConfig(): Promise<ConfigSeminario> {
     permitirRegistroFueraDeVentana: fila.permitirRegistroFueraDeVentana,
     textoEncabezado: fila.textoEncabezado,
     textoCierre: fila.textoCierre,
+    lugar: fila.lugar,
+    facultad: fila.facultad,
+    contacto: fila.contacto,
     firmaNombre: fila.firmaNombre,
     firmaCargo: fila.firmaCargo,
+    firmas: (fila.firmas ?? []) as Firmante[],
     idRegex: fila.idRegex,
     urlPublica: fila.urlPublica,
   };
@@ -88,8 +96,12 @@ export async function guardarConfig(datos: SeminarioConfigInput): Promise<Config
       permitirRegistroFueraDeVentana: datos.permitirRegistroFueraDeVentana,
       textoEncabezado: datos.textoEncabezado ?? null,
       textoCierre: datos.textoCierre ?? null,
+      lugar: datos.lugar ?? null,
+      facultad: datos.facultad ?? null,
+      contacto: datos.contacto ?? null,
       firmaNombre: datos.firmaNombre ?? null,
       firmaCargo: datos.firmaCargo ?? null,
+      firmas: datos.firmas ?? [],
       idRegex: datos.idRegex,
       urlPublica: datos.urlPublica || null,
     })
@@ -105,8 +117,12 @@ export async function guardarConfig(datos: SeminarioConfigInput): Promise<Config
         permitirRegistroFueraDeVentana: datos.permitirRegistroFueraDeVentana,
         textoEncabezado: datos.textoEncabezado ?? null,
         textoCierre: datos.textoCierre ?? null,
+        lugar: datos.lugar ?? null,
+        facultad: datos.facultad ?? null,
+        contacto: datos.contacto ?? null,
         firmaNombre: datos.firmaNombre ?? null,
         firmaCargo: datos.firmaCargo ?? null,
+        firmas: datos.firmas ?? [],
         idRegex: datos.idRegex,
         urlPublica: datos.urlPublica || null,
       },

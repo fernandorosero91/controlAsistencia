@@ -84,6 +84,14 @@ const esquema = z.object({
   BASE_URL_PUBLICA: z.string().url().default('http://localhost:3000'),
   CERTIFICADOS_DIR: z.string().default('storage/certificados'),
 
+  SMTP_HOST: z.string().optional(),
+  SMTP_PUERTO: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_USUARIO: z.string().optional(),
+  SMTP_CLAVE: z.string().optional(),
+  SMTP_SEGURIDAD: z.enum(['starttls', 'tls']).default('starttls'),
+  SMTP_REMITENTE: z.string().email().default('no-reply@seminario.local'),
+  SMTP_REMITENTE_NOMBRE: z.string().default('Seminario'),
+
   ADMIN_NOMBRE: z.string().min(3).default('Administrador del seminario'),
   ADMIN_EMAIL: z.string().email().default('admin@seminario.local'),
   ADMIN_PASSWORD: z.string().min(8).default('Seminario2026'),
@@ -93,6 +101,18 @@ const esquema = z.object({
   ),
   ADMIN_OPERADORES: z.coerce.number().int().min(0).max(50).default(0),
   SEED_ASISTENTES: z.coerce.number().int().min(0).max(5000).default(600),
+
+  SEMINARIO_NOMBRE: z
+    .string()
+    .default('IV Seminario de Ingenieria de Software'),
+  SEMINARIO_FECHA: z.string().default('2026-10-27'),
+  SEMINARIO_LUGAR: z.string().default('Camara de Comercio - Pasto'),
+  SEMINARIO_FACULTAD: z.string().default('Facultad de Ingenieria'),
+  SEMINARIO_CONTACTO: z.string().default('311 781 7327'),
+  SEMINARIO_INVERSIION: z.string().default('$185.000'),
+  SEMINARIO_HORA_INICIO: z.string().default('08:00'),
+  SEMINARIO_HORA_FIN: z.string().default('18:00'),
+  SEMINARIO_TOLERANCIA_MINUTOS: z.coerce.number().int().min(0).max(240).default(15),
 });
 
 export type Entorno = z.infer<typeof esquema>;

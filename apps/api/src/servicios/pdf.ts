@@ -1,10 +1,48 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import QRCode from 'qrcode';
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { AsistenteResumen } from '@seminario/shared';
+
+const AZUL_PROFUNDO = rgb(0.047, 0.216, 0.255);
+const AZUL_PETROLEO = rgb(0.082, 0.345, 0.4);
+const GRIS_TEXTO = rgb(0.227, 0.259, 0.286);
+const GRIS_LINEA = rgb(0.788, 0.824, 0.847);
+const NEGRO = rgb(0.078, 0.102, 0.122);
+
+/** Ubica el logotipo institucional que se imprime en el certificado. */
+function rutaLogo(): string | null {
+  const candidatos = [
+    process.env.LOGO_INSTITUCIONAL,
+    path.resolve(process.cwd(), 'assets', 'logo-ucc-horizontal.png'),
+    path.resolve(process.cwd(), 'apps', 'api', 'assets', 'logo-ucc-horizontal.png'),
+    path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '../../assets/logo-ucc-horizontal.png',
+    ),
+  ].filter((valor): valor is string => typeof valor === 'string' && valor.length > 0);
+
+  for (const candidato of candidatos) {
+    if (existsSync(candidato)) return candidato;
+  }
+  return null;
+}
 
 export interface DatosCarnet {
   asistente: AsistenteResumen;
-  urlVerificacion: string;
+  /** Codigo de registro corto: es lo que codifica el QR. */
+  codigoRegistro: string;
+  email: string | null;
+}
+
+export interface DatosCartaQr {
+  asistente: AsistenteResumen;
+  codigoRegistro: string;
+  idInstitucional: string;
+  email: string | null;
+  nombreSeminario: string;
 }
 
 export interface DatosCertificado {
@@ -14,6 +52,9 @@ export interface DatosCertificado {
   nombreSeminario: string;
   fecha: string;
   intensidadHoraria: number;
+  lugar?: string | null;
+  facultad?: string | null;
+  contacto?: string | null;
   textoEncabezado?: string | null;
   textoCierre?: string | null;
   firmaNombre?: string | null;
@@ -21,12 +62,6 @@ export interface DatosCertificado {
   codigoVerificacion: string;
   urlVerificacion: string;
 }
-
-const AZUL_PROFUNDO = rgb(0.043, 0.169, 0.2);
-const AZUL_PETROLEO = rgb(0.071, 0.314, 0.369);
-const GRIS_TEXTO = rgb(0.227, 0.259, 0.286);
-const GRIS_LINEA = rgb(0.776, 0.804, 0.824);
-const NEGRO = rgb(0.086, 0.098, 0.11);
 
 function envolverTexto(texto: string, fuente: PDFFont, tamano: number, anchoMax: number): string[] {
   const palabras = texto.split(/\s+/).filter((palabra) => palabra.length > 0);
@@ -111,7 +146,7 @@ export async function generarCarnetsPDF(
       maxWidth: anchoTarjeta - 20,
     });
 
-    const qr = await documento.embedPng(await imagenQr(participante.urlVerificacion));
+    const qr = await documento.embedPng(await imagenQr(participante.codigoRegistro));
     const tamanoQr = 92;
     actual.drawImage(qr, {
       x: x + 14,
@@ -149,9 +184,17 @@ export async function generarCarnetsPDF(
     actual.drawText(`ID: ${participante.asistente.id}`, {
       x: textoX,
       y: cursorY,
-      size: 12,
+      size: 11,
       font: fuenteNegrita,
       color: AZUL_PETROLEO,
+    });
+    cursorY -= 14;
+    actual.drawText(`Codigo: ${participante.codigoRegistro}`, {
+      x: textoX,
+      y: cursorY,
+      size: 13,
+      font: fuenteNegrita,
+      color: AZUL_PROFUNDO,
     });
 
     indice += 1;
@@ -160,6 +203,104 @@ export async function generarCarnetsPDF(
   if (participantes.length === 0) {
     const paginaVacia = documento.addPage([anchoPagina, altoPagina]);
     paginaVacia.drawText('No hay asistentes para generar.', {
+      x: 60,
+      y: altoPagina / 2,
+      size: 14,
+      font: fuenteNormal,
+      color: GRIS_TEXTO,
+    });
+  }
+
+  return documento.save();
+}
+
+/**
+ * Carta de QR: una tarjeta por asistente con el codigo, el QR, el nombre, el ID
+ * institucional y el correo. Sirve para entregar el codigo en papel cuando no
+ * hay servidor de correo configurado.
+ */
+export async function generarCartaQrPDF(datos: DatosCartaQr[]): Promise<Uint8Array> {
+  const documento = await PDFDocument.create();
+  const fuenteNormal = await documento.embedFont(StandardFonts.Helvetica);
+  const fuenteNegrita = await documento.embedFont(StandardFonts.HelveticaBold);
+
+  const anchoPagina = 595.28;
+  const altoPagina = 841.89;
+  const margen = 28;
+  const anchoTarjeta = anchoPagina - margen * 2;
+  const altoTarjeta = 118;
+  const tarjetasPorPagina = Math.floor((altoPagina - margen * 2 - 40) / (altoTarjeta + 10));
+
+  let pagina: PDFPage | null = null;
+  let indice = 0;
+
+  for (const item of datos) {
+    if (indice % tarjetasPorPagina === 0) {
+      pagina = documento.addPage([anchoPagina, altoPagina]);
+    }
+    const actual = pagina!;
+    const y = altoPagina - margen - (indice % tarjetasPorPagina) * (altoTarjeta + 10) - altoTarjeta;
+
+    actual.drawRectangle({
+      x: margen,
+      y,
+      width: anchoTarjeta,
+      height: altoTarjeta,
+      borderColor: GRIS_LINEA,
+      borderWidth: 1,
+      color: rgb(1, 1, 1),
+    });
+
+    const qr = await documento.embedPng(await imagenQr(item.codigoRegistro));
+    actual.drawImage(qr, { x: margen + 14, y: y + 14, width: 90, height: 90 });
+
+    const textoX = margen + 120;
+    let cursorY = y + altoTarjeta - 26;
+
+    actual.drawText(
+      `${item.asistente.nombres} ${item.asistente.apellidos}`,
+      { x: textoX, y: cursorY, size: 13, font: fuenteNegrita, color: NEGRO, maxWidth: 330 },
+    );
+    cursorY -= 17;
+    actual.drawText(`Codigo de registro: ${item.codigoRegistro}`, {
+      x: textoX,
+      y: cursorY,
+      size: 13,
+      font: fuenteNegrita,
+      color: AZUL_PETROLEO,
+    });
+    cursorY -= 14;
+    actual.drawText(`ID institucional: ${item.idInstitucional}`, {
+      x: textoX,
+      y: cursorY,
+      size: 10,
+      font: fuenteNormal,
+      color: GRIS_TEXTO,
+    });
+    cursorY -= 13;
+    actual.drawText(`Correo: ${item.email ?? 'no informado'}`, {
+      x: textoX,
+      y: cursorY,
+      size: 10,
+      font: fuenteNormal,
+      color: GRIS_TEXTO,
+    });
+    cursorY -= 13;
+    actual.drawText(item.nombreSeminario, {
+      x: textoX,
+      y: cursorY,
+      size: 9,
+      font: fuenteNormal,
+      color: GRIS_TEXTO,
+      maxWidth: 330,
+    });
+
+    indice += 1;
+  }
+
+  if (datos.length === 0) {
+    const vacia = documento.addPage([anchoPagina, altoPagina]);
+    vacia.drawText('No hay asistentes para generar.', {
       x: 60,
       y: altoPagina / 2,
       size: 14,
@@ -208,6 +349,17 @@ export async function generarCertificadoPDF(datos: DatosCertificado): Promise<Ui
   });
 
   let cursorY = alto - 92;
+  const ruta = rutaLogo();
+  if (ruta) {
+    try {
+      const logo = await documento.embedPng(await readFile(ruta));
+      const anchoLogo = 190;
+      const altoLogo = (logo.height / logo.width) * anchoLogo;
+      pagina.drawImage(logo, { x: ancho - margen - anchoLogo, y: alto - margen - altoLogo, width: anchoLogo, height: altoLogo });
+    } catch {
+      // Si el logotipo no esta disponible, el certificado se genera sin el.
+    }
+  }
   pagina.drawText(datos.nombreSeminario, {
     x: margen,
     y: cursorY,
@@ -249,6 +401,17 @@ export async function generarCertificadoPDF(datos: DatosCertificado): Promise<Ui
   for (const linea of envolverTexto(cuerpo, fuenteCuerpo, 12, ancho - margen * 2 - 170)) {
     pagina.drawText(linea, { x: margen, y: cursorY, size: 12, font: fuenteCuerpo, color: NEGRO });
     cursorY -= 17;
+  }
+
+  if (datos.lugar) {
+    cursorY -= 8;
+    pagina.drawText(`Lugar: ${datos.lugar}`, {
+      x: margen,
+      y: cursorY,
+      size: 11,
+      font: fuenteCuerpo,
+      color: GRIS_TEXTO,
+    });
   }
 
   if (datos.textoCierre) {

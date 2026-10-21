@@ -29,7 +29,7 @@ function cargarArchivoEnvLocal(): void {
 cargarArchivoEnvLocal();
 
 process.env.NODE_ENV = 'test';
-process.env.LOG_LEVEL = process.env.LOG_LEVEL ?? 'silent';
+process.env.LOG_LEVEL = 'silent';
 process.env.REDIS_URL = '';
 process.env.CACHE_TTL_MS = '500';
 process.env.JWT_SECRET =

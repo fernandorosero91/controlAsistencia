@@ -17,8 +17,10 @@ import {
 
 interface Asistente {
   id: string;
+  codigoRegistro: string | null;
   nombres: string;
   apellidos: string;
+  email: string | null;
   rol: 'estudiante' | 'docente';
   semestre: number | null;
   activo: boolean;
@@ -39,6 +41,14 @@ const esquemaFormulario = z
     apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios').max(80),
     rol: z.enum(['estudiante', 'docente']),
     semestre: z.number().int().min(1).max(30).nullable(),
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .email('Correo electronico invalido')
+      .max(120)
+      .optional()
+      .or(z.literal('')),
   })
   .refine((datos) => datos.rol !== 'estudiante' || datos.semestre !== null, {
     message: 'El semestre es obligatorio para estudiantes',
@@ -78,6 +88,7 @@ export function Asistentes() {
         apellidos: datos.apellidos,
         rol: datos.rol,
         semestre: datos.rol === 'docente' ? null : datos.semestre,
+        email: datos.email?.trim() ? datos.email.trim() : '',
         activo: true,
       };
       if (datos.idOriginal) {
@@ -162,10 +173,11 @@ export function Asistentes() {
         ) : null}
 
         <div className="mt-4 overflow-x-auto sin-barra-espacial">
-          <table className="tabla">
+          <table className="tabla hidden md:table">
             <thead className="tabla-cabecera">
               <tr>
                 <th scope="col">ID</th>
+                <th scope="col">Codigo</th>
                 <th scope="col">Nombre</th>
                 <th scope="col">Rol</th>
                 <th scope="col">Semestre</th>
@@ -179,8 +191,14 @@ export function Asistentes() {
               {(data?.datos ?? []).map((asistente) => (
                 <tr key={asistente.id}>
                   <td className="font-mono text-neutro-800">{asistente.id}</td>
+                  <td className="font-mono tracking-wider text-primario-700">
+                    {asistente.codigoRegistro ?? '-'}
+                  </td>
                   <td className="text-neutro-900">
                     {asistente.nombres} {asistente.apellidos}
+                    {asistente.email ? (
+                      <span className="block text-xs text-neutro-500">{asistente.email}</span>
+                    ) : null}
                   </td>
                   <td>{nombreRol(asistente.rol)}</td>
                   <td>{asistente.semestre ?? '-'}</td>
@@ -203,15 +221,55 @@ export function Asistentes() {
                   </td>
                 </tr>
               ))}
-              {data && data.datos.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-sm text-neutro-600">
-                    No hay asistentes que coincidan con el filtro.
-                  </td>
-                </tr>
-              ) : null}
             </tbody>
           </table>
+
+          {/* Vista de tarjetas para pantallas pequenas */}
+          <ul className="space-y-2 md:hidden">
+            {(data?.datos ?? []).map((asistente) => (
+              <li key={asistente.id} className="rounded-2xl bg-neutro-50 p-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-neutro-900">
+                      {asistente.nombres} {asistente.apellidos}
+                    </p>
+                    <p className="font-mono text-xs text-neutro-600">{asistente.id}</p>
+                    <p className="font-mono text-sm font-bold tracking-widest text-primario-700">
+                      {asistente.codigoRegistro ?? 'Sin codigo'}
+                    </p>
+                    {asistente.email ? (
+                      <p className="truncate text-xs text-neutro-500">{asistente.email}</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="boton-compacto shrink-0 bg-white text-primario-700 shadow-tarjeta"
+                    onClick={() => setEditing(asistente)}
+                    aria-label={`Editar a ${asistente.nombres} ${asistente.apellidos}`}
+                  >
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Insignia tono="primario">{nombreRol(asistente.rol)}</Insignia>
+                  {asistente.semestre !== null ? (
+                    <Insignia tono="neutro">Semestre {asistente.semestre}</Insignia>
+                  ) : null}
+                  {asistente.activo ? (
+                    <Insignia tono="exito">Activo</Insignia>
+                  ) : (
+                    <Insignia tono="neutro">Inactivo</Insignia>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {data && data.datos.length === 0 ? (
+            <p className="py-8 text-center text-sm text-neutro-600">
+              No hay asistentes que coincidan con el filtro.
+            </p>
+          ) : null}
         </div>
 
         {data ? (
@@ -265,6 +323,7 @@ function FormularioAsistente({
       apellidos: asistente?.apellidos ?? '',
       rol: asistente?.rol ?? 'estudiante',
       semestre: asistente?.semestre ?? 1,
+      email: asistente?.email ?? '',
     },
   });
 
@@ -276,14 +335,30 @@ function FormularioAsistente({
       onSubmit={handleSubmit((datos) => onGuardar({ ...datos, idOriginal: asistente?.id }))}
     >
       {asistente ? (
-        <div>
-          <label htmlFor="id-edicion" className="etiqueta-campo">
-            ID institucional
-          </label>
-          <input id="id-edicion" className="campo bg-neutro-100" value={asistente.id} disabled />
-          <p className="mt-1 text-xs text-neutro-500">
-            El ID institucional es inmutable: no se puede cambiar una vez creado.
-          </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="id-edicion" className="etiqueta-campo">
+              ID institucional
+            </label>
+            <input id="id-edicion" className="campo bg-neutro-200" value={asistente.id} disabled />
+            <p className="mt-1 text-xs text-neutro-500">
+              El ID institucional es inmutable: no se puede cambiar una vez creado.
+            </p>
+          </div>
+          <div>
+            <label htmlFor="codigo-edicion" className="etiqueta-campo">
+              Codigo de registro
+            </label>
+            <input
+              id="codigo-edicion"
+              className="campo bg-neutro-200 font-mono tracking-widest"
+              value={asistente.codigoRegistro ?? 'Sin codigo'}
+              disabled
+            />
+            <p className="mt-1 text-xs text-neutro-500">
+              Lo genera el sistema y es lo que codifica el QR. No se puede editar.
+            </p>
+          </div>
         </div>
       ) : (
         <div>
@@ -320,6 +395,22 @@ function FormularioAsistente({
             <p className="mt-1 text-sm text-error-600">{errors.apellidos.message}</p>
           ) : null}
         </div>
+      </div>
+
+      <div>
+        <label htmlFor="email" className="etiqueta-campo">
+          Correo electronico
+        </label>
+        <input
+          id="email"
+          type="email"
+          className="campo"
+          placeholder="Para enviarle el codigo de registro y el QR"
+          {...register('email')}
+        />
+        {errors.email ? (
+          <p className="mt-1 text-sm text-error-600">{errors.email.message}</p>
+        ) : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

@@ -394,7 +394,12 @@ export function Operador() {
     <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col gap-3 px-3 py-3 area-segura">
       <header className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h1 className="truncate text-base font-bold text-primario-900">
+          <img
+            src="/logo-ucc.svg"
+            alt="Universidad Cooperativa de Colombia"
+            className="h-6 w-auto"
+          />
+          <h1 className="mt-1.5 truncate text-base font-bold text-primario-900">
             {contexto?.config.nombre ?? 'Control de asistencia'}
           </h1>
           <p className="mt-0.5 flex items-center gap-1.5 text-sm text-neutro-600">
@@ -471,10 +476,10 @@ export function Operador() {
               aria-selected={activo}
               onClick={() => setModo(id)}
               className={clsx(
-                'flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl border-2 px-2 py-2 transition-colors',
+                'flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-3xl px-2 py-2 transition-all',
                 activo
-                  ? 'border-primario-600 bg-primario-700 text-white'
-                  : 'border-neutro-200 bg-white text-neutro-700 hover:border-primario-300',
+                  ? 'bg-marca text-white shadow-marca'
+                  : 'bg-white text-neutro-700 shadow-tarjeta hover:text-primario-700',
               )}
             >
               <Icono className="h-6 w-6" aria-hidden="true" />
@@ -484,8 +489,7 @@ export function Operador() {
                   'text-center text-[11px] leading-tight',
                   activo ? 'text-primario-100' : 'text-neutro-500',
                 )}
-              >
-                {descripcion}
+              >                {descripcion}
               </span>
             </button>
           );
@@ -500,10 +504,10 @@ export function Operador() {
               type="button"
               onClick={() => setJornadaId(jornada.id)}
               className={clsx(
-                'min-h-[44px] shrink-0 rounded-lg border px-3.5 py-2 text-sm font-medium',
+                'min-h-[44px] shrink-0 rounded-2xl px-4 py-2 text-sm font-semibold transition-colors',
                 jornadaId === jornada.id
-                  ? 'border-primario-600 bg-primario-100 text-primario-800'
-                  : 'border-neutro-200 bg-white text-neutro-700',
+                  ? 'bg-marca text-white shadow-marca'
+                  : 'bg-white text-neutro-700 shadow-tarjeta',
               )}
             >
               {jornada.nombre}
@@ -525,10 +529,10 @@ export function Operador() {
                 type="button"
                 onClick={() => setTipoRefrigerioId(refrigerio.id)}
                 className={clsx(
-                  'min-h-[44px] shrink-0 rounded-lg border px-3.5 py-2 text-sm font-medium',
+                  'min-h-[44px] shrink-0 rounded-2xl px-4 py-2 text-sm font-semibold transition-colors',
                   tipoRefrigerioId === refrigerio.id
-                    ? 'border-primario-600 bg-primario-100 text-primario-800'
-                    : 'border-neutro-200 bg-white text-neutro-700',
+                    ? 'bg-marca text-white shadow-marca'
+                    : 'bg-white text-neutro-700 shadow-tarjeta',
                 )}
               >
                 {refrigerio.nombre}
@@ -540,7 +544,7 @@ export function Operador() {
 
       <form onSubmit={manejarEnvio} className="superficie p-3">
         <label htmlFor="campo-id" className="etiqueta-campo">
-          ID institucional del asistente
+          ID institucional o codigo de registro
         </label>
         <div className="flex gap-2">
           <input
@@ -549,7 +553,7 @@ export function Operador() {
             value={idTexto}
             onChange={(evento) => setIdTexto(evento.target.value.toUpperCase())}
             className="campo flex-1 text-lg font-mono"
-            placeholder="Ej: EST00001"
+            placeholder="Ej: EST00001 o K7M4D2"
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
@@ -567,8 +571,8 @@ export function Operador() {
           </button>
         </div>
         <p id="ayuda-id" className="mt-2 text-xs text-neutro-500">
-          Escriba el ID o escanee el codigo QR de la escarapela. El campo queda listo para el
-          siguiente.
+          Escriba el ID institucional (cedula o codigo estudiantil) o el codigo de registro de 6
+          caracteres que viene en el QR. El campo queda listo para el siguiente.
         </p>
         <div className="mt-3 flex gap-2">
           <button

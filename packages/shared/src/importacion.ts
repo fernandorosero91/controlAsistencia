@@ -7,6 +7,14 @@ export const filaAsistenteImportadaSchema = z.object({
   apellidos: z.string().min(1, 'Los apellidos son obligatorios').max(80),
   rol: z.enum(ROLES_ASISTENTE),
   semestre: z.union([z.number().int().min(1).max(30), z.null()]).optional(),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email('Correo electronico invalido')
+    .max(120)
+    .optional()
+    .or(z.literal('')),
 });
 
 export type FilaAsistenteImportada = z.infer<typeof filaAsistenteImportadaSchema>;
@@ -47,6 +55,14 @@ export const confirmarImportacionSchema = z.object({
       apellidos: z.string().min(1).max(80),
       rol: z.enum(ROLES_ASISTENTE),
       semestre: z.union([z.number().int().min(1).max(30), z.null()]).optional(),
+      email: z
+        .string()
+        .trim()
+        .toLowerCase()
+        .email('Correo electronico invalido')
+        .max(120)
+        .optional()
+        .or(z.literal('')),
     }),
   ),
   modo: z.enum(['crear_actualizar', 'solo_nuevos']).default('crear_actualizar'),

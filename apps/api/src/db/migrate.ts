@@ -187,33 +187,38 @@ export async function revertirUltimaMigracion(): Promise<string | null> {
 }
 
 async function principal(): Promise<void> {
-  const accion = process.argv[2] ?? 'up';
-  if (accion === 'up') {
-    const ejecutadas = await aplicarMigraciones();
-    if (ejecutadas.length === 0) {
-      console.log('La base de datos ya esta actualizada.');
+  try {
+    const accion = process.argv[2] ?? 'up';
+    if (accion === 'up') {
+      const ejecutadas = await aplicarMigraciones();
+      if (ejecutadas.length === 0) {
+        console.log('La base de datos ya esta actualizada.');
+      } else {
+        console.log(`Migraciones aplicadas: ${ejecutadas.join(', ')}`);
+      }
+    } else if (accion === 'down') {
+      const revertida = await revertirUltimaMigracion();
+      console.log(
+        revertida ? `Migracion revertida: ${revertida}` : 'No hay migraciones que revertir.',
+      );
+    } else if (accion === 'status') {
+      const { aplicadas, pendientes } = await estadoMigraciones();
+      console.log('Migraciones aplicadas:');
+      for (const migracion of aplicadas) {
+        console.log(`  - ${migracion.version} (${migracion.aplicadaEn.toISOString()})`);
+      }
+      console.log('Migraciones pendientes:');
+      for (const migracion of pendientes) {
+        console.log(`  - ${migracion.version}`);
+      }
     } else {
-      console.log(`Migraciones aplicadas: ${ejecutadas.join(', ')}`);
+      throw new Error(`Accion desconocida: ${accion}. Use up, down o status.`);
     }
-  } else if (accion === 'down') {
-    const revertida = await revertirUltimaMigracion();
-    console.log(
-      revertida ? `Migracion revertida: ${revertida}` : 'No hay migraciones que revertir.',
-    );
-  } else if (accion === 'status') {
-    const { aplicadas, pendientes } = await estadoMigraciones();
-    console.log('Migraciones aplicadas:');
-    for (const migracion of aplicadas) {
-      console.log(`  - ${migracion.version} (${migracion.aplicadaEn.toISOString()})`);
-    }
-    console.log('Migraciones pendientes:');
-    for (const migracion of pendientes) {
-      console.log(`  - ${migracion.version}`);
-    }
-  } else {
-    throw new Error(`Accion desconocida: ${accion}. Use up, down o status.`);
+  } finally {
+    // El pool se cierra siempre: si la migracion falla, el proceso debe
+    // terminar y devolver el codigo de error, no quedar colgado.
+    await pool.end();
   }
-  await pool.end();
 }
 
 const invocadoDirectamente =

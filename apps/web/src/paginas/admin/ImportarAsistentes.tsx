@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, FileUp, TriangleAlert, Upload } from 'lucide-react';
+import { CheckCircle2, Download, FileUp, TriangleAlert, Upload } from 'lucide-react';
 import { api, ErrorPeticion } from '../../lib/api';
 import { formatearNumero } from '../../lib/formato';
 import { Aviso, EstadoVacio, Insignia, Tarjeta } from '../../componentes/comunes';
@@ -26,6 +26,26 @@ export function ImportarAsistentes() {
   const [error, setError] = useState<string | null>(null);
   const [resultadoImportacion, setResultadoImportacion] = useState<string | null>(null);
   const [archivoNombre, setArchivoNombre] = useState<string | null>(null);
+  const [descargandoPlantilla, setDescargandoPlantilla] = useState(false);
+
+  const descargarPlantilla = async () => {
+    setDescargandoPlantilla(true);
+    try {
+      const archivo = await api.descarga('/asistentes/plantilla');
+      const url = URL.createObjectURL(archivo);
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = 'plantilla-asistentes.xlsx';
+      document.body.appendChild(enlace);
+      enlace.click();
+      document.body.removeChild(enlace);
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('No se pudo descargar la plantilla.');
+    } finally {
+      setDescargandoPlantilla(false);
+    }
+  };
 
   const analysing = useMutation({
     mutationFn: async (archivo: File) => {
@@ -81,15 +101,27 @@ export function ImportarAsistentes() {
     <div className="space-y-4">
       <Tarjeta
         titulo="Importacion masiva de asistentes"
-        descripcion="Archivo CSV o XLSX con las columnas: id, nombres, apellidos, rol y semestre"
+        descripcion="Archivo XLSX o CSV con las columnas: id, nombres, apellidos, rol, semestre y email"
+        accion={
+          <button
+            type="button"
+            className="boton-secundario"
+            onClick={() => void descargarPlantilla()}
+            disabled={descargandoPlantilla}
+          >
+            <Download className="h-4 w-4" aria-hidden="true" />
+            {descargandoPlantilla ? 'Descargando' : 'Descargar plantilla'}
+          </button>
+        }
       >
-        <div className="rounded-lg border border-dashed border-neutro-300 bg-neutro-50 px-4 py-8 text-center">
+        <div className="rounded-2xl border border-dashed border-neutro-300 bg-white/70 px-4 py-8 text-center">
           <FileUp className="mx-auto h-9 w-9 text-neutro-500" aria-hidden="true" />
           <p className="mt-2 text-sm text-neutro-700">
-            Seleccione el archivo con el padron de asistentes
+            Seleccione el archivo de Excel con el padron de asistentes
           </p>
           <p className="mt-1 text-xs text-neutro-500">
-            Formato CSV (separado por punto y coma o coma) o XLSX con la primera hoja. Maximo 10 MB.
+            Formato XLSX (primera hoja) o CSV. Maximo 10 MB y 5000 filas por importacion. El
+            codigo de registro y el QR los genera el sistema: no se importan.
           </p>
           <input
             ref={referenciaArchivo}

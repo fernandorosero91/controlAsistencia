@@ -81,8 +81,12 @@ export const seminarioConfig = pgTable(
       .default(false),
     textoEncabezado: text('texto_encabezado'),
     textoCierre: text('texto_cierre'),
+    lugar: text('lugar'),
+    facultad: text('facultad'),
+    contacto: text('contacto'),
     firmaNombre: text('firma_nombre'),
     firmaCargo: text('firma_cargo'),
+    firmas: jsonb('firmas').notNull().default([]),
     idRegex: text('id_regex').notNull().default('^[A-Z0-9]{4,20}$'),
     urlPublica: text('url_publica'),
     creadoPor: uuid('creado_por'),
@@ -118,6 +122,8 @@ export const asistentes = pgTable(
   'asistentes',
   {
     id: text('id').primaryKey(),
+    codigoRegistro: text('codigo_registro'),
+    email: text('email'),
     nombres: text('nombres').notNull(),
     apellidos: text('apellidos').notNull(),
     semestre: integer('semestre'),
@@ -131,6 +137,12 @@ export const asistentes = pgTable(
     index('asistentes_nombres_idx').on(sql`lower(${tabla.nombres})`),
     index('asistentes_rol_idx').on(tabla.rol),
     index('asistentes_semestre_idx').on(tabla.semestre),
+    uniqueIndex('asistentes_codigo_registro_idx')
+      .on(tabla.codigoRegistro)
+      .where(sql`${tabla.codigoRegistro} IS NOT NULL`),
+    index('asistentes_email_idx')
+      .on(sql`lower(${tabla.email})`)
+      .where(sql`${tabla.email} IS NOT NULL`),
     check(
       'asistentes_semestre_rol',
       sql`(${tabla.rol} = 'estudiante') = (${tabla.semestre} IS NOT NULL)`,

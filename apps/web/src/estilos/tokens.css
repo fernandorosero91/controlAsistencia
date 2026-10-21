@@ -1,52 +1,115 @@
 /**
- * Design tokens del sistema. Son la fuente de verdad de la paleta: Tailwind los
- * replica en sus clases y aqui quedan disponibles para CSS puro.
+ * Design tokens del sistema.
+ *
+ * Paleta institucional de la Universidad Cooperativa de Colombia:
+ *   - Azul marino  #132740  (primario,_headers y superficies de marca)
+ *   - Cian         #00ACC9  (acento, datos y detalles)
+ *   - Verde lima   #80BA27  (detalle decorativo)
+ *   - Amarillo     #FFCE36  (aviso: registro ya existente)
+ *
+ * Lenguaje visual: superficies blancas difusas (neumorfismo suave), acentos con
+ * degradado de marca, geometria squircle y tipografia Montserrat.
+ *
  * Contraste verificado con WCAG AA en apps/web/test/contraste.test.ts.
  */
 :root {
   color-scheme: light;
 
-  /* Primario: azul petroleo institucional */
-  --color-primary-50: #f2f8fa;
-  --color-primary-100: #dceef2;
-  --color-primary-200: #b7dce4;
-  --color-primary-300: #8ac4d1;
-  --color-primary-400: #4e9aac;
-  --color-primary-500: #1b6e80;
-  --color-primary-600: #145a6a;
-  --color-primary-700: #12505e;
-  --color-primary-800: #0e3d48;
-  --color-primary-900: #0b2b33;
+  /* Primario: azul marino institucional */
+  --color-primario-50: #f2f5f9;
+  --color-primario-100: #e3e9f0;
+  --color-primario-200: #c4d0e0;
+  --color-primario-300: #94a9c4;
+  --color-primario-400: #5d7ba3;
+  --color-primario-500: #3a5480;
+  --color-primario-600: #27405f;
+  --color-primario-700: #132740;
+  --color-primario-800: #0f2036;
+  --color-primario-900: #0b1727;
+  --color-primario-950: #060d18;
 
-  /* Neutros: grises pizarra */
-  --color-neutral-50: #f7f9fa;
-  --color-neutral-100: #eef1f3;
-  --color-neutral-200: #e1e6e9;
-  --color-neutral-300: #c6cdd2;
-  --color-neutral-400: #9aa5ac;
-  --color-neutral-500: #6b767d;
-  --color-neutral-600: #525c63;
-  --color-neutral-700: #3a4249;
-  --color-neutral-800: #262c31;
-  --color-neutral-900: #16191c;
+  /* Acento: cian institucional */
+  --color-acento-50: #ecfcfe;
+  --color-acento-100: #cff6fa;
+  --color-acento-200: #9aedf4;
+  --color-acento-300: #5fdeec;
+  --color-acento-400: #2bcbe0;
+  --color-acento-500: #00acc9;
+  --color-acento-600: #0091ab;
+  --color-acento-700: #00788e;
+  --color-acento-800: #066072;
+  --color-acento-900: #0a515f;
+  --color-acento-950: #00303a;
 
-  /* Semanticos */
-  --color-success-100: #dcf2e6;
-  --color-success-300: #8fd3af;
-  --color-success-600: #1e7a4b;
-  --color-success-700: #175f3b;
-  --color-warning-100: #fdf0d9;
-  --color-warning-300: #f2c878;
-  --color-warning-600: #b26a00;
-  --color-warning-700: #8b5200;
-  --color-danger-100: #fbe3e1;
-  --color-danger-300: #ef9b94;
-  --color-danger-600: #b3261e;
-  --color-danger-700: #8c1c16;
-  --color-info-600: #1b6e80;
+  /* Detalle decorativo: verde lima institucional */
+  --color-lima-100: #ebf7d8;
+  --color-lima-200: #d7efb1;
+  --color-lima-300: #bee181;
+  --color-lima-400: #a3ce58;
+  --color-lima-500: #80ba27;
+  --color-lima-600: #689e1d;
+  --color-lima-700: #527d19;
+
+  /* Neutros: grises institucionales */
+  --color-neutro-50: #f8f9f9;
+  --color-neutro-100: #efefef;
+  --color-neutro-200: #e1e1e1;
+  --color-neutro-300: #c9c9c9;
+  --color-neutro-400: #a0a0a0;
+  --color-neutro-500: #707070;
+  --color-neutro-600: #5f5e5e;
+  --color-neutro-700: #484848;
+  --color-neutro-800: #323232;
+  --color-neutro-900: #1f1f1f;
+  --color-neutro-950: #121212;
+
+  /* Semanticos: exito (verde profundo, distinto del lima decorativo) */
+  --color-exito-100: #dcf6ea;
+  --color-exito-200: #b4ecd4;
+  --color-exito-300: #7fd9b3;
+  --color-exito-500: #17976a;
+  --color-exito-600: #12795a;
+  --color-exito-700: #0f6047;
+  --color-exito-900: #0a3d2e;
+
+  /* Semanticos: aviso (amarillo institucional) */
+  --color-aviso-100: #fdf6e0;
+  --color-aviso-200: #fae7b8;
+  --color-aviso-300: #ffe08a;
+  --color-aviso-500: #f5b700;
+  --color-aviso-600: #b26a00;
+  --color-aviso-700: #8a5200;
+  --color-aviso-900: #573300;
+
+  /* Semanticos: error */
+  --color-error-100: #fce4e2;
+  --color-error-200: #f8c9c5;
+  --color-error-300: #f0a09a;
+  --color-error-500: #e0483c;
+  --color-error-600: #c0302a;
+  --color-error-700: #96241f;
+  --color-error-900: #5f1512;
+
+  /* Fondo de la aplicacion: gris institucional con luz difusa */
+  --gradient-fondo: linear-gradient(180deg, #f6f8f9 0%, #e7ecef 100%);
+  --gradient-malla:
+    radial-gradient(900px 520px at 8% -8%, rgba(255, 255, 255, 0.95), transparent 60%),
+    radial-gradient(760px 460px at 96% 2%, rgba(0, 172, 201, 0.16), transparent 62%),
+    radial-gradient(700px 420px at 52% 0%, rgba(128, 186, 39, 0.12), transparent 60%);
+
+  /* Degradados de marca */
+  --color-marca-500: #16466b;
+  --color-marca-600: #0f4468;
+  --gradient-marca: linear-gradient(120deg, #132740 0%, #16466b 48%, #00acc9 100%);
+  --gradient-marca-horizontal: linear-gradient(90deg, #132740 0%, #16466b 50%, #00acc9 100%);
+  --gradient-marca-suave: linear-gradient(120deg, rgba(19, 39, 64, 0.12), rgba(0, 172, 201, 0.12));
+  --gradient-acento: linear-gradient(120deg, #00acc9 0%, #4baac6 55%, #80ba27 100%);
+  --gradient-exito: linear-gradient(120deg, rgba(23, 151, 106, 0.12), rgba(23, 151, 106, 0.04));
+  --gradient-aviso: linear-gradient(120deg, rgba(245, 183, 0, 0.16), rgba(245, 183, 0, 0.04));
+  --gradient-error: linear-gradient(120deg, rgba(224, 72, 60, 0.14), rgba(224, 72, 60, 0.04));
 
   /* Tipografia */
-  --font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-family-base: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.8125rem;
   --font-size-base: 0.9375rem;
@@ -56,12 +119,18 @@
   --font-size-2xl: 1.5rem;
   --font-size-3xl: 1.875rem;
 
-  /* Espaciado y radios */
-  --radio-control: 0.5rem;
-  --radio-tarjeta: 0.75rem;
+  /* Radios: lenguaje squircle */
+  --radius-control: 0.875rem;
+  --radius-tarjeta: 1.5rem;
+  --radio-control: 0.875rem;
+  --radio-tarjeta: 1.5rem;
   --alto-toque: 48px;
 
-  /* Sombras */
-  --shadow-card: 0 1px 2px rgba(11, 43, 51, 0.08), 0 1px 3px rgba(11, 43, 51, 0.06);
-  --shadow-raised: 0 4px 12px rgba(11, 43, 51, 0.12);
+  /* Sombras difusas (neumorfismo suave, nunca bordes duros) */
+  --shadow-suave: 0 2px 6px rgba(19, 39, 64, 0.12), 0 10px 24px rgba(19, 39, 64, 0.1);
+  --shadow-flotante: 0 10px 30px rgba(19, 39, 64, 0.18);
+  --shadow-hundida: inset 2px 2px 6px rgba(19, 39, 64, 0.14),
+    inset -2px -2px 6px rgba(255, 255, 255, 0.9);
+  --shadow-marca: 0 10px 28px rgba(19, 39, 64, 0.32);
+  --shadow-resultado: 0 12px 32px rgba(19, 39, 64, 0.16);
 }

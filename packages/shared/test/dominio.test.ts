@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   cumpleFormatoId,
+  esCodigoRegistroValido,
   estadoVentanaCheckin,
   evaluarElegibilidad,
+  generarCodigoRegistro,
   generarCodigoVerificacion,
   ID_REGEX_POR_DEFECTO,
   normalizarId,
@@ -175,6 +177,29 @@ describe('evaluacion de elegibilidad para el certificado', () => {
     const resultado = evaluarElegibilidad({ ...base, jornadas: [], asistencias: [] });
     expect(resultado.elegible).toBe(false);
     expect(resultado.motivos).toEqual(['sin_jornadas_configuradas']);
+  });
+});
+
+describe('codigo de registro del asistente', () => {
+  it('tiene seis caracteres del alfabeto sin O, I, 0 ni 1', () => {
+    for (let intento = 0; intento < 200; intento += 1) {
+      const codigo = generarCodigoRegistro();
+      expect(codigo).toHaveLength(6);
+      expect(codigo).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/);
+      expect(codigo).not.toMatch(/[OI01]/);
+    }
+  });
+
+  it('es reproducible con una fuente de azar controlada', () => {
+    expect(generarCodigoRegistro(() => 0)).toBe('AAAAAA');
+  });
+
+  it('valida el formato esperado', () => {
+    expect(esCodigoRegistroValido('K7M4D2')).toBe(true);
+    expect(esCodigoRegistroValido('k7m4d2')).toBe(false);
+    expect(esCodigoRegistroValido('K7M4D')).toBe(false);
+    expect(esCodigoRegistroValido('K7M4D2X')).toBe(false);
+    expect(esCodigoRegistroValido('O1I0AB')).toBe(false);
   });
 });
 

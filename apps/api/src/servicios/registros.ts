@@ -2,7 +2,6 @@ import { and, eq, sql } from 'drizzle-orm';
 import {
   normalizarId,
   type AsistenteResumen,
-  type RegistroExistente,
   type RespuestaRegistro,
 } from '@seminario/shared';
 import { db } from '../db/cliente.js';
@@ -15,6 +14,7 @@ import {
   usuariosSistema,
 } from '../db/esquema.js';
 import { obtenerConfig } from './configuracion.js';
+import { buscarAsistentePorIdentificador } from './asistentes.js';
 
 export interface ContextoOperador {
   usuarioId: string;
@@ -26,6 +26,7 @@ export interface ContextoOperador {
 
 function aResumen(fila: {
   id: string;
+  codigoRegistro: string | null;
   nombres: string;
   apellidos: string;
   rol: 'estudiante' | 'docente';
@@ -33,6 +34,7 @@ function aResumen(fila: {
 }): AsistenteResumen {
   return {
     id: fila.id,
+    codigoRegistro: fila.codigoRegistro,
     nombres: fila.nombres,
     apellidos: fila.apellidos,
     rol: fila.rol,
@@ -48,6 +50,14 @@ export async function buscarAsistentePorId(id: string) {
     .where(eq(asistentes.id, normalizado))
     .limit(1);
   return filas[0] ?? null;
+}
+
+/**
+ * Busqueda usada durante el registro: acepta el ID institucional (cedula o
+ * codigo estudiantil) o el codigo de registro corto que codifica el QR.
+ */
+export async function buscarParaRegistro(valor: string) {
+  return buscarAsistentePorIdentificador(valor);
 }
 
 async function obtenerJornada(jornadaId: number) {
@@ -69,7 +79,7 @@ export async function registrarIngreso(
   } & ContextoOperador,
 ): Promise<RespuestaRegistro> {
   const ahora = parametros.ahora ?? new Date();
-  const asistente = await buscarAsistentePorId(parametros.asistenteId);
+  const asistente = await buscarAsistentePorIdentificador(parametros.asistenteId);
 
   if (!asistente) {
     return {
@@ -202,7 +212,7 @@ export async function registrarSalida(
   } & ContextoOperador,
 ): Promise<RespuestaRegistro> {
   const ahora = parametros.ahora ?? new Date();
-  const asistente = await buscarAsistentePorId(parametros.asistenteId);
+  const asistente = await buscarAsistentePorIdentificador(parametros.asistenteId);
 
   if (!asistente) {
     return {
@@ -316,7 +326,7 @@ export async function entregarRefrigerio(
   } & ContextoOperador,
 ): Promise<RespuestaRegistro> {
   const ahora = parametros.ahora ?? new Date();
-  const asistente = await buscarAsistentePorId(parametros.asistenteId);
+  const asistente = await buscarAsistentePorIdentificador(parametros.asistenteId);
 
   if (!asistente) {
     return {

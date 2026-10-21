@@ -1,4 +1,5 @@
 import { and, asc, count, eq, ilike, or, sql } from 'drizzle-orm';
+import ExcelJS from 'exceljs';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
@@ -14,7 +15,9 @@ import { asistentes } from '../db/esquema.js';
 import { errores } from '../plugins/errores.js';
 import { registrarAuditoria } from '../servicios/auditoria.js';
 import { obtenerConfig } from '../servicios/configuracion.js';
-import { generarCarnetsPDF } from '../servicios/pdf.js';
+import { crearAsistente, listarConCorreo } from '../servicios/asistentes.js';
+import { correoConfigurado, enviarQrPorCorreo } from '../servicios/correo.js';
+import { generarCartaQrPDF, generarCarnetsPDF } from '../servicios/pdf.js';
 import {
   construirVistaPrevia,
   parsearCsv,
@@ -30,8 +33,10 @@ const parametrosAsistente = z.object({ id: z.string().min(1).max(32) });
 function aLectura(fila: typeof asistentes.$inferSelect): AsistenteLectura {
   return {
     id: fila.id,
+    codigoRegistro: fila.codigoRegistro,
     nombres: fila.nombres,
     apellidos: fila.apellidos,
+    email: fila.email,
     rol: fila.rol,
     semestre: fila.semestre,
     activo: fila.activo,
@@ -158,8 +163,6 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         .limit(limite);
 
       const config = await obtenerConfig();
-      const entorno = cargarEntorno();
-      const base = entorno.BASE_URL_PUBLICA.replace(/\/$/, '');
 
       const pdf = await generarCarnetsPDF(
         filas.map((fila) => ({
@@ -170,7 +173,8 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
             rol: fila.rol,
             semestre: fila.semestre,
           },
-          urlVerificacion: `${base}/api/publico/verificar/${fila.id}`,
+          codigoRegistro: fila.codigoRegistro ?? fila.id,
+          email: fila.email,
         })),
         config.nombre,
       );
@@ -179,6 +183,196 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         .header('Content-Type', 'application/pdf')
         .header('Content-Disposition', 'attachment; filename="carnets-asistentes.pdf"')
         .send(Buffer.from(pdf));
+    },
+  );
+
+  app.get(
+    '/asistentes/plantilla',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Asistentes'],
+        description: 'Plantilla de importacion en formato XLSX con las columnas esperadas',
+      },
+    },
+    async (request, reply) => {
+      const libro = new ExcelJS.Workbook();
+      libro.creator = 'Sistema de control de asistencia';
+      const hoja = libro.addWorksheet('Asistentes');
+
+      hoja.addRow(['id', 'nombres', 'apellidos', 'rol', 'semestre', 'email']);
+      hoja.addRow(['EST00001', 'Ana', 'Acosta Lopez', 'estudiante', 3, 'ana@example.edu']);
+      hoja.addRow(['DOC0001', 'Luis', 'Perez Diaz', 'docente', '', 'luis@example.edu']);
+
+      hoja.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      hoja.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D31D4' } };
+      hoja.columns.forEach((columna, indice) => {
+        columna.width = [16, 24, 24, 14, 12, 30][indice] ?? 18;
+      });
+      hoja.views = [{ state: 'frozen', ySplit: 1 }];
+
+      const ayuda = libro.addWorksheet('Instrucciones');
+      ayuda.addRow(['Columna', 'Obligatoria', 'Descripcion']);
+      ayuda.addRow(['id', 'Si', 'ID institucional (cedula o codigo estudiantil). Se normaliza a mayusculas.']);
+      ayuda.addRow(['nombres', 'Si', 'Nombres del asistente.']);
+      ayuda.addRow(['apellidos', 'Si', 'Apellidos del asistente.']);
+      ayuda.addRow(['rol', 'Si', 'estudiante o docente (en minusculas).']);
+      ayuda.addRow([
+        'semestre',
+        'Solo estudiantes',
+        'Numero entre 1 y 30. Dejar vacio para docentes.',
+      ]);
+      ayuda.addRow([
+        'email',
+        'No',
+        'Correo donde se envia el codigo de registro y el QR. Si se omite, se entrega la carta de QR en papel.',
+      ]);
+      ayuda.addRow([]);
+      ayuda.addRow([
+        'Nota',
+        '',
+        'El codigo de registro y el QR los genera el sistema: no se importan.',
+      ]);
+      ayuda.getRow(1).font = { bold: true };
+      ayuda.columns.forEach((columna, indice) => {
+        columna.width = [16, 18, 80][indice] ?? 20;
+      });
+
+      const contenido = await libro.xlsx.writeBuffer();
+      return reply
+        .header(
+          'Content-Type',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        .header('Content-Disposition', 'attachment; filename="plantilla-asistentes.xlsx"')
+        .send(Buffer.from(contenido));
+    },
+  );
+
+  app.get(
+    '/asistentes/carta-qr',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Asistentes'],
+        description: 'Carta de QR con el codigo de registro de cada asistente (para entregar a mano)',
+      },
+    },
+    async (request, reply) => {
+      const consulta = request.query as { rol?: string; limite?: string };
+      const condiciones = [eq(asistentes.activo, true)];
+      if (consulta.rol === 'estudiante' || consulta.rol === 'docente') {
+        condiciones.push(eq(asistentes.rol, consulta.rol));
+      }
+      const limite = Math.min(Number(consulta.limite ?? 1200) || 1200, 3000);
+
+      const filas = await db
+        .select()
+        .from(asistentes)
+        .where(and(...condiciones))
+        .orderBy(asc(asistentes.apellidos), asc(asistentes.nombres))
+        .limit(limite);
+
+      const config = await obtenerConfig();
+      const pdf = await generarCartaQrPDF(
+        filas.map((fila) => ({
+          asistente: {
+            id: fila.id,
+            nombres: fila.nombres,
+            apellidos: fila.apellidos,
+            rol: fila.rol,
+            semestre: fila.semestre,
+          },
+          codigoRegistro: fila.codigoRegistro ?? fila.id,
+          idInstitucional: fila.id,
+          email: fila.email,
+          nombreSeminario: config.nombre,
+        })),
+      );
+
+      return reply
+        .header('Content-Type', 'application/pdf')
+        .header('Content-Disposition', 'attachment; filename="carta-qr-asistentes.pdf"')
+        .send(Buffer.from(pdf));
+    },
+  );
+
+  app.post(
+    '/asistentes/enviar-qr',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Asistentes'],
+        description: 'Envia por correo el codigo de registro y el QR a uno o varios asistentes',
+      },
+    },
+    async (request) => {
+      const cuerpo = request.body as { asistenteId?: string; todos?: boolean };
+      const config = await obtenerConfig();
+
+      const destinatarios = cuerpo.todos
+        ? await listarConCorreo()
+        : cuerpo.asistenteId
+          ? await (async () => {
+              const filas = await db
+                .select()
+                .from(asistentes)
+                .where(eq(asistentes.id, cuerpo.asistenteId!))
+                .limit(1);
+              return filas;
+            })()
+          : [];
+
+      if (destinatarios.length === 0) {
+        throw errores.validacion(
+          'No hay asistentes seleccionados. Indique un asistente o active el envio a todos.',
+        );
+      }
+
+      const sinCorreo = destinatarios.filter((fila) => !fila.email);
+      if (sinCorreo.length === destinatarios.length) {
+        throw errores.validacion(
+          'Ninguno de los asistentes seleccionados tiene correo electronico registrado.',
+        );
+      }
+
+      const resultados: { asistenteId: string; enviado: boolean; mensaje: string }[] = [];
+      for (const fila of destinatarios) {
+        if (!fila.email) {
+          resultados.push({
+            asistenteId: fila.id,
+            enviado: false,
+            mensaje: 'Sin correo electronico registrado',
+          });
+          continue;
+        }
+        const resultado = await enviarQrPorCorreo({
+          destinatario: fila.email,
+          nombre: `${fila.nombres} ${fila.apellidos}`,
+          codigoRegistro: fila.codigoRegistro ?? fila.id,
+          idInstitucional: fila.id,
+          nombreSeminario: config.nombre,
+        });
+        resultados.push({ asistenteId: fila.id, ...resultado });
+      }
+
+      await registrarAuditoria(request, {
+        accion: 'asistente.importado',
+        entidad: 'asistentes',
+        datosDespues: {
+          operacion: 'envio_qr',
+          destinatarios: resultados.length,
+          enviados: resultados.filter((r) => r.enviado).length,
+        },
+      });
+
+      return {
+        correoConfigurado: correoConfigurado(),
+        total: resultados.length,
+        enviados: resultados.filter((r) => r.enviado).length,
+        fallidos: resultados.filter((r) => !r.enviado).length,
+        resultados,
+      };
     },
   );
 
@@ -209,7 +403,6 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
     async (request, reply) => {
       const datos = validarCuerpo(asistenteCreateSchema, request.body);
       const id = normalizarId(datos.id);
-      const config = await obtenerConfig();
 
       const existente = await db
         .select({ id: asistentes.id })
@@ -222,26 +415,30 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         ]);
       }
 
-      const insertados = await db
-        .insert(asistentes)
-        .values({
-          id,
-          nombres: datos.nombres,
-          apellidos: datos.apellidos,
-          rol: datos.rol,
-          semestre: datos.rol === 'docente' ? null : (datos.semestre ?? null),
-          activo: datos.activo,
-        })
-        .returning();
+      const creado = await crearAsistente({
+        id,
+        nombres: datos.nombres,
+        apellidos: datos.apellidos,
+        rol: datos.rol,
+        semestre: datos.semestre ?? null,
+        email: datos.email ? datos.email : null,
+        activo: datos.activo,
+      });
 
       await registrarAuditoria(request, {
         accion: 'asistente.creado',
         entidad: 'asistentes',
         entidadId: id,
-        datosDespues: { id, nombres: datos.nombres, apellidos: datos.apellidos, rol: datos.rol },
+        datosDespues: {
+          id,
+          codigoRegistro: creado.codigoRegistro,
+          nombres: datos.nombres,
+          apellidos: datos.apellidos,
+          rol: datos.rol,
+        },
       });
 
-      return reply.status(201).send(aLectura(insertados[0]!));
+      return reply.status(201).send(aLectura(creado));
     },
   );
 
@@ -371,7 +568,15 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
     },
     async (request) => {
       const cuerpo = request.body as {
-        filas?: { fila: number; id: string; nombres: string; apellidos: string; rol: string; semestre?: number | null }[];
+        filas?: {
+          fila: number;
+          id: string;
+          nombres: string;
+          apellidos: string;
+          rol: string;
+          semestre?: number | null;
+          email?: string;
+        }[];
         modo?: 'crear_actualizar' | 'solo_nuevos';
       };
       if (!Array.isArray(cuerpo.filas) || cuerpo.filas.length === 0) {
@@ -394,6 +599,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
               fila.semestre === null || fila.semestre === undefined
                 ? ''
                 : String(fila.semestre),
+            email: fila.email ?? '',
           },
           config.idRegex,
         ),
@@ -437,13 +643,22 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           apellidos: datos.apellidos!,
           rol: datos.rol!,
           semestre: datos.rol === 'docente' ? null : (datos.semestre ?? null),
+          email: datos.email ? datos.email : null,
         };
 
         if (yaExiste) {
           await db.update(asistentes).set(valores).where(eq(asistentes.id, id));
           actualizados += 1;
         } else {
-          await db.insert(asistentes).values({ id, ...valores });
+          await crearAsistente({
+            id,
+            nombres: valores.nombres,
+            apellidos: valores.apellidos,
+            rol: valores.rol,
+            semestre: valores.semestre,
+            email: valores.email,
+            activo: true,
+          });
           creados += 1;
         }
       }

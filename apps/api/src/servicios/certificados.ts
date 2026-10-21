@@ -11,7 +11,6 @@ import {
   type ProgresoLote,
 } from '@seminario/shared';
 import { cargarEntorno } from '../config/entorno.js';
-import { logger } from '../config/log.js';
 import { db } from '../db/cliente.js';
 import {
   asistencias,
@@ -22,7 +21,7 @@ import {
 } from '../db/esquema.js';
 import { errores } from '../plugins/errores.js';
 import { obtenerConfig } from './configuracion.js';
-import { generarCertificadoPDF } from './pdf.js';
+import { generarCertificadoPDF } from './certificado.js';
 import { invalidarResumen } from './dashboard.js';
 
 export interface EvaluacionElegibilidad {
@@ -194,10 +193,12 @@ export async function construirPdfCertificado(
       year: 'numeric',
     }),
     intensidadHoraria: config.intensidadHoraria,
+    lugar: config.lugar,
+    facultad: config.facultad,
+    contacto: config.contacto,
     textoEncabezado: config.textoEncabezado,
     textoCierre: config.textoCierre,
-    firmaNombre: config.firmaNombre,
-    firmaCargo: config.firmaCargo,
+    firmas: config.firmas ?? [],
     codigoVerificacion,
     urlVerificacion: `${base}/verificar/${codigoVerificacion}`,
   });

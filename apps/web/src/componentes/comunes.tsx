@@ -109,14 +109,14 @@ export function Insignia({
   children: ReactNode;
 }) {
   const tonos = {
-    neutro: 'bg-neutro-100 text-neutro-700',
-    exito: 'bg-exito-100 text-exito-700',
-    aviso: 'bg-aviso-100 text-aviso-700',
-    error: 'bg-error-100 text-error-700',
-    primario: 'bg-primario-100 text-primario-800',
+    neutro: 'insignia-neutra',
+    exito: 'insignia-exito',
+    aviso: 'insignia-aviso',
+    error: 'insignia-error',
+    primario: 'insignia-marca',
   } as const;
 
-  return <span className={clsx('insignia', tonos[tono])}>{children}</span>;
+  return <span className={clsx(tonos[tono])}>{children}</span>;
 }
 
 export function Tarjeta({
@@ -158,17 +158,17 @@ export function Aviso({
   children: ReactNode;
 }) {
   const estilos = {
-    aviso: 'border-aviso-300 bg-aviso-100 text-aviso-700',
-    error: 'border-error-300 bg-error-100 text-error-700',
-    exito: 'border-exito-300 bg-exito-100 text-exito-700',
-    primario: 'border-primario-200 bg-primario-50 text-primario-800',
+    aviso: 'border-aviso-200 bg-aviso-100 text-aviso-700',
+    error: 'border-error-200 bg-error-100 text-error-700',
+    exito: 'border-exito-200 bg-exito-100 text-exito-700',
+    primario: 'border-primario-200 bg-primario-50 text-primario-700',
   } as const;
 
   const Icono = tono === 'error' ? CircleAlert : tono === 'exito' ? null : AlertTriangle;
 
   return (
     <div
-      className={clsx('flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm', estilos[tono])}
+      className={clsx('flex items-start gap-2.5 rounded-2xl border px-4 py-3 text-sm', estilos[tono])}
       role="status"
     >
       {Icono ? <Icono className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> : null}

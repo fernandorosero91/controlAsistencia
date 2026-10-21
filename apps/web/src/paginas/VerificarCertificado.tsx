@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
-import { Award, CheckCircle2, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
 import { formatearFechaHora, nombreRol } from '../lib/formato';
 import { Esqueleto } from '../componentes/comunes';
@@ -30,9 +30,11 @@ export function VerificarCertificado() {
     <div className="flex min-h-dvh flex-col bg-primario-50 px-4 py-10">
       <div className="mx-auto w-full max-w-md">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primario-700 text-white">
-            <Award className="h-6 w-6" aria-hidden="true" />
-          </div>
+          <img
+            src="/logo-ucc.svg"
+            alt="Universidad Cooperativa de Colombia"
+            className="h-9 w-auto"
+          />
           <div>
             <h1 className="text-lg font-bold text-primario-900">Verificacion de certificados</h1>
             <p className="text-sm text-neutro-600">

@@ -113,7 +113,7 @@ export function Dashboard() {
         <Tarjeta titulo="Asistencia por jornada" descripcion="Ingresos, salidas y pendientes">
           <div className="space-y-3">
             {data.porJornada.map((jornada) => (
-              <div key={jornada.jornadaId} className="rounded-lg border border-neutro-200 p-3">
+              <div key={jornada.jornadaId} className="rounded-2xl bg-neutro-50 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-neutro-900">{jornada.jornadaNombre}</p>
                   <p className="text-sm font-medium text-primario-700">
@@ -121,14 +121,14 @@ export function Dashboard() {
                   </p>
                 </div>
                 <div
-                  className="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutro-100"
+                  className="barra-progreso mt-2"
                   role="img"
                   aria-label={`Asistencia de la jornada ${jornada.jornadaNombre}: ${formatearPorcentaje(
                     jornada.porcentajeAsistencia,
                   )}`}
                 >
                   <div
-                    className="h-full rounded-full bg-primario-600"
+                    className="barra-progreso-relleno bg-acento"
                     style={{ width: `${Math.min(jornada.porcentajeAsistencia, 100)}%` }}
                   />
                 </div>
@@ -176,9 +176,9 @@ export function Dashboard() {
                         {formatearNumero(refrigerio.entregados)} / {formatearNumero(total)}
                       </p>
                     </div>
-                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-neutro-100">
+                    <div className="barra-progreso mt-1.5">
                       <div
-                        className="h-full rounded-full bg-exito-600"
+                        className="barra-progreso-relleno"
                         style={{ width: `${porcentaje}%` }}
                       />
                     </div>
@@ -214,7 +214,7 @@ export function Dashboard() {
                 title={`${punto.minuto}: ${punto.registros} registros`}
               >
                 <div
-                  className="w-full rounded-t bg-primario-500"
+                  className="w-full rounded-t bg-acento"
                   style={{ height: `${(punto.registros / maximoRitmo) * 100}%` }}
                 />
                 <span className="sr-only">
@@ -241,13 +241,15 @@ function Indicador({
   Icono: typeof Users;
 }) {
   return (
-    <div className="superficie p-4">
+    <div className="ficha-indicador">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium text-neutro-600">{titulo}</p>
-        <Icono className="h-5 w-5 text-primario-500" aria-hidden="true" />
+        <p className="text-sm font-semibold text-neutro-600">{titulo}</p>
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-marca-suave text-primario-600">
+          <Icono className="h-5 w-5" aria-hidden="true" />
+        </span>
       </div>
-      <p className={clsx('mt-1.5 text-3xl font-bold text-neutro-900')}>{valor}</p>
-      <p className="mt-0.5 text-xs text-neutro-500">{detalle}</p>
+      <p className={clsx('mt-2 text-3xl font-bold text-neutro-900')}>{valor}</p>
+      <p className="mt-0.5 text-xs font-medium text-neutro-500">{detalle}</p>
     </div>
   );
 }

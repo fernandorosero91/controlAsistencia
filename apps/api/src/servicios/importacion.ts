@@ -133,6 +133,7 @@ export function validarFila(
   const apellidos = (datos.apellidos ?? '').trim();
   const rolTexto = (datos.rol ?? '').trim().toLowerCase();
   const semestreTexto = (datos.semestre ?? '').trim();
+  const correoTexto = (datos.email ?? '').trim().toLowerCase();
 
   if (idOriginal.length === 0) {
     errores.push({ fila, campo: 'id', mensaje: 'El ID es obligatorio', valor: null });
@@ -201,6 +202,25 @@ export function validarFila(
     });
   }
 
+  let correo: string | null = null;
+  if (correoTexto.length > 0) {
+    const resultadoCorreo = z
+      .string()
+      .email('Correo electronico invalido')
+      .max(120)
+      .safeParse(correoTexto);
+    if (!resultadoCorreo.success) {
+      errores.push({
+        fila,
+        campo: 'email',
+        mensaje: 'El correo electronico no tiene un formato valido',
+        valor: correoTexto,
+      });
+    } else {
+      correo = correoTexto;
+    }
+  }
+
   return {
     fila,
     datos: {
@@ -209,6 +229,7 @@ export function validarFila(
       apellidos,
       rol: rol.success ? rol.data : 'estudiante',
       semestre,
+      email: correo ?? '',
     },
     errores,
     valida: errores.length === 0,

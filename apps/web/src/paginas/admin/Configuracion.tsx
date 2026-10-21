@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import type { Firmante } from '@seminario/shared';
 import { CalendarClock, Plus, Save, Timer } from 'lucide-react';
 import { api, ErrorPeticion } from '../../lib/api';
 import { formatearFechaHora } from '../../lib/formato';
@@ -16,6 +17,9 @@ const esquema = z.object({
   exigirAmbasJornadas: z.boolean(),
   intensidadHoraria: z.coerce.number().int().min(1).max(24),
   permitirRegistroFueraDeVentana: z.boolean(),
+  lugar: z.string().trim().max(160).optional(),
+  facultad: z.string().trim().max(160).optional(),
+  contacto: z.string().trim().max(80).optional(),
   textoEncabezado: z.string().max(200).optional(),
   textoCierre: z.string().max(600).optional(),
   firmaNombre: z.string().max(120).optional(),
@@ -50,16 +54,33 @@ function aLocal(iso: string): string {
   return new Date(fecha.getTime() - desfase).toISOString().slice(0, 16);
 }
 
+const FIRMA_CAMPOS = ['Firmante 1', 'Firmante 2', 'Firmante 3'];
+
 export function Configuracion() {
   const cliente = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
   const [nuevaJornada, setNuevaJornada] = useState(false);
   const [nuevoRefrigerio, setNuevoRefrigerio] = useState(false);
+  const [firmas, setFirmas] = useState<Firmante[]>([]);
+
+  const actualizarFirmante = (
+    indice: number,
+    campo: keyof Firmante,
+    valor: string,
+  ) => {
+    setFirmas((actual) => {
+      const copia = [...actual];
+      while (copia.length <= indice) copia.push({ nombre: '', cargo: '', entidad: '' });
+      copia[indice] = { ...copia[indice]!, [campo]: valor };
+      return copia;
+    });
+  };
 
   const { data: config, isPending } = useQuery({
     queryKey: ['config'],
-    queryFn: () => api.obtener<DatosConfig & { fecha: string }>('/config'),
+    queryFn: () =>
+      api.obtener<DatosConfig & { fecha: string; firmas: Firmante[] }>('/config'),
   });
 
   const { data: jornadas } = useQuery({
@@ -88,6 +109,9 @@ export function Configuracion() {
       exigirAmbasJornadas: true,
       intensidadHoraria: 8,
       permitirRegistroFueraDeVentana: false,
+      lugar: '',
+      facultad: '',
+      contacto: '',
       textoEncabezado: '',
       textoCierre: '',
       firmaNombre: '',
@@ -107,6 +131,9 @@ export function Configuracion() {
       exigirAmbasJornadas: config.exigirAmbasJornadas,
       intensidadHoraria: config.intensidadHoraria,
       permitirRegistroFueraDeVentana: config.permitirRegistroFueraDeVentana,
+      lugar: config.lugar ?? '',
+      facultad: config.facultad ?? '',
+      contacto: config.contacto ?? '',
       textoEncabezado: config.textoEncabezado ?? '',
       textoCierre: config.textoCierre ?? '',
       firmaNombre: config.firmaNombre ?? '',
@@ -114,6 +141,7 @@ export function Configuracion() {
       idRegex: config.idRegex,
       urlPublica: config.urlPublica ?? '',
     });
+    setFirmas(config.firmas ?? []);
   }, [config, reset]);
 
   const guardar = useMutation({
@@ -123,6 +151,13 @@ export function Configuracion() {
         fecha: new Date(`${datos.fecha}T12:00:00`).toISOString(),
         horaFinSeminario: new Date(datos.horaFinSeminario).toISOString(),
         urlPublica: datos.urlPublica?.trim() || undefined,
+        firmas: firmas
+          .filter((firma) => firma.nombre.trim().length >= 3 && firma.cargo.trim().length >= 3)
+          .map((firma) => ({
+            nombre: firma.nombre.trim(),
+            cargo: firma.cargo.trim(),
+            entidad: (firma.entidad ?? '').trim(),
+          })),
       }),
     onSuccess: () => {
       setError(null);
@@ -188,6 +223,28 @@ export function Configuracion() {
                 </div>
               </div>
 
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="lugar" className="etiqueta-campo">
+                    Lugar del evento
+                  </label>
+                  <input id="lugar" className="campo" {...register('lugar')} />
+                </div>
+                <div>
+                  <label htmlFor="facultad" className="etiqueta-campo">
+                    Facultad o dependencia
+                  </label>
+                  <input id="facultad" className="campo" {...register('facultad')} />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="contacto" className="etiqueta-campo">
+                  Contacto para informacion
+                </label>
+                <input id="contacto" className="campo" {...register('contacto')} />
+              </div>
+
               <div>
                 <label htmlFor="textoEncabezado" className="etiqueta-campo">
                   Texto del encabezado del certificado
@@ -222,6 +279,48 @@ export function Configuracion() {
                     Cargo de quien firma
                   </label>
                   <input id="firmaCargo" className="campo" {...register('firmaCargo')} />
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-neutro-50 p-4">
+                <p className="text-sm font-semibold text-neutro-800">
+                  Firmantes del certificado
+                </p>
+                <p className="mt-0.5 text-xs text-neutro-600">
+                  Hasta tres personas firman el certificado. Deje en blanco los que no correspondan.
+                </p>
+                <div className="mt-3 space-y-3">
+                  {FIRMA_CAMPOS.map((etiqueta, indice) => (
+                    <div key={etiqueta} className="grid gap-2 sm:grid-cols-3">
+                      <input
+                        className="campo"
+                        placeholder={`${etiqueta} - nombre`}
+                        aria-label={`${etiqueta}: nombre de quien firma`}
+                        value={firmas[indice]?.nombre ?? ''}
+                        onChange={(evento) =>
+                          actualizarFirmante(indice, 'nombre', evento.target.value)
+                        }
+                      />
+                      <input
+                        className="campo"
+                        placeholder="Cargo"
+                        aria-label={`${etiqueta}: cargo`}
+                        value={firmas[indice]?.cargo ?? ''}
+                        onChange={(evento) =>
+                          actualizarFirmante(indice, 'cargo', evento.target.value)
+                        }
+                      />
+                      <input
+                        className="campo"
+                        placeholder="Dependencia (opcional)"
+                        aria-label={`${etiqueta}: dependencia`}
+                        value={firmas[indice]?.entidad ?? ''}
+                        onChange={(evento) =>
+                          actualizarFirmante(indice, 'entidad', evento.target.value)
+                        }
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

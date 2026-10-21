@@ -27,7 +27,6 @@ export const pool = new Pool({
 });
 
 pool.on('error', (error) => {
-  // eslint-disable-next-line no-console
   console.error(
     JSON.stringify({ nivel: 'error', evento: 'error_pool_postgres', mensaje: error.message }),
   );

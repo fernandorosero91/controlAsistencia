@@ -1,4 +1,4 @@
-import { z, type ZodTypeAny } from 'zod';
+import type { output, ZodTypeAny } from 'zod';
 import { errores } from '../plugins/errores.js';
 
 function aDetalle(issues: { path: (string | number)[]; message: string }[]) {
@@ -9,7 +9,7 @@ function aDetalle(issues: { path: (string | number)[]; message: string }[]) {
 }
 
 /** Valida el cuerpo de la peticion y lanza un error 422 con el detalle por campo. */
-export function validarCuerpo<S extends ZodTypeAny>(esquema: S, cuerpo: unknown): z.output<S> {
+export function validarCuerpo<S extends ZodTypeAny>(esquema: S, cuerpo: unknown): output<S> {
   const resultado = esquema.safeParse(cuerpo);
   if (!resultado.success) {
     throw errores.validacion(
@@ -21,7 +21,7 @@ export function validarCuerpo<S extends ZodTypeAny>(esquema: S, cuerpo: unknown)
 }
 
 /** Valida los parametros de consulta y normaliza los valores por defecto. */
-export function validarConsulta<S extends ZodTypeAny>(esquema: S, consulta: unknown): z.output<S> {
+export function validarConsulta<S extends ZodTypeAny>(esquema: S, consulta: unknown): output<S> {
   const resultado = esquema.safeParse(consulta);
   if (!resultado.success) {
     throw errores.validacion(
@@ -36,7 +36,7 @@ export function validarConsulta<S extends ZodTypeAny>(esquema: S, consulta: unkn
 export function validarParametros<S extends ZodTypeAny>(
   esquema: S,
   parametros: unknown,
-): z.output<S> {
+): output<S> {
   const resultado = esquema.safeParse(parametros);
   if (!resultado.success) {
     throw errores.validacion(

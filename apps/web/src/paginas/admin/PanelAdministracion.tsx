@@ -36,12 +36,12 @@ export function PanelAdministracion() {
 
   return (
     <div className="min-h-dvh bg-primario-50">
-      <header className="sticky top-0 z-30 border-b border-neutro-200 bg-white">
+      <header className="sticky top-0 z-30 bg-marca text-white shadow-marca">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
             <button
               type="button"
-              className="boton-compacto text-neutro-600 hover:bg-neutro-100 lg:hidden"
+              className="boton-compacto text-white hover:bg-white/10 lg:hidden"
               onClick={() => setMenuAbierto((valor) => !valor)}
               aria-label="Abrir el menu de administracion"
               aria-expanded={menuAbierto}
@@ -52,18 +52,23 @@ export function PanelAdministracion() {
                 <Menu className="h-5 w-5" aria-hidden="true" />
               )}
             </button>
+            <img
+              src="/logo-ucc-blanco.svg"
+              alt="Universidad Cooperativa de Colombia"
+              className="hidden h-8 w-auto sm:block"
+            />
             <div>
-              <h1 className="text-base font-bold text-primario-900">Panel de administracion</h1>
-              <p className="text-xs text-neutro-600">
+              <h1 className="text-base font-bold">Panel de administracion</h1>
+              <p className="text-xs text-primario-100">
                 {usuario?.nombre} - {usuario?.email}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <BarChart3 className="hidden h-5 w-5 text-neutro-400 sm:block" aria-hidden="true" />
+            <BarChart3 className="hidden h-5 w-5 text-primario-300 sm:block" aria-hidden="true" />
             <button
               type="button"
-              className="boton-compacto text-neutro-600 hover:bg-neutro-100"
+              className="boton-compacto text-white hover:bg-white/10"
               onClick={() => {
                 cerrarSesion();
                 navegar('/login');
@@ -84,7 +89,7 @@ export function PanelAdministracion() {
           )}
           aria-label="Secciones del panel"
         >
-          <ul className="superficie divide-y divide-neutro-200 overflow-hidden">
+          <ul className="superficie divide-y divide-neutro-100 overflow-hidden">
             {SECCIONES.map(({ ruta, etiqueta, Icono, exacto }) => (
               <li key={ruta}>
                 <NavLink
@@ -93,10 +98,10 @@ export function PanelAdministracion() {
                   onClick={() => setMenuAbierto(false)}
                   className={({ isActive }) =>
                     clsx(
-                      'flex min-h-[48px] items-center gap-3 px-4 py-3 text-sm font-medium transition-colors',
+                      'flex min-h-[48px] items-center gap-3 px-4 py-3 text-sm font-semibold transition-colors',
                       isActive
-                        ? 'bg-primario-700 text-white'
-                        : 'text-neutro-700 hover:bg-neutro-100',
+                        ? 'bg-marca text-white'
+                        : 'text-neutro-700 hover:bg-primario-50 hover:text-primario-700',
                     )
                   }
                 >
