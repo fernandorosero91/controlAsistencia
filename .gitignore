@@ -9,6 +9,9 @@ blob-report/
 .env
 .env.local
 .env.*.local
+# Secretos reales del despliegue: solo viven en el servidor y en Dokploy.
+.env.produccion
+.env.production
 *.log
 npm-debug.log*
 .DS_Store

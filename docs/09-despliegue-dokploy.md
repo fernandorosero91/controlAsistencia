@@ -66,15 +66,15 @@ del proyecto (`asistencia`); no son accesibles desde internet.
 Abra la pestana **Environment** del servicio y pegue el contenido de
 [`.env.dokploy.example`](../.env.dokploy.example) completo, ajustando **obligatoriamente**:
 
-| Variable            | Como obtenerla / que valor usar                                          |
-| ------------------- | ------------------------------------------------------------------------ |
-| `POSTGRES_PASSWORD` | Cadena larga y aleatoria: `openssl rand -hex 24`                         |
-| `JWT_SECRET`        | `openssl rand -base64 48` (minimo 32 caracteres)                         |
-| `BASE_URL_PUBLICA`  | El dominio real, **sin barra final**: `https://asistencia.sudominio.com` |
-| `ADMIN_EMAIL`       | Correo del administrador del sistema                                     |
-| `ADMIN_PASSWORD`    | Contrasena inicial del administrador (minimo 8 caracteres)               |
-| `COOKIE_SECURE`     | `true` si el dominio usa HTTPS (lo normal en Dokploy)                    |
-| `WEB_PORT`          | Puerto del host para el acceso directo por IP; `8080` por defecto        |
+| Variable            | Como obtenerla / que valor usar                                              |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `POSTGRES_PASSWORD` | Cadena larga y aleatoria: `openssl rand -hex 24`                             |
+| `JWT_SECRET`        | `openssl rand -base64 48` (minimo 32 caracteres)                             |
+| `BASE_URL_PUBLICA`  | El dominio real, **sin barra final**: `https://asistencia.gestionxpress.app` |
+| `ADMIN_EMAIL`       | Correo del administrador del sistema                                         |
+| `ADMIN_PASSWORD`    | Contrasena inicial del administrador (minimo 8 caracteres)                   |
+| `COOKIE_SECURE`     | `true` si el dominio usa HTTPS (lo normal en Dokploy)                        |
+| `WEB_PORT`          | Puerto del host para el acceso directo por IP; `8080` por defecto            |
 
 Notas:
 
@@ -92,17 +92,17 @@ Notas:
 
 En el servicio creado, abra **Domains > Add Domain**:
 
-| Campo        | Valor                      |
-| ------------ | -------------------------- |
-| Host         | `asistencia.sudominio.com` |
-| Path         | `/`                        |
-| Service Name | `web`                      |
-| Port         | `80`                       |
-| HTTPS        | activado (Let's Encrypt)   |
-| Certificate  | `Let's Encrypt`            |
+| Campo        | Valor                          |
+| ------------ | ------------------------------ |
+| Host         | `asistencia.gestionxpress.app` |
+| Path         | `/`                            |
+| Service Name | `web`                          |
+| Port         | `80`                           |
+| HTTPS        | activado (Let's Encrypt)       |
+| Certificate  | `Let's Encrypt`                |
 
 Dokploy crea las etiquetas de Traefik y solicita el certificado. La aplicacion queda en
-`https://asistencia.sudominio.com`.
+`https://asistencia.gestionxpress.app`.
 
 > **Camara del celular.** El escaner de QR del operador usa `getUserMedia`, que el navegador solo
 > habilita en **HTTPS** o en `localhost`. Sin dominio con certificado, el operador debe digitar el
@@ -110,6 +110,28 @@ Dokploy crea las etiquetas de Traefik y solicita el certificado. La aplicacion q
 
 El dominio configurado debe ser **el mismo** de `BASE_URL_PUBLICA`: de ahi salen los enlaces de los
 QR de verificacion impresos en los certificados.
+
+### 5.1 Dominio detras de Cloudflare
+
+Si el registro DNS del subdominio esta **proxificado** (nube naranja de Cloudflare), como ocurre con
+`asistencia.gestionxpress.app`, hay dos ajustes obligatorios en el panel de Cloudflare:
+
+| Ajuste           | Pestana                     | Valor                                    |
+| ---------------- | --------------------------- | ---------------------------------------- |
+| SSL/TLS          | SSL/TLS > Overview          | **Full (strict)**                        |
+| Always Use HTTPS | SSL/TLS > Edge Certificates | Activado (opcional, Traefik ya redirige) |
+
+- **Full (strict)** es imprescindible: en modo `Flexible` Cloudflare habla HTTP con el servidor
+  mientras Traefik redirige a HTTPS, y el navegador entra en un bucle de redirecciones.
+- El desafio HTTP-01 de Let's Encrypt pasa sin problema por el proxy: Cloudflare reenvia
+  `/.well-known/acme-challenge/*` al origen.
+- El certificado de Cloudflare protege el tramo navegador-Cloudflare; el de Let's Encrypt protege
+  Cloudflare-origen. Con Full (strict) ambos son validos.
+- Cloudflare reescribe `X-Forwarded-For` y la API corre con `trustProxy`, de modo que el rate limit
+  por dispositivo sigue funcionando. Aun asi, en la sede todos los celulares salen por la misma IP
+  publica, por eso el limite de escaneo se configura agregado (1200 por minuto).
+- Los QR de los certificados quedan atados a este dominio: cambiarlo despues invalida los codigos ya
+  impresos.
 
 ---
 
@@ -130,7 +152,7 @@ QR de verificacion impresos en los certificados.
 
    El comando es idempotente: se puede repetir sin duplicar filas. Imprime las credenciales creadas.
 
-4. Entre a `https://asistencia.sudominio.com`, inicie sesion con `ADMIN_EMAIL` / `ADMIN_PASSWORD` y
+4. Entre a `https://asistencia.gestionxpress.app`, inicie sesion con `ADMIN_EMAIL` / `ADMIN_PASSWORD` y
    **cambie la contrasena** desde el panel de usuarios.
 
 ---
@@ -142,7 +164,7 @@ QR de verificacion impresos en los certificados.
 docker compose -f docker-compose.dokploy.yml ps
 
 # Salud de la API (debe responder {"estado":"ok","baseDatos":true})
-curl -fsS https://asistencia.sudominio.com/api/health/ready
+curl -fsS https://asistencia.gestionxpress.app/api/health/ready
 
 # Migraciones aplicadas
 docker compose -f docker-compose.dokploy.yml run --rm migrate node dist/db/migrate.js status
