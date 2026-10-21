@@ -86,15 +86,27 @@ export function setup() {
   }
 
   for (const cuenta of cuentas) {
-    const respuesta = http.post(
-      `${BASE}/auth/login`,
-      JSON.stringify({ email: cuenta, password: CLAVE }),
-      { headers: { 'Content-Type': 'application/json' } },
-    );
-    if (respuesta.status !== 200) {
-      throw new Error(`No se pudo iniciar sesion de ${cuenta}: ${respuesta.status}`);
+    let token = null;
+    for (let intento = 0; intento < 4 && token === null; intento += 1) {
+      const respuesta = http.post(
+        `${BASE}/auth/login`,
+        JSON.stringify({ email: cuenta, password: CLAVE }),
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+      if (respuesta.status === 200) {
+        token = respuesta.json('tokenAcceso');
+        break;
+      }
+      if (respuesta.status !== 429) {
+        throw new Error(`No se pudo iniciar sesion de ${cuenta}: ${respuesta.status}`);
+      }
+      // El limite de inicio de sesion esta activo: se espera y se reintenta.
+      http.sleep(20);
     }
-    tokens.push(respuesta.json('tokenAcceso'));
+    if (token === null) {
+      throw new Error(`No se pudo iniciar sesion de ${cuenta}: limite de intentos alcanzado`);
+    }
+    tokens.push(token);
   }
 
   const contexto = http.get(`${BASE}/operador/contexto`, {

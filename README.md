@@ -315,3 +315,4 @@ proyectoAsistencia/
 | [`docs/05-guia-diseno.md`](docs/05-guia-diseno.md) | Paleta, tipografia, iconos, componentes y accesibilidad. |
 | [`docs/06-pruebas-carga.md`](docs/06-pruebas-carga.md) | Resultados medidos de las pruebas de carga. |
 | [`docs/07-manuales.md`](docs/07-manuales.md) | Manual breve para administrador y operador. |
+| [`docs/08-pruebas.md`](docs/08-pruebas.md) | Como ejecutar cada tipo de prueba y que se verifica en cada una. |

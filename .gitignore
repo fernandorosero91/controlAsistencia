@@ -27,3 +27,5 @@ packages/*/dist/
 
 e2e/.auth/
 
+capturas/
+scripts/resultado-verificacion.txt
