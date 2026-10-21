@@ -90,19 +90,61 @@ Notas:
 
 ## 5. Dominio y HTTPS
 
-En el servicio creado, abra **Domains > Add Domain**:
+El dominio se configura en la pestana **Domains** del servicio (tecla rapida `u`). Dokploy agrega las
+etiquetas de Traefik y la red `dokploy-network` al servicio que se seleccione.
 
-| Campo        | Valor                          |
-| ------------ | ------------------------------ |
-| Host         | `asistencia.gestionxpress.app` |
-| Path         | `/`                            |
-| Service Name | `web`                          |
-| Port         | `80`                           |
-| HTTPS        | activado (Let's Encrypt)       |
-| Certificate  | `Let's Encrypt`                |
+**Domains > Add Domain**:
 
-Dokploy crea las etiquetas de Traefik y solicita el certificado. La aplicacion queda en
-`https://asistencia.gestionxpress.app`.
+| Campo                | Valor                          |
+| -------------------- | ------------------------------ |
+| Host                 | `asistencia.gestionxpress.app` |
+| Path                 | `/`                            |
+| Internal Path        | `/`                            |
+| **Service Name**     | **`web`**                      |
+| **Port**             | **`80`**                       |
+| HTTPS                | activado                       |
+| Certificate Provider | `Let's Encrypt`                |
+
+### 5.1 Que puerto se expone y por que
+
+El puerto de la pantalla de dominios es el **puerto interno del contenedor**, no el del host:
+
+| Puerto | Servicio    | Se configura en Dokploy | Para que                                      |
+| ------ | ----------- | ----------------------- | --------------------------------------------- |
+| **80** | `web`       | **Si, es el correcto**  | nginx: sirve la React y hace proxy de `/api`  |
+| 3000   | `api`       | No                      | Solo lo consume nginx por la red interna      |
+| 6432   | `pgbouncer` | No                      | Pool de conexiones, red interna               |
+| 5432   | `postgres`  | No                      | Base de datos, red interna                    |
+| 6379   | `redis`     | No                      | Cache y colas, red interna                    |
+| 8080   | `web`       | No                      | Puerto del host para acceso directo `IP:8080` |
+
+Regla pratica: **se expone un solo puerto, el 80 de `web`**, porque nginx es el unico punto de
+entrada y ya resuelve `/api/*` hacia la API. Publicar el 3000 o el 5432 no hace falta y agranda la
+superficie de ataque.
+
+El `WEB_PORT=8080` del archivo de entorno no interviene en el dominio: es solo el atajo por IP que
+sirve para comprobar la instalacion antes de que el DNS y el certificado esten listos
+(`http://IP-del-servidor:8080`). Si no lo necesita, quite el bloque `ports` del servicio `web`.
+
+### 5.2 Red de Traefik
+
+Traefik solo alcanza contenedores conectados a la red `dokploy-network`. El compose ya declara esa
+red como externa y une `web` a ella, ademas de la red interna `asistencia` que usa para hablar con
+`api:3000`:
+
+```yaml
+web:
+  networks:
+    - asistencia # web -> api:3000
+    - dokploy-network # Traefik -> web:80
+```
+
+Si en una prueba local aparece `network dokploy-network declared as external, but could not be
+found`, se crea una vez con `docker network create dokploy-network`.
+
+Sintoma tipico si falta esta red o el servicio elegido es otro: **502 Bad Gateway** o **504** en el
+navegador aunque los contenedores esten _healthy_. Se confirma con **Preview Compose**, que muestra
+el archivo final con las etiquetas de Traefik que agrega Dokploy.
 
 > **Camara del celular.** El escaner de QR del operador usa `getUserMedia`, que el navegador solo
 > habilita en **HTTPS** o en `localhost`. Sin dominio con certificado, el operador debe digitar el
@@ -111,7 +153,7 @@ Dokploy crea las etiquetas de Traefik y solicita el certificado. La aplicacion q
 El dominio configurado debe ser **el mismo** de `BASE_URL_PUBLICA`: de ahi salen los enlaces de los
 QR de verificacion impresos en los certificados.
 
-### 5.1 Dominio detras de Cloudflare
+### 5.3 Dominio detras de Cloudflare
 
 Si el registro DNS del subdominio esta **proxificado** (nube naranja de Cloudflare), como ocurre con
 `asistencia.gestionxpress.app`, hay dos ajustes obligatorios en el panel de Cloudflare:

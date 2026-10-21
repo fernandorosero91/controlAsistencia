@@ -224,8 +224,8 @@ services:
       api:
         condition: service_started
     ports:
-      # Dokploy puede enrutar el dominio directamente al puerto 80 del
-      # contenedor; esta publicacion permite ademas el acceso por IP:puerto.
+      # Acceso directo por IP:puerto, util antes de que el DNS y el certificado
+      # esten listos. El dominio de Dokploy NO usa este puerto: usa el 80.
       - '${WEB_PORT:-8080}:80'
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1/ || exit 1']
@@ -239,7 +239,10 @@ services:
         max-size: '10m'
         max-file: '3'
     networks:
+      # asistencia: para hablar con la API (api:3000).
+      # dokploy-network: la red que usa Traefik para enrutar el dominio.
       - asistencia
+      - dokploy-network
 
   # ---------------------------------------------------------------- datos iniciales
   # No se ejecuta con "docker compose up": solo cuando se invoca a proposito.
@@ -294,3 +297,8 @@ volumes:
 networks:
   asistencia:
     driver: bridge
+  # Red creada por Dokploy. Traefik vive ahi y solo alcanza los contenedores
+  # conectados a ella; por eso el servicio web se une a las dos redes.
+  # En una prueba local: docker network create dokploy-network
+  dokploy-network:
+    external: true
