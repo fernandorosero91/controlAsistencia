@@ -1,6 +1,6 @@
 import argon2 from 'argon2';
 import { eq } from 'drizzle-orm';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { loginSchema } from '@seminario/shared';
 import { db } from '../db/cliente.js';
 import { refreshTokens, usuariosSistema } from '../db/esquema.js';
@@ -30,7 +30,16 @@ export async function registrarRutasAuth(app: FastifyInstance): Promise<void> {
     '/auth/login',
     {
       config: {
-        rateLimit: { max: 10, timeWindow: '1 minute' },
+        rateLimit: {
+          max: 10,
+          timeWindow: '1 minute',
+          // En el sede del evento todos los operadores comparten la misma IP:
+          // el limite se aplica por cuenta, no solo por direccion de red.
+          keyGenerator: (request: FastifyRequest) => {
+            const cuerpo = request.body as { email?: string } | undefined;
+            return `${request.ip}:${(cuerpo?.email ?? '').toLowerCase()}`;
+          },
+        },
       },
       schema: {
         description: 'Inicio de sesion de administradores y operadores',
