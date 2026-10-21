@@ -84,10 +84,7 @@ export async function crearAsistente(datos: DatosCrearAsistente) {
   return insertados[0]!;
 }
 
-export async function actualizarCorreo(
-  asistenteId: string,
-  email: string | null,
-): Promise<void> {
+export async function actualizarCorreo(asistenteId: string, email: string | null): Promise<void> {
   await db
     .update(asistentes)
     .set({ email: email ? email.toLowerCase() : null })
@@ -95,7 +92,13 @@ export async function actualizarCorreo(
 }
 
 export async function listarConCorreo(): Promise<
-  { id: string; codigoRegistro: string | null; email: string | null; nombres: string; apellidos: string }[]
+  {
+    id: string;
+    codigoRegistro: string | null;
+    email: string | null;
+    nombres: string;
+    apellidos: string;
+  }[]
 > {
   return db
     .select({

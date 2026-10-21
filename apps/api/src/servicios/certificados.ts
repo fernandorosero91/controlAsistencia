@@ -93,7 +93,9 @@ export async function listarCertificados(filtros: {
     mapaAsistencias.set(asistencia.asistenteId, lista);
   }
 
-  const mapaEmitidos = new Map(emitidos.map((certificado) => [certificado.asistenteId, certificado]));
+  const mapaEmitidos = new Map(
+    emitidos.map((certificado) => [certificado.asistenteId, certificado]),
+  );
 
   const condiciones = [eq(asistentes.activo, true)];
   if (filtros.rol) condiciones.push(eq(asistentes.rol, filtros.rol));
@@ -172,11 +174,7 @@ export async function construirPdfCertificado(
   const config = await obtenerConfig();
   const entorno = cargarEntorno();
 
-  const filas = await db
-    .select()
-    .from(asistentes)
-    .where(eq(asistentes.id, asistenteId))
-    .limit(1);
+  const filas = await db.select().from(asistentes).where(eq(asistentes.id, asistenteId)).limit(1);
   const asistente = filas[0];
   if (!asistente) throw errores.noEncontrado('El asistente no existe');
 
@@ -211,7 +209,12 @@ export async function construirPdfCertificado(
 export async function emitirCertificado(
   asistenteId: string,
   adminId: string,
-  opciones: { excepcionManual?: boolean; motivo?: string; loteId?: string; regenerar?: boolean } = {},
+  opciones: {
+    excepcionManual?: boolean;
+    motivo?: string;
+    loteId?: string;
+    regenerar?: boolean;
+  } = {},
 ): Promise<{ codigoVerificacion: string; certificadoId: string; yaExistia: boolean }> {
   const existente = await db
     .select()
@@ -304,9 +307,7 @@ export async function obtenerPdfCertificado(
   const filas = await db
     .select()
     .from(certificados)
-    .where(
-      and(eq(certificados.asistenteId, asistenteId), eq(certificados.revocado, false)),
-    )
+    .where(and(eq(certificados.asistenteId, asistenteId), eq(certificados.revocado, false)))
     .limit(1);
   const certificado = filas[0];
   if (!certificado) throw errores.noEncontrado('El asistente no tiene un certificado vigente');

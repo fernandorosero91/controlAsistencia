@@ -70,9 +70,7 @@ export function Carnets() {
 
   return (
     <div className="space-y-4">
-      {error ? (
-        <Aviso tono="error">{error}</Aviso>
-      ) : null}
+      {error ? <Aviso tono="error">{error}</Aviso> : null}
 
       <Tarjeta
         titulo="Carnets y escarapelas con QR"
@@ -108,7 +106,9 @@ export function Carnets() {
             </select>
           </div>
           <p className="text-sm text-neutro-600">
-            {isPending ? 'Contando asistentes...' : `${formatearNumero(data?.total ?? 0)} asistentes`}
+            {isPending
+              ? 'Contando asistentes...'
+              : `${formatearNumero(data?.total ?? 0)} asistentes`}
           </p>
         </div>
 
@@ -117,9 +117,10 @@ export function Carnets() {
             <span className="flex items-start gap-2">
               <QrCode className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>
-                El QR contiene el codigo de registro de 6 caracteres (por ejemplo <code>K7M4D2</code>),
-                que el operador puede digitar si el escaner falla. La escarapela muestra ademas el
-                nombre, el rol, el ID institucional y el codigo en texto legible.
+                El QR contiene el codigo de registro de 6 caracteres (por ejemplo{' '}
+                <code>K7M4D2</code>), que el operador puede digitar si el escaner falla. La
+                escarapela muestra ademas el nombre, el rol, el ID institucional y el codigo en
+                texto legible.
               </span>
             </span>
           </Aviso>

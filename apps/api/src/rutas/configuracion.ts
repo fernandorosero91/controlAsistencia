@@ -41,7 +41,8 @@ export async function registrarRutasConfiguracion(app: FastifyInstance): Promise
       onRequest: [app.autorizar(['admin'])],
       schema: {
         tags: ['Configuracion'],
-        description: 'Actualiza los parametros del seminario (hora de fin, tolerancia, jornada exigido)',
+        description:
+          'Actualiza los parametros del seminario (hora de fin, tolerancia, jornada exigido)',
       },
     },
     async (request) => {

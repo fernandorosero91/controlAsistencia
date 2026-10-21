@@ -17,11 +17,7 @@ import {
 import { errores } from '../plugins/errores.js';
 import { registrarAuditoria } from '../servicios/auditoria.js';
 import { ejecutarConIdempotencia } from '../servicios/idempotencia.js';
-import {
-  entregarRefrigerio,
-  registrarIngreso,
-  registrarSalida,
-} from '../servicios/registros.js';
+import { entregarRefrigerio, registrarIngreso, registrarSalida } from '../servicios/registros.js';
 import { validarCuerpo, validarParametros } from '../lib/validacion.js';
 
 const parametrosAsistente = z.object({ asistenteId: z.string().min(1).max(32) });
@@ -307,12 +303,7 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
             excepcionManual: true,
             motivoExcepcion: cuerpo.motivo.trim(),
           })
-          .where(
-            and(
-              eq(asistencias.asistenteId, id),
-              eq(asistencias.jornadaId, cuerpo.jornadaId),
-            ),
-          )
+          .where(and(eq(asistencias.asistenteId, id), eq(asistencias.jornadaId, cuerpo.jornadaId)))
           .returning({ id: asistencias.id });
 
         if (actualizadas.length === 0) {

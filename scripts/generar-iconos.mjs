@@ -46,10 +46,7 @@ const icono = await sharp({
 })
   .composite([
     {
-      input: await sharp(FUENTE_LOGO)
-        .resize({ width: 380, fit: 'inside' })
-        .png()
-        .toBuffer(),
+      input: await sharp(FUENTE_LOGO).resize({ width: 380, fit: 'inside' }).png().toBuffer(),
       gravity: 'center',
     },
   ])
@@ -61,10 +58,7 @@ await sharp(icono).resize(512, 512).png().toFile(path.join(publicDir, 'icono-512
 console.log('Generados icono-192.png e icono-512.png');
 
 // Version horizontal del logotipo para el certificado en PDF.
-const horizontal = await sharp(FUENTE_LOGO)
-  .resize({ width: 900, fit: 'inside' })
-  .png()
-  .toBuffer();
+const horizontal = await sharp(FUENTE_LOGO).resize({ width: 900, fit: 'inside' }).png().toBuffer();
 await writeFileSync(path.join(apiAssetsDir, 'logo-ucc-horizontal.png'), horizontal);
 console.log('Generado apps/api/assets/logo-ucc-horizontal.png');
 

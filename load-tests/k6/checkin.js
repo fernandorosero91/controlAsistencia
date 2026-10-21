@@ -25,7 +25,6 @@ const CORREO = __ENV.ADMIN_CORREO || 'admin@seminario.local';
 const CLAVE = __ENV.ADMIN_CLAVE || 'Seminario2026';
 const OPERADORES = Number(__ENV.NUM_OPERADORES || 6);
 const TOTAL_CHECKINS = Number(__ENV.TOTAL_CHECKINS || 600);
-const PREMISA_MINUTOS = Number(__ENV.PREMISA_MINUTOS || 3);
 const PREFIJO = __ENV.PREFIJO_CARGA || 'CARGA';
 const ID_COMPARTIDO = `${PREFIJO}00001`;
 

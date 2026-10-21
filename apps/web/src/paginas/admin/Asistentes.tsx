@@ -370,9 +370,7 @@ function FormularioAsistente({
             className="campo font-mono uppercase"
             {...register('id', { setValueAs: (valor) => String(valor).toUpperCase() })}
           />
-          {errors.id ? (
-            <p className="mt-1 text-sm text-error-600">{errors.id.message}</p>
-          ) : null}
+          {errors.id ? <p className="mt-1 text-sm text-error-600">{errors.id.message}</p> : null}
         </div>
       )}
 

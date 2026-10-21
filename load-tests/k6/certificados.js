@@ -24,7 +24,7 @@ export const options = {
   },
   thresholds: {
     'http_req_duration{endpoint:progreso}': ['p(95)<300'],
-    'http_req_failed': ['rate<0.01'],
+    http_req_failed: ['rate<0.01'],
     'checks{endpoint:progreso}': ['rate>0.99'],
   },
 };
@@ -41,10 +41,14 @@ export function setup() {
     Authorization: `Bearer ${token}`,
   };
 
-  const lote = http.post(`${BASE}/certificados/emitir-lote`, JSON.stringify({ soloElegibles: true }), {
-    headers: cabeceras,
-    tags: { endpoint: 'lote' },
-  });
+  const lote = http.post(
+    `${BASE}/certificados/emitir-lote`,
+    JSON.stringify({ soloElegibles: true }),
+    {
+      headers: cabeceras,
+      tags: { endpoint: 'lote' },
+    },
+  );
 
   check(lote, {
     'el lote se crea': (r) => r.status === 202,

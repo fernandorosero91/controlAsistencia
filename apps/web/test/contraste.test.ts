@@ -27,9 +27,7 @@ function aRgb(hex: string): [number, number, number] {
 function luminancia(hex: string): number {
   const canales = aRgb(hex).map((valor) => {
     const normalizado = valor / 255;
-    return normalizado <= 0.03928
-      ? normalizado / 12.92
-      : ((normalizado + 0.055) / 1.055) ** 2.4;
+    return normalizado <= 0.03928 ? normalizado / 12.92 : ((normalizado + 0.055) / 1.055) ** 2.4;
   });
   const [r, g, b] = canales as [number, number, number];
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -45,27 +43,89 @@ export function contraste(primero: string, segundo: string): number {
 
 describe('contraste de la paleta institucional', () => {
   const combinaciones: { nombre: string; texto: string; fondo: string; minimo: number }[] = [
-    { nombre: 'texto principal sobre superficie', texto: 'neutro-900', fondo: 'neutro-50', minimo: 4.5 },
-    { nombre: 'texto secundario sobre superficie', texto: 'neutro-600', fondo: 'neutro-50', minimo: 4.5 },
-    { nombre: 'texto de etiqueta sobre superficie', texto: 'neutro-700', fondo: 'neutro-50', minimo: 4.5 },
-    { nombre: 'texto de marca sobre superficie', texto: 'primario-700', fondo: 'primario-50', minimo: 4.5 },
-    { nombre: 'texto de acento sobre superficie', texto: 'acento-700', fondo: 'acento-50', minimo: 4.5 },
-    { nombre: 'texto de exito sobre fondo de exito', texto: 'exito-700', fondo: 'exito-100', minimo: 4.5 },
-    { nombre: 'texto de aviso sobre fondo de aviso', texto: 'aviso-700', fondo: 'aviso-100', minimo: 4.5 },
-    { nombre: 'texto de error sobre fondo de error', texto: 'error-700', fondo: 'error-100', minimo: 4.5 },
-    { nombre: 'blanco sobre boton primario', texto: 'neutro-50', fondo: 'primario-600', minimo: 4.5 },
-    { nombre: 'blanco sobre el extremo claro del degradado', texto: 'neutro-50', fondo: 'marca-500', minimo: 4.5 },
-    { nombre: 'blanco sobre el extremo oscuro del degradado', texto: 'neutro-50', fondo: 'marca-600', minimo: 4.5 },
-    { nombre: 'enlace primario sobre blanco', texto: 'primario-600', fondo: 'neutro-50', minimo: 4.5 },
-    { nombre: 'anillo de foco sobre la superficie', texto: 'acento-600', fondo: 'neutro-50', minimo: 3 },
+    {
+      nombre: 'texto principal sobre superficie',
+      texto: 'neutro-900',
+      fondo: 'neutro-50',
+      minimo: 4.5,
+    },
+    {
+      nombre: 'texto secundario sobre superficie',
+      texto: 'neutro-600',
+      fondo: 'neutro-50',
+      minimo: 4.5,
+    },
+    {
+      nombre: 'texto de etiqueta sobre superficie',
+      texto: 'neutro-700',
+      fondo: 'neutro-50',
+      minimo: 4.5,
+    },
+    {
+      nombre: 'texto de marca sobre superficie',
+      texto: 'primario-700',
+      fondo: 'primario-50',
+      minimo: 4.5,
+    },
+    {
+      nombre: 'texto de acento sobre superficie',
+      texto: 'acento-700',
+      fondo: 'acento-50',
+      minimo: 4.5,
+    },
+    {
+      nombre: 'texto de exito sobre fondo de exito',
+      texto: 'exito-700',
+      fondo: 'exito-100',
+      minimo: 4.5,
+    },
+    {
+      nombre: 'texto de aviso sobre fondo de aviso',
+      texto: 'aviso-700',
+      fondo: 'aviso-100',
+      minimo: 4.5,
+    },
+    {
+      nombre: 'texto de error sobre fondo de error',
+      texto: 'error-700',
+      fondo: 'error-100',
+      minimo: 4.5,
+    },
+    {
+      nombre: 'blanco sobre boton primario',
+      texto: 'neutro-50',
+      fondo: 'primario-600',
+      minimo: 4.5,
+    },
+    {
+      nombre: 'blanco sobre el extremo claro del degradado',
+      texto: 'neutro-50',
+      fondo: 'marca-500',
+      minimo: 4.5,
+    },
+    {
+      nombre: 'blanco sobre el extremo oscuro del degradado',
+      texto: 'neutro-50',
+      fondo: 'marca-600',
+      minimo: 4.5,
+    },
+    {
+      nombre: 'enlace primario sobre blanco',
+      texto: 'primario-600',
+      fondo: 'neutro-50',
+      minimo: 4.5,
+    },
+    {
+      nombre: 'anillo de foco sobre la superficie',
+      texto: 'acento-600',
+      fondo: 'neutro-50',
+      minimo: 3,
+    },
   ];
 
   for (const combinacion of combinaciones) {
     it(`${combinacion.nombre} cumple el minimo ${combinacion.minimo}:1`, () => {
-      const ratio = contraste(
-        leerToken(combinacion.texto),
-        leerToken(combinacion.fondo),
-      );
+      const ratio = contraste(leerToken(combinacion.texto), leerToken(combinacion.fondo));
       expect(ratio).toBeGreaterThanOrEqual(combinacion.minimo);
     });
   }

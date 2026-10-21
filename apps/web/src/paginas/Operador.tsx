@@ -66,7 +66,12 @@ interface EntradaHistorial {
   pendiente: boolean;
 }
 
-const MODOS: { id: ModoRegistro; etiqueta: string; descripcion: string; Icono: typeof UserCheck }[] = [
+const MODOS: {
+  id: ModoRegistro;
+  etiqueta: string;
+  descripcion: string;
+  Icono: typeof UserCheck;
+}[] = [
   {
     id: 'ingreso',
     etiqueta: 'Ingreso',
@@ -112,7 +117,11 @@ export function Operador() {
   const conflictos = useColaOffline((estado) => estado.conflictos);
   const refrescarCola = useColaOffline((estado) => estado.refrescar);
 
-  const { data: contexto, isError, refetch } = useQuery({
+  const {
+    data: contexto,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ['operador', 'contexto'],
     queryFn: () => api.obtener<ContextoOperador>('/operador/contexto'),
     staleTime: 30_000,
@@ -145,12 +154,9 @@ export function Operador() {
     }, 30);
   }, []);
 
-  const registrarEnHistorial = useCallback(
-    (entrada: EntradaHistorial) => {
-      setHistorial((actual) => [entrada, ...actual].slice(0, 12));
-    },
-    [],
-  );
+  const registrarEnHistorial = useCallback((entrada: EntradaHistorial) => {
+    setHistorial((actual) => [entrada, ...actual].slice(0, 12));
+  }, []);
 
   const enviar = useCallback(
     async (id: string, clave: string) => {
@@ -263,15 +269,7 @@ export function Operador() {
         setEnviando(false);
       }
     },
-    [
-      enLinea,
-      enfocarCampo,
-      jornadaId,
-      modo,
-      refrescarCola,
-      registrarEnHistorial,
-      tipoRefrigerioId,
-    ],
+    [enLinea, enfocarCampo, jornadaId, modo, refrescarCola, registrarEnHistorial, tipoRefrigerioId],
   );
 
   /**
@@ -331,16 +329,7 @@ export function Operador() {
       }
       void enviar(id, nuevoClaveIdempotencia());
     },
-    [
-      codigoVerificado,
-      enviando,
-      enviar,
-      idTexto,
-      jornadaId,
-      modo,
-      tipoRefrigerioId,
-      verificar,
-    ],
+    [codigoVerificado, enviando, enviar, idTexto, jornadaId, modo, tipoRefrigerioId, verificar],
   );
 
   const detectarEscaneo = useCallback(
@@ -425,10 +414,7 @@ export function Operador() {
   );
 
   const refrigeriosDisponibles = useMemo(
-    () =>
-      (contexto?.refrigerios ?? []).filter(
-        (refrigerio) => refrigerio.jornadaId === jornadaId,
-      ),
+    () => (contexto?.refrigerios ?? []).filter((refrigerio) => refrigerio.jornadaId === jornadaId),
     [contexto, jornadaId],
   );
 
@@ -436,7 +422,8 @@ export function Operador() {
     return (
       <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4">
         <Aviso tono="error" titulo="Sin conexion con el servidor">
-          No fue posible obtener la configuracion del seminario. Revise la conexion e intente de nuevo.
+          No fue posible obtener la configuracion del seminario. Revise la conexion e intente de
+          nuevo.
         </Aviso>
         <button type="button" className="boton-primario" onClick={() => void refetch()}>
           Reintentar
@@ -517,11 +504,7 @@ export function Operador() {
         </Aviso>
       ) : null}
 
-      <div
-        className="grid grid-cols-3 gap-2"
-        role="tablist"
-        aria-label="Modo de registro"
-      >
+      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Modo de registro">
         {MODOS.map(({ id, etiqueta, descripcion, Icono }) => {
           const activo = modo === id;
           return (
@@ -545,7 +528,9 @@ export function Operador() {
                   'text-center text-[11px] leading-tight',
                   activo ? 'text-primario-100' : 'text-neutro-500',
                 )}
-              >                {descripcion}
+              >
+                {' '}
+                {descripcion}
               </span>
             </button>
           );
@@ -645,10 +630,10 @@ export function Operador() {
           </button>
         </div>
         <p id="ayuda-id" className="mt-2 text-xs text-neutro-500">
-          Escriba la cedula o el codigo estudiantil, o el codigo de 6 caracteres que trae el QR
-          (por ejemplo <span className="font-mono font-semibold">K7M4D2</span>). Pulse{" "}
-          <span className="font-semibold">Verificar</span> para comparar el nombre con la
-          escarapela antes de registrar.
+          Escriba la cedula o el codigo estudiantil, o el codigo de 6 caracteres que trae el QR (por
+          ejemplo <span className="font-mono font-semibold">K7M4D2</span>). Pulse{' '}
+          <span className="font-semibold">Verificar</span> para comparar el nombre con la escarapela
+          antes de registrar.
         </p>
         <div className="mt-3 flex gap-2">
           <button
@@ -801,7 +786,9 @@ function BusquedaManual({
               </p>
               <p className="font-mono text-xs text-neutro-600">{asistente.id}</p>
             </div>
-            <Insignia tono="primario">{nombreRol(asistente.rol as 'estudiante' | 'docente')}</Insignia>
+            <Insignia tono="primario">
+              {nombreRol(asistente.rol as 'estudiante' | 'docente')}
+            </Insignia>
           </button>
         ))}
       </div>

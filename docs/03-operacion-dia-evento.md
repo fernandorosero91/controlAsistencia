@@ -36,10 +36,10 @@ El sistema asigna a cada asistente un **codigo de registro** de 6 caracteres (po
 
 ### 1.3 Entregar el codigo de registro
 
-| Via | Como | Cuando |
-| --- | --- | --- |
-| Correo | **Carnets y QR > Enviar codigo y QR por correo** | Si hay SMTP configurado |
-| Papel | **Carnets y QR > Descargar carta de QR** (PDF, una tarjeta por persona) | Alternativa o complemento |
+| Via    | Como                                                                    | Cuando                    |
+| ------ | ----------------------------------------------------------------------- | ------------------------- |
+| Correo | **Carnets y QR > Enviar codigo y QR por correo**                        | Si hay SMTP configurado   |
+| Papel  | **Carnets y QR > Descargar carta de QR** (PDF, una tarjeta por persona) | Alternativa o complemento |
 
 El correo incluye el codigo, la imagen del QR y la indicacion de que se puede dictar.
 La carta en PDF sirve para los asistentes sin correo o para entregarla en la puerta.
@@ -78,13 +78,13 @@ En **Configuracion**, confirme:
 
 ### 2.1 Organizacion sugerida
 
-| Punto de control | Personal | Equipo |
-| --- | --- | --- |
-| Entrada al recinto | 2 | Celulares con la app, carnets impresos |
-| Registro de asistencia (jornada 1) | 2 | Tablets o celulares, un enlace por fila |
-| Refrigerio | 2 | Mesón con el listado de refrigerios |
-| Registro de asistencia (jornada 2) | 2 | Igual que la jornada 1 |
-| Cierre y salidas | 2 | tablets |
+| Punto de control                   | Personal | Equipo                                  |
+| ---------------------------------- | -------- | --------------------------------------- |
+| Entrada al recinto                 | 2        | Celulares con la app, carnets impresos  |
+| Registro de asistencia (jornada 1) | 2        | Tablets o celulares, un enlace por fila |
+| Refrigerio                         | 2        | Mesón con el listado de refrigerios     |
+| Registro de asistencia (jornada 2) | 2        | Igual que la jornada 1                  |
+| Cierre y salidas                   | 2        | tablets                                 |
 
 Cada operador inicia sesion con **su propia cuenta**. Las credenciales se entregan en mano.
 
@@ -133,17 +133,17 @@ El panel de administracion muestra en vivo:
 
 ## 4. Plan de contingencia
 
-| Falla | Como se detecta | Respuesta inmediata | Respuesta definitiva |
-| --- | --- | --- | --- |
-| **Se cae internet** | Indicador "Sin conexion" en la app del operador | La app guarda el registro en el dispositivo y lo sincroniza al volver la red. Los duplicados que aparezcan al sincronizar se marcan como **conflicto**. | Sincronizacion automatica cada 15 s. Antes de emitir certificados, verifique que no queden pendientes. |
-| **Se cae la base de datos** | `/api/health/ready` responde 503 | La API responde 503 sin caerse. El operador sigue registrando en la cola offline. | `docker compose restart postgres`. Los datos estan en el volumen `postgres_datos`. |
-| **Se cae la API** | El panel muestra error de red | El operador continua en modo offline. | `docker compose restart api`. El cierre es ordenado y las colas se reanudan. |
-| **PgBouncer no responde** | La API reporta timeout de conexion | La API sigue operativa con las conexiones que ya tiene abiertas. | `docker compose logs pgbouncer`. Con una sola replica puede apuntar `DATABASE_URL` directo a PostgreSQL. |
-| **Redis no responde** | Log "Redis no disponible" | La API sigue con cache en memoria y rate limit local. | `docker compose restart redis`. |
-| **No se puede enviar el correo con los QR** | El envio informa que no hay SMTP | Use la **carta de QR en PDF**. | Configurar `SMTP_*` y reenviar a los que falten. |
-| **Se emitio un certificado por error** | Panel de certificados | Use **Revocar** con motivo: la verificacion publica pasa a "no valido" y queda auditado. | Reemita el certificado corregido (conserva el codigo de verificacion). |
-| **Se perdio el celular de un operador** | El operador no puede iniciar sesion | Su sesion caduca a los 15 minutos. Las operaciones pendientes siguen en su cola offline. | Desactive la cuenta en **Usuarios** y cree una nueva. |
-| **Un asistente no aparece** | La app responde "ID no encontrado" | Use la busqueda manual por nombre y apellido. | Verifique que el ID fue importado; si falta, agreguelo en **Asistentes**. |
+| Falla                                       | Como se detecta                                 | Respuesta inmediata                                                                                                                                     | Respuesta definitiva                                                                                     |
+| ------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Se cae internet**                         | Indicador "Sin conexion" en la app del operador | La app guarda el registro en el dispositivo y lo sincroniza al volver la red. Los duplicados que aparezcan al sincronizar se marcan como **conflicto**. | Sincronizacion automatica cada 15 s. Antes de emitir certificados, verifique que no queden pendientes.   |
+| **Se cae la base de datos**                 | `/api/health/ready` responde 503                | La API responde 503 sin caerse. El operador sigue registrando en la cola offline.                                                                       | `docker compose restart postgres`. Los datos estan en el volumen `postgres_datos`.                       |
+| **Se cae la API**                           | El panel muestra error de red                   | El operador continua en modo offline.                                                                                                                   | `docker compose restart api`. El cierre es ordenado y las colas se reanudan.                             |
+| **PgBouncer no responde**                   | La API reporta timeout de conexion              | La API sigue operativa con las conexiones que ya tiene abiertas.                                                                                        | `docker compose logs pgbouncer`. Con una sola replica puede apuntar `DATABASE_URL` directo a PostgreSQL. |
+| **Redis no responde**                       | Log "Redis no disponible"                       | La API sigue con cache en memoria y rate limit local.                                                                                                   | `docker compose restart redis`.                                                                          |
+| **No se puede enviar el correo con los QR** | El envio informa que no hay SMTP                | Use la **carta de QR en PDF**.                                                                                                                          | Configurar `SMTP_*` y reenviar a los que falten.                                                         |
+| **Se emitio un certificado por error**      | Panel de certificados                           | Use **Revocar** con motivo: la verificacion publica pasa a "no valido" y queda auditado.                                                                | Reemita el certificado corregido (conserva el codigo de verificacion).                                   |
+| **Se perdio el celular de un operador**     | El operador no puede iniciar sesion             | Su sesion caduca a los 15 minutos. Las operaciones pendientes siguen en su cola offline.                                                                | Desactive la cuenta en **Usuarios** y cree una nueva.                                                    |
+| **Un asistente no aparece**                 | La app responde "ID no encontrado"              | Use la busqueda manual por nombre y apellido.                                                                                                           | Verifique que el ID fue importado; si falta, agreguelo en **Asistentes**.                                |
 
 ### Datos y respaldo
 

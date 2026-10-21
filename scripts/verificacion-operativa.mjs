@@ -232,7 +232,11 @@ if (otraJornada) {
       motivo: 'Verificacion operativa: registro de ingreso en la segunda jornada',
     },
   });
-  comprobar(ingresoOtra.estado === 201, 'Se registra el ingreso de la segunda jornada', ingresoOtra.datos);
+  comprobar(
+    ingresoOtra.estado === 201,
+    'Se registra el ingreso de la segunda jornada',
+    ingresoOtra.datos,
+  );
 
   const salidaOtra = await peticion('/asistencias/excepcion', {
     metodo: 'POST',
@@ -245,7 +249,11 @@ if (otraJornada) {
       motivo: 'Verificacion operativa: cierre de la segunda jornada',
     },
   });
-  comprobar(salidaOtra.estado === 201, 'Se registra la salida de la segunda jornada', salidaOtra.datos);
+  comprobar(
+    salidaOtra.estado === 201,
+    'Se registra la salida de la segunda jornada',
+    salidaOtra.datos,
+  );
 }
 
 const excepcion = await peticion('/asistencias/excepcion', {
@@ -259,7 +267,11 @@ const excepcion = await peticion('/asistencias/excepcion', {
     motivo: 'Verificacion operativa: ajuste de la salida al cierre del seminario',
   },
 });
-comprobar(excepcion.estado === 201, 'El administrador puede ajustar la salida con motivo', excepcion.datos);
+comprobar(
+  excepcion.estado === 201,
+  'El administrador puede ajustar la salida con motivo',
+  excepcion.datos,
+);
 
 const ahoraElegible = await peticion(`/certificados?q=${idPrueba}&porPagina=1`, { token });
 comprobar(
@@ -273,7 +285,11 @@ const emision = await peticion(`/certificados/emitir/${idPrueba}`, {
   token,
   cuerpo: { excepcionManual: false },
 });
-comprobar(emision.estado === 200 && emision.datos.codigoVerificacion, 'El certificado se emite', emision.datos);
+comprobar(
+  emision.estado === 200 && emision.datos.codigoVerificacion,
+  'El certificado se emite',
+  emision.datos,
+);
 
 const codigoCertificado = emision.datos.codigoVerificacion;
 const pdf = await fetch(`${BASE}/certificados/${idPrueba}/pdf`, {

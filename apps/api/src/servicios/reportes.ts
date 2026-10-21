@@ -146,7 +146,13 @@ async function reporteAsistenciaParcial(_filtros: FiltrosReporte): Promise<Resul
   if (idsParciales.length === 0) {
     return {
       titulo: 'Asistencia parcial',
-      columnas: ['ID institucional', 'Nombres', 'Apellidos', 'Jornadas registradas', 'Total jornadas'],
+      columnas: [
+        'ID institucional',
+        'Nombres',
+        'Apellidos',
+        'Jornadas registradas',
+        'Total jornadas',
+      ],
       filas: [],
     };
   }
@@ -262,9 +268,7 @@ async function reporteRefrigerios(
       );
 
     const yaEntregados = new Set(
-      entregas
-        .filter((entrega) => entrega.refrigerio === tipo.nombre)
-        .map((entrega) => entrega.id),
+      entregas.filter((entrega) => entrega.refrigerio === tipo.nombre).map((entrega) => entrega.id),
     );
 
     for (const asistente of asistentesJornada) {
@@ -536,10 +540,7 @@ export async function reporteComoPdf(reporte: ResultadoReporte): Promise<Buffer>
   const filasPorPagina = Math.floor((altoPagina - margen * 2 - 60) / altoFila);
   const anchoColumna = anchoUtil / Math.max(reporte.columnas.length, 1);
 
-  const totalPaginas = Math.max(
-    1,
-    Math.ceil((reporte.filas.length + 1) / filasPorPagina),
-  );
+  const totalPaginas = Math.max(1, Math.ceil((reporte.filas.length + 1) / filasPorPagina));
 
   for (let numeroPagina = 0; numeroPagina < totalPaginas; numeroPagina += 1) {
     const pagina = documento.addPage([anchoPagina, altoPagina]);

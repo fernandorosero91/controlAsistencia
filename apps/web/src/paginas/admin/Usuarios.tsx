@@ -35,8 +35,7 @@ export function Usuarios() {
 
   const { data, isPending } = useQuery({
     queryKey: ['usuarios'],
-    queryFn: () =>
-      api.obtener<{ datos: Usuario[]; total: number }>('/usuarios?porPagina=100'),
+    queryFn: () => api.obtener<{ datos: Usuario[]; total: number }>('/usuarios?porPagina=100'),
   });
 
   const guardar = useMutation({

@@ -213,7 +213,11 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
 
       const ayuda = libro.addWorksheet('Instrucciones');
       ayuda.addRow(['Columna', 'Obligatoria', 'Descripcion']);
-      ayuda.addRow(['id', 'Si', 'ID institucional (cedula o codigo estudiantil). Se normaliza a mayusculas.']);
+      ayuda.addRow([
+        'id',
+        'Si',
+        'ID institucional (cedula o codigo estudiantil). Se normaliza a mayusculas.',
+      ]);
       ayuda.addRow(['nombres', 'Si', 'Nombres del asistente.']);
       ayuda.addRow(['apellidos', 'Si', 'Apellidos del asistente.']);
       ayuda.addRow(['rol', 'Si', 'estudiante o docente (en minusculas).']);
@@ -240,10 +244,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
 
       const contenido = await libro.xlsx.writeBuffer();
       return reply
-        .header(
-          'Content-Type',
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        )
+        .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         .header('Content-Disposition', 'attachment; filename="plantilla-asistentes.xlsx"')
         .send(Buffer.from(contenido));
     },
@@ -255,7 +256,8 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
       onRequest: [app.autorizar(['admin'])],
       schema: {
         tags: ['Asistentes'],
-        description: 'Carta de QR con el codigo de registro de cada asistente (para entregar a mano)',
+        description:
+          'Carta de QR con el codigo de registro de cada asistente (para entregar a mano)',
       },
     },
     async (request, reply) => {
@@ -484,7 +486,11 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
 
       const rolNuevo = datos.rol ?? actual.rol;
       const semestreNuevo =
-        datos.semestre !== undefined ? datos.semestre : (rolNuevo === 'docente' ? null : actual.semestre);
+        datos.semestre !== undefined
+          ? datos.semestre
+          : rolNuevo === 'docente'
+            ? null
+            : actual.semestre;
 
       if (rolNuevo === 'estudiante' && semestreNuevo === null) {
         throw errores.validacion('El semestre es obligatorio para estudiantes', [
@@ -551,7 +557,9 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
       }
 
       const config = await obtenerConfig();
-      const validaciones = parseo.filas.map((fila) => validarFila(fila.fila, fila.datos, config.idRegex));
+      const validaciones = parseo.filas.map((fila) =>
+        validarFila(fila.fila, fila.datos, config.idRegex),
+      );
 
       const idsValidos = validaciones.filter((v) => v.valida).map((v) => v.datos.id!);
       const unicos = new Set(idsValidos);
@@ -617,9 +625,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
             apellidos: fila.apellidos,
             rol: fila.rol,
             semestre:
-              fila.semestre === null || fila.semestre === undefined
-                ? ''
-                : String(fila.semestre),
+              fila.semestre === null || fila.semestre === undefined ? '' : String(fila.semestre),
             email: fila.email ?? '',
           },
           config.idRegex,

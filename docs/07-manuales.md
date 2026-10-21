@@ -36,12 +36,12 @@ Dos manuales de una pagina: uno para el administrador y otro para el operador.
 
 ### Excepciones y errores
 
-| Situacion | Que hacer |
-| --- | --- |
-| Un asistente no tiene certificado y si cumple | Certificados > **Excepcion**, con motivo obligatorio. Queda auditado. |
-| Se emitio un certificado equivocado | **Revocar** con motivo. La verificacion publica pasa a "no valido". |
-| Un asistente no aparece en el padron | Agreguelo en **Asistentes** (el sistema le asigna el codigo de registro) o importelo de nuevo. |
-| Se registro un ingreso de mas | No se puede borrar: use **excepcion manual** para registrar la salida correcta y deje el registro en la auditoria. |
+| Situacion                                     | Que hacer                                                                                                          |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Un asistente no tiene certificado y si cumple | Certificados > **Excepcion**, con motivo obligatorio. Queda auditado.                                              |
+| Se emitio un certificado equivocado           | **Revocar** con motivo. La verificacion publica pasa a "no valido".                                                |
+| Un asistente no aparece en el padron          | Agreguelo en **Asistentes** (el sistema le asigna el codigo de registro) o importelo de nuevo.                     |
+| Se registro un ingreso de mas                 | No se puede borrar: use **excepcion manual** para registrar la salida correcta y deje el registro en la auditoria. |
 
 ---
 
@@ -60,12 +60,12 @@ Dos manuales de una pagina: uno para el administrador y otro para el operador.
 
 ### Que significa cada resultado
 
-| Color | Significado | Que hacer |
-| --- | --- | --- |
-| **Verde** | Registro creado | Continúe con la siguiente persona. |
-| **Ambar** | Ya estaba registrado | Continúe: no es un error. El bloque muestra la hora y el operador del registro original. |
-| **Rojo** | ID no encontrado o no permitido | Use la busqueda manual por nombre o llame a la coordinacion. |
-| **Ambar con informacion** | Fuera de la ventana de registro | Avise a la coordinacion: puede habilitarla. |
+| Color                     | Significado                     | Que hacer                                                                                |
+| ------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------- |
+| **Verde**                 | Registro creado                 | Continúe con la siguiente persona.                                                       |
+| **Ambar**                 | Ya estaba registrado            | Continúe: no es un error. El bloque muestra la hora y el operador del registro original. |
+| **Rojo**                  | ID no encontrado o no permitido | Use la busqueda manual por nombre o llame a la coordinacion.                             |
+| **Ambar con informacion** | Fuera de la ventana de registro | Avise a la coordinacion: puede habilitarla.                                              |
 
 ### Consejos
 
@@ -79,9 +79,9 @@ Dos manuales de una pagina: uno para el administrador y otro para el operador.
 
 ### A quien llamar
 
-| Problema | Quien |
-| --- | --- |
-| El sistema no responde | Soporte tecnico |
-| Un ID no aparece | Administrador del seminario |
+| Problema                            | Quien                       |
+| ----------------------------------- | --------------------------- |
+| El sistema no responde              | Soporte tecnico             |
+| Un ID no aparece                    | Administrador del seminario |
 | Necesita registrar fuera de ventana | Administrador del seminario |
-| Perdio o rompio el celular | Administrador del seminario |
+| Perdio o rompio el celular          | Administrador del seminario |

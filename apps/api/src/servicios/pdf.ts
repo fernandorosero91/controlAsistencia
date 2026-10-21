@@ -162,7 +162,13 @@ export async function generarCarnetsPDF(
     const nombreCompleto = `${participante.asistente.nombres} ${participante.asistente.apellidos}`;
     const lineasNombre = envolverTexto(nombreCompleto, fuenteNegrita, 12, anchoTexto);
     for (const linea of lineasNombre.slice(0, 3)) {
-      actual.drawText(linea, { x: textoX, y: cursorY, size: 12, font: fuenteNegrita, color: NEGRO });
+      actual.drawText(linea, {
+        x: textoX,
+        y: cursorY,
+        size: 12,
+        font: fuenteNegrita,
+        color: NEGRO,
+      });
       cursorY -= 15;
     }
 
@@ -171,7 +177,13 @@ export async function generarCarnetsPDF(
       participante.asistente.semestre !== null
         ? `Semestre ${participante.asistente.semestre}`
         : 'Docente';
-    actual.drawText(rol, { x: textoX, y: cursorY, size: 10, font: fuenteNormal, color: GRIS_TEXTO });
+    actual.drawText(rol, {
+      x: textoX,
+      y: cursorY,
+      size: 10,
+      font: fuenteNormal,
+      color: GRIS_TEXTO,
+    });
     cursorY -= 13;
     actual.drawText(semestre, {
       x: textoX,
@@ -257,10 +269,14 @@ export async function generarCartaQrPDF(datos: DatosCartaQr[]): Promise<Uint8Arr
     const textoX = margen + 120;
     let cursorY = y + altoTarjeta - 26;
 
-    actual.drawText(
-      `${item.asistente.nombres} ${item.asistente.apellidos}`,
-      { x: textoX, y: cursorY, size: 13, font: fuenteNegrita, color: NEGRO, maxWidth: 330 },
-    );
+    actual.drawText(`${item.asistente.nombres} ${item.asistente.apellidos}`, {
+      x: textoX,
+      y: cursorY,
+      size: 13,
+      font: fuenteNegrita,
+      color: NEGRO,
+      maxWidth: 330,
+    });
     cursorY -= 17;
     actual.drawText(`Codigo de registro: ${item.codigoRegistro}`, {
       x: textoX,
@@ -355,7 +371,12 @@ export async function generarCertificadoPDF(datos: DatosCertificado): Promise<Ui
       const logo = await documento.embedPng(await readFile(ruta));
       const anchoLogo = 190;
       const altoLogo = (logo.height / logo.width) * anchoLogo;
-      pagina.drawImage(logo, { x: ancho - margen - anchoLogo, y: alto - margen - altoLogo, width: anchoLogo, height: altoLogo });
+      pagina.drawImage(logo, {
+        x: ancho - margen - anchoLogo,
+        y: alto - margen - altoLogo,
+        width: anchoLogo,
+        height: altoLogo,
+      });
     } catch {
       // Si el logotipo no esta disponible, el certificado se genera sin el.
     }
@@ -394,9 +415,10 @@ export async function generarCertificadoPDF(datos: DatosCertificado): Promise<Ui
   });
   cursorY -= 42;
 
-  const cuerpo = `La presente certifica que ${datos.nombre}, identificado(a) con el ID institucional ${datos.id}, `
-    + `participo como ${datos.rol} en el seminario "${datos.nombreSeminario}", `
-    + `realizado el ${datos.fecha}, con una intensidad horaria de ${datos.intensidadHoraria} horas.`;
+  const cuerpo =
+    `La presente certifica que ${datos.nombre}, identificado(a) con el ID institucional ${datos.id}, ` +
+    `participo como ${datos.rol} en el seminario "${datos.nombreSeminario}", ` +
+    `realizado el ${datos.fecha}, con una intensidad horaria de ${datos.intensidadHoraria} horas.`;
 
   for (const linea of envolverTexto(cuerpo, fuenteCuerpo, 12, ancho - margen * 2 - 170)) {
     pagina.drawText(linea, { x: margen, y: cursorY, size: 12, font: fuenteCuerpo, color: NEGRO });
@@ -416,14 +438,30 @@ export async function generarCertificadoPDF(datos: DatosCertificado): Promise<Ui
 
   if (datos.textoCierre) {
     cursorY -= 12;
-    for (const linea of envolverTexto(datos.textoCierre, fuenteCuerpo, 11, ancho - margen * 2 - 170)) {
-      pagina.drawText(linea, { x: margen, y: cursorY, size: 11, font: fuenteCuerpo, color: GRIS_TEXTO });
+    for (const linea of envolverTexto(
+      datos.textoCierre,
+      fuenteCuerpo,
+      11,
+      ancho - margen * 2 - 170,
+    )) {
+      pagina.drawText(linea, {
+        x: margen,
+        y: cursorY,
+        size: 11,
+        font: fuenteCuerpo,
+        color: GRIS_TEXTO,
+      });
       cursorY -= 15;
     }
   }
 
   const qr = await documento.embedPng(await imagenQr(datos.urlVerificacion));
-  pagina.drawImage(qr, { x: ancho - margen - 120, y: alto - margen - 120, width: 120, height: 120 });
+  pagina.drawImage(qr, {
+    x: ancho - margen - 120,
+    y: alto - margen - 120,
+    width: 120,
+    height: 120,
+  });
   pagina.drawText('Codigo de verificacion', {
     x: ancho - margen - 120,
     y: alto - margen - 136,

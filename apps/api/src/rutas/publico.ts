@@ -19,7 +19,8 @@ export async function registrarRutasPublico(app: FastifyInstance): Promise<void>
     {
       schema: {
         tags: ['Publico'],
-        description: 'Datospublicos del evento para identificar el seminario en la pantalla de ingreso',
+        description:
+          'Datospublicos del evento para identificar el seminario en la pantalla de ingreso',
       },
     },
     async () => {

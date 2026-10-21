@@ -2,11 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import argon2 from 'argon2';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import {
-  actualizarUsuarioSchema,
-  crearUsuarioSchema,
-  paginacionSchema,
-} from '@seminario/shared';
+import { actualizarUsuarioSchema, crearUsuarioSchema, paginacionSchema } from '@seminario/shared';
 import { db } from '../db/cliente.js';
 import { refreshTokens, usuariosSistema } from '../db/esquema.js';
 import { errores } from '../plugins/errores.js';
@@ -170,7 +166,12 @@ export async function registrarRutasUsuarios(app: FastifyInstance): Promise<void
         accion: 'usuario.actualizado',
         entidad: 'usuarios_sistema',
         entidadId: id,
-        datosAntes: { nombre: actual.nombre, email: actual.email, rol: actual.rol, activo: actual.activo },
+        datosAntes: {
+          nombre: actual.nombre,
+          email: actual.email,
+          rol: actual.rol,
+          activo: actual.activo,
+        },
         datosDespues: {
           nombre: datos.nombre ?? actual.nombre,
           email: datos.email ?? actual.email,

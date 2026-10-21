@@ -12,11 +12,11 @@ aplicados por un runner propio que registra version y checksum en `schema_migrat
 
 **Alternativas descartadas.**
 
-| Alternativa | Motivo |
-| --- | --- |
-| Prisma | Su generador no produce bloques de reversa y su motor agrega una capa de runtime que este dominio no necesita. |
-| Knex + SQL puro | Sin tipos: los errores de nombre de columna aparecen en ejecucion y no al compilar. |
-| Migraciones generadas automaticamente | Se perdia el control de la reversibleidad y del orden, que es justo lo que exige este dominio. |
+| Alternativa                           | Motivo                                                                                                         |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Prisma                                | Su generador no produce bloques de reversa y su motor agrega una capa de runtime que este dominio no necesita. |
+| Knex + SQL puro                       | Sin tipos: los errores de nombre de columna aparecen en ejecucion y no al compilar.                            |
+| Migraciones generadas automaticamente | Se perdia el control de la reversibleidad y del orden, que es justo lo que exige este dominio.                 |
 
 **Trade-off.** Hay que mantener el esquema de Drizzle y el SQL en paralelo. Se mitiga con el
 checksum: si una migracion ya aplicada cambia, el runner lo detecta y falla en lugar de dejar
@@ -31,10 +31,10 @@ no se pueden expresar con seguridad en un ORM que es dueno del esquema.
 
 **Decision.** Fastify 5 con TypeScript.
 
-| Alternativa | Motivo del descarte |
-| --- | --- |
-| NestJS | Su inyeccion de dependencias y decoradores aportan estructura que el dominio no necesita, y su coste de CPU es mayor: en el pico de check-ins cada milisegundo cuenta. |
-| Express | Sin esquema de respuesta, serializacion mas lenta y hooks menos ergonomicos. |
+| Alternativa | Motivo del descarte                                                                                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NestJS      | Su inyeccion de dependencias y decoradores aportan estructura que el dominio no necesita, y su coste de CPU es mayor: en el pico de check-ins cada milisegundo cuenta. |
+| Express     | Sin esquema de respuesta, serializacion mas lenta y hooks menos ergonomicos.                                                                                           |
 
 **Trade-off.** Fastify obliga a conocer sus plugins (encapsulamiento, decoradores, `schema` de
 respuesta). A cambio: serializacion por esquema, validacion de respuesta y aislamiento real por
@@ -61,9 +61,9 @@ fuente de verdad y TanStack Query; Zustand solo guarda lo que el navegador contr
 **Decision.** Cabecera `Idempotency-Key` respaldada por la tabla `idempotencia`, **y** constraints
 `UNIQUE` en la base de datos.
 
-| Nivel | Que resuelve |
-| --- | --- |
-| `Idempotency-Key` | La app reintenta sin miedo: la segunda peticion devuelve la primera respuesta, sin repetir el efecto. |
+| Nivel                               | Que resuelve                                                                                                                      |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `Idempotency-Key`                   | La app reintenta sin miedo: la segunda peticion devuelve la primera respuesta, sin repetir el efecto.                             |
 | `UNIQUE (asistente_id, jornada_id)` | La garantia real: aunque se pierda la clave (por ejemplo, si el operador reinstala la PWA), no se puede crear un segundo ingreso. |
 
 **Por que no basta la clave.** El ID institucional es predecible y la app trabaja sin conexion:
@@ -78,11 +78,11 @@ estar en el dato, no en el cliente.
 `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (sin `O`, `I`, `0` ni `1`), generado por la aplicacion y
 protegido por un indice unico y un trigger de inmutabilidad.
 
-| Alternativa | Motivo del descarte |
-| --- | --- |
+| Alternativa                       | Motivo del descarte                                                                                          |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Usar el ID institucional en el QR | La cedula es larga y contiene digitos ambiguos: dictarla en un aula con ruido es lento y propenso a errores. |
-| Codigo numerico de 6 digitos | Los `0` y `1` se confunden al dictarlos. |
-| UUID completo | Demasiado largo para leer en voz alta. |
+| Codigo numerico de 6 digitos      | Los `0` y `1` se confunden al dictarlos.                                                                     |
+| UUID completo                     | Demasiado largo para leer en voz alta.                                                                       |
 
 **Trade-off.** El asistente tiene dos identificadores (el institucional y el corto). A cambio,
 el operador puede dictar un codigo de 6 caracteres sin ambiguedad y la aplicacion acepta
@@ -208,11 +208,11 @@ conservando la prohibicion de paletas genericas.
 
 ## 14. Pruebas: Vitest, Playwright y k6
 
-| Herramienta | Alcance | Motivo |
-| --- | --- | --- |
-| Vitest | Unitarias (reglas de negocio) e integracion (concurrencia sobre PostgreSQL real) | Rapida, con tipado y sin navegador. |
-| Playwright | E2E con viewport movil de 360x640 | Es el ancho real del operador; comprueba el flujo completo y la ausencia de desbordes. |
-| k6 | Carga | Escenario de llegada realista (ramping arrival rate) y umbrales declarados en el codigo. |
+| Herramienta | Alcance                                                                          | Motivo                                                                                   |
+| ----------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Vitest      | Unitarias (reglas de negocio) e integracion (concurrencia sobre PostgreSQL real) | Rapida, con tipado y sin navegador.                                                      |
+| Playwright  | E2E con viewport movil de 360x640                                                | Es el ancho real del operador; comprueba el flujo completo y la ausencia de desbordes.   |
+| k6          | Carga                                                                            | Escenario de llegada realista (ramping arrival rate) y umbrales declarados en el codigo. |
 
 **Decision adicional.** La prueba de concurrencia usa **100 peticiones simultaneas reales**
 contra la base de datos (no un mock): el objetivo es demostrar que el constraint `UNIQUE` hace

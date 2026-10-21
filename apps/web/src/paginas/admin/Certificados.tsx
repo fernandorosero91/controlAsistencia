@@ -1,14 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Award,
-  Ban,
-  Download,
-  FileArchive,
-  RefreshCw,
-  Search,
-  Send,
-} from 'lucide-react';
+import { Award, Ban, Download, FileArchive, RefreshCw, Search, Send } from 'lucide-react';
 import { api, ErrorPeticion } from '../../lib/api';
 import { formatearFechaHora, formatearNumero, nombreRol } from '../../lib/formato';
 import {
@@ -82,15 +74,11 @@ export function Certificados() {
   });
 
   const emitir = useMutation({
-    mutationFn: async (datos: {
-      asistenteId: string;
-      excepcionManual: boolean;
-      motivo?: string;
-    }) =>
-      api.crear<{ codigoVerificacion: string }>(
-        `/certificados/emitir/${datos.asistenteId}`,
-        { excepcionManual: datos.excepcionManual, motivo: datos.motivo },
-      ),
+    mutationFn: async (datos: { asistenteId: string; excepcionManual: boolean; motivo?: string }) =>
+      api.crear<{ codigoVerificacion: string }>(`/certificados/emitir/${datos.asistenteId}`, {
+        excepcionManual: datos.excepcionManual,
+        motivo: datos.motivo,
+      }),
     onSuccess: () => {
       void cliente.invalidateQueries({ queryKey: ['certificados'] });
       setExcepcion(null);
@@ -359,7 +347,9 @@ export function Certificados() {
                         <button
                           type="button"
                           className="boton-compacto text-primario-700 hover:bg-primario-50"
-                          onClick={() => emitir.mutate({ asistenteId: fila.asistenteId, excepcionManual: false })}
+                          onClick={() =>
+                            emitir.mutate({ asistenteId: fila.asistenteId, excepcionManual: false })
+                          }
                           aria-label={`Emitir certificado a ${fila.asistenteNombre}`}
                         >
                           <Award className="h-4 w-4" aria-hidden="true" />
@@ -567,7 +557,10 @@ export function Certificados() {
               onClick={() => {
                 const motivo = document.getElementById('motivo-revocacion');
                 if (!revocar || !(motivo instanceof HTMLTextAreaElement)) return;
-                revocarCertificado.mutate({ id: revocar.certificadoId ?? '', motivo: motivo.value });
+                revocarCertificado.mutate({
+                  id: revocar.certificadoId ?? '',
+                  motivo: motivo.value,
+                });
               }}
               disabled={revocarCertificado.isPending}
             >
@@ -577,8 +570,8 @@ export function Certificados() {
         }
       >
         <p className="text-sm text-neutro-700">
-          Al revocar el certificado de {revocar?.asistenteNombre}, la verificacion publica
-          mostrara que no es valido. La accion queda auditada.
+          Al revocar el certificado de {revocar?.asistenteNombre}, la verificacion publica mostrara
+          que no es valido. La accion queda auditada.
         </p>
         <label htmlFor="motivo-revocacion" className="etiqueta-campo mt-4">
           Motivo obligatorio (minimo 10 caracteres)

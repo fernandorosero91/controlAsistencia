@@ -64,11 +64,7 @@ export function Configuracion() {
   const [nuevoRefrigerio, setNuevoRefrigerio] = useState(false);
   const [firmas, setFirmas] = useState<Firmante[]>([]);
 
-  const actualizarFirmante = (
-    indice: number,
-    campo: keyof Firmante,
-    valor: string,
-  ) => {
+  const actualizarFirmante = (indice: number, campo: keyof Firmante, valor: string) => {
     setFirmas((actual) => {
       const copia = [...actual];
       while (copia.length <= indice) copia.push({ nombre: '', cargo: '', entidad: '' });
@@ -79,8 +75,7 @@ export function Configuracion() {
 
   const { data: config, isPending } = useQuery({
     queryKey: ['config'],
-    queryFn: () =>
-      api.obtener<DatosConfig & { fecha: string; firmas: Firmante[] }>('/config'),
+    queryFn: () => api.obtener<DatosConfig & { fecha: string; firmas: Firmante[] }>('/config'),
   });
 
   const { data: jornadas } = useQuery({
@@ -167,7 +162,9 @@ export function Configuracion() {
     onError: (problema) => {
       setExito(null);
       setError(
-        problema instanceof ErrorPeticion ? problema.message : 'No se pudo guardar la configuracion',
+        problema instanceof ErrorPeticion
+          ? problema.message
+          : 'No se pudo guardar la configuracion',
       );
     },
   });
@@ -184,9 +181,14 @@ export function Configuracion() {
   const exigeAmbas = watch('exigirAmbasJornadas');
 
   return (
-    <div className="space-y-4">      <form onSubmit={handleSubmit((datos) => guardar.mutate(datos))}>
+    <div className="space-y-4">
+      {' '}
+      <form onSubmit={handleSubmit((datos) => guardar.mutate(datos))}>
         <div className="grid gap-4 lg:grid-cols-2">
-          <Tarjeta titulo="Datos del seminario" descripcion="Informacion que aparece en el certificado">
+          <Tarjeta
+            titulo="Datos del seminario"
+            descripcion="Informacion que aparece en el certificado"
+          >
             <div className="space-y-4">
               <div>
                 <label htmlFor="nombre" className="etiqueta-campo">
@@ -283,9 +285,7 @@ export function Configuracion() {
               </div>
 
               <div className="rounded-2xl bg-neutro-50 p-4">
-                <p className="text-sm font-semibold text-neutro-800">
-                  Firmantes del certificado
-                </p>
+                <p className="text-sm font-semibold text-neutro-800">Firmantes del certificado</p>
                 <p className="mt-0.5 text-xs text-neutro-600">
                   Hasta tres personas firman el certificado. Deje en blanco los que no correspondan.
                 </p>
@@ -444,7 +444,6 @@ export function Configuracion() {
           </button>
         </div>
       </form>
-
       <div className="grid gap-4 lg:grid-cols-2">
         <Tarjeta
           titulo="Jornadas"
@@ -515,12 +514,7 @@ export function Configuracion() {
           </ul>
         </Tarjeta>
       </div>
-
-      <Modal
-        abierto={nuevaJornada}
-        titulo="Nueva jornada"
-        alCerrar={() => setNuevaJornada(false)}
-      >
+      <Modal abierto={nuevaJornada} titulo="Nueva jornada" alCerrar={() => setNuevaJornada(false)}>
         <FormularioJornada
           alGuardar={async (datos) => {
             await api.crear('/jornadas', datos);
@@ -529,7 +523,6 @@ export function Configuracion() {
           }}
         />
       </Modal>
-
       <Modal
         abierto={nuevoRefrigerio}
         titulo="Nuevo refrigerio"
@@ -544,7 +537,6 @@ export function Configuracion() {
           }}
         />
       </Modal>
-
       <p className="text-xs text-neutro-500">
         La elegibilidad de los certificados se recalcula con estos valores en cada consulta, sin
         necesidad de migraciones ni scripts.
@@ -631,9 +623,7 @@ function FormularioJornada({ alGuardar }: { alGuardar: (datos: unknown) => Promi
             type="datetime-local"
             className="campo"
             value={datos.ventanaCheckinInicio}
-            onChange={(evento) =>
-              setDatos({ ...datos, ventanaCheckinInicio: evento.target.value })
-            }
+            onChange={(evento) => setDatos({ ...datos, ventanaCheckinInicio: evento.target.value })}
             required
           />
         </div>

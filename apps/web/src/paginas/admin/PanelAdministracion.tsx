@@ -94,10 +94,7 @@ export function PanelAdministracion() {
 
       <div className="mx-auto flex max-w-7xl gap-6 px-4 py-5">
         <nav
-          className={clsx(
-            'w-full shrink-0 lg:w-60',
-            menuAbierto ? 'block' : 'hidden lg:block',
-          )}
+          className={clsx('w-full shrink-0 lg:w-60', menuAbierto ? 'block' : 'hidden lg:block')}
           aria-label="Secciones del panel"
         >
           <ul className="superficie divide-y divide-neutro-100 overflow-hidden">

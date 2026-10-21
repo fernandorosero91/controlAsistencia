@@ -26,8 +26,7 @@ export class ErrorApi extends Error {
 }
 
 export const errores = {
-  noAutenticado: (mensaje = 'Debe iniciar sesion') =>
-    new ErrorApi('NO_AUTENTICADO', mensaje, 401),
+  noAutenticado: (mensaje = 'Debe iniciar sesion') => new ErrorApi('NO_AUTENTICADO', mensaje, 401),
   noAutorizado: (mensaje = 'No tiene permisos para esta accion') =>
     new ErrorApi('NO_AUTORIZADO', mensaje, 403),
   noEncontrado: (mensaje = 'Recurso no encontrado') => new ErrorApi('NO_ENCONTRADO', mensaje, 404),
@@ -44,11 +43,7 @@ function esErrorValidacionZod(error: unknown): error is ZodError {
 
 export async function registrarManejadorErrores(app: FastifyInstance): Promise<void> {
   app.setErrorHandler(
-    (
-      error: FastifyError | Error,
-      request: FastifyRequest,
-      reply: FastifyReply,
-    ): void => {
+    (error: FastifyError | Error, request: FastifyRequest, reply: FastifyReply): void => {
       if (error instanceof ErrorApi) {
         reply.status(error.codigoHttp).send({
           codigo: error.codigo,

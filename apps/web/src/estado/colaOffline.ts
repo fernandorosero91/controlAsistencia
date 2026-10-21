@@ -49,7 +49,9 @@ export async function listarDeLaCola(): Promise<RegistroCola[]> {
 
 export async function listarPendientes(): Promise<RegistroCola[]> {
   const registros = await listarDeLaCola();
-  return registros.filter((registro) => registro.estado === 'pendiente' || registro.estado === 'error');
+  return registros.filter(
+    (registro) => registro.estado === 'pendiente' || registro.estado === 'error',
+  );
 }
 
 export async function actualizarEnCola(registro: RegistroCola): Promise<void> {
@@ -86,7 +88,8 @@ export const useColaOffline = create<EstadoColaStore>((set) => ({
     try {
       const registros = await listarDeLaCola();
       set({
-        pendientes: registros.filter((r) => r.estado === 'pendiente' || r.estado === 'error').length,
+        pendientes: registros.filter((r) => r.estado === 'pendiente' || r.estado === 'error')
+          .length,
         conflictos: registros.filter((r) => r.estado === 'conflicto').length,
       });
     } catch {

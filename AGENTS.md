@@ -39,17 +39,17 @@ Idiomas de trabajo: **codigo, interfaz, mensajes, logs, README y documentacion e
 
 ## 3. Stack tecnologico (obligatorio)
 
-| Capa | Tecnologia |
-| --- | --- |
-| Frontend | React 18+ con TypeScript, Vite, React Router, TanStack Query, Zustand (o Context), Tailwind CSS, React Hook Form + Zod |
-| Iconografia | Una unica biblioteca: **Lucide React** (elegida por el agente; usar en toda la app) |
-| Backend | Node.js 20+ con TypeScript y **Fastify**, validacion con Zod, documentacion OpenAPI/Swagger |
-| Base de datos | PostgreSQL 15+ con migraciones versionadas (**Drizzle ORM** + SQL versionado, ver 4.1) |
-| Pool de conexiones | `pg` + `pg-pool` en el backend, PgBouncer en modo `transaction` en docker-compose |
-| Cache y rate limit | Redis (rate limit distribuido + cache). Fallback en memoria documentado si Redis no esta disponible |
-| PDF | `pdf-lib` + `qrcode` (QR de verificacion). Modo masivo: PDF combinado o ZIP descargable |
-| Infraestructura | Docker + docker-compose (api, web, postgres, pgbouncer, redis, nginx), variables de entorno con `.env.example` |
-| Pruebas | Vitest (unitarias e integracion), Playwright (E2E), k6 (carga) |
+| Capa               | Tecnologia                                                                                                             |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Frontend           | React 18+ con TypeScript, Vite, React Router, TanStack Query, Zustand (o Context), Tailwind CSS, React Hook Form + Zod |
+| Iconografia        | Una unica biblioteca: **Lucide React** (elegida por el agente; usar en toda la app)                                    |
+| Backend            | Node.js 20+ con TypeScript y **Fastify**, validacion con Zod, documentacion OpenAPI/Swagger                            |
+| Base de datos      | PostgreSQL 15+ con migraciones versionadas (**Drizzle ORM** + SQL versionado, ver 4.1)                                 |
+| Pool de conexiones | `pg` + `pg-pool` en el backend, PgBouncer en modo `transaction` en docker-compose                                      |
+| Cache y rate limit | Redis (rate limit distribuido + cache). Fallback en memoria documentado si Redis no esta disponible                    |
+| PDF                | `pdf-lib` + `qrcode` (QR de verificacion). Modo masivo: PDF combinado o ZIP descargable                                |
+| Infraestructura    | Docker + docker-compose (api, web, postgres, pgbouncer, redis, nginx), variables de entorno con `.env.example`         |
+| Pruebas            | Vitest (unitarias e integracion), Playwright (E2E), k6 (carga)                                                         |
 
 **Regla de instalacion:** todo paquete nuevo se instala **por comando** (`npm install <pkg> -w <workspace>`),
 nunca editando el `package.json` a mano. Monorepo con **npm workspaces**.
@@ -70,7 +70,7 @@ frente a Knex: tipado real en el codigo de aplicacion.
 ### 4.2 Backend: Fastify (no NestJS)
 
 Justificacion: el dominio es pequeno y centrado en transaccion + idempotencia + rate limit. Fastify
-ofrece *plugins* con encapsulamiento (RBAC por plugin), `schema` de respuesta con serializacion
+ofrece _plugins_ con encapsulamiento (RBAC por plugin), `schema` de respuesta con serializacion
 rapida, hooks nativos y menor costo de CPU/memoria que NestJS, lo que importa en el pico de 600
 check-ins. NestJS solo se justifica si el equipo crece mucho; se documenta el trade-off.
 
@@ -100,49 +100,54 @@ El progreso vive en Redis y se refleja en BD (`certificados_lotes`) para poder c
    se resuelve con **iconos de Lucide React** (check, alerta, usuario, escaner, reloj, etc.), con
    tamano y trazo consistentes. Esto aplica tambien a los comentarios de codigo, nombres de ramas y
    mensajes de commit.
-2. **Prohibido usar paletas genericas o "por defecto"**, en particular el morado/indigo/violeta y los
-   degradados morado-azul tipicos de plantillas. **Prohibidos los degradados.**
+2. **Prohibido usar paletas genericas o "por defecto"**, en particular el morado/indigo/violeta
+   como color de marca y los degradados morado-azul tipicos de las plantillas. **Los degradados
+   solo se usan si derivan de la rampa institucional** (ver 5.2 y la nota de DecisionOverride).
 3. Prohibido emoji en cualquier artefacto generado (SQL seeds, fixtures, snapshots de test).
 
-### 5.2 Paleta propia (tokens en `apps/web/src/styles/tokens.css` + `tailwind.config.ts`)
+### 5.2 Paleta institucional (Universidad Cooperativa de Colombia)
 
-Paleta institucional sobria, **azul petroleo** como primario:
+Tokens en `apps/web/src/estilos/tokens.css` y `apps/web/tailwind.config.ts`. Los colores
+institucionales se tomaron de la hoja de estilos oficial (`ucc.edu.co`):
 
-| Token | Valor | Uso |
-| --- | --- | --- |
-| `--color-primary-900` | `#0B2B33` | Fondos oscuros, encabezado del panel |
-| `--color-primary-700` | `#12505E` | Botones primarios, enlaces |
-| `--color-primary-500` | `#1B6E80` | Hover, acentos |
-| `--color-primary-100` | `#DCEEF2` | Fondos suaves primarios |
-| `--color-primary-50` | `#F2F8FA` | Fondo de pagina |
-| `--color-neutral-900` | `#16191C` | Texto principal |
-| `--color-neutral-700` | `#3A4249` | Texto secundario |
-| `--color-neutral-500` | `#6B767D` | Texto terciario, bordes |
-| `--color-neutral-300` | `#C6CDD2` | Bordes de tarjetas |
-| `--color-neutral-100` | `#EEF1F3` | Fondo de superficies neutras |
-| `--color-neutral-50` | `#F7F9FA` | Fondo alterno de filas |
-| `--color-success-600` | `#1E7A4B` | Exito, registro creado |
-| `--color-success-100` | `#DCF2E6` | Fondo exito |
-| `--color-warning-600` | `#B26A00` | "Ya registrado", duplicado |
-| `--color-warning-100` | `#FDF0D9` | Fondo aviso |
-| `--color-danger-600` | `#B3261E` | Error, no permitido |
-| `--color-danger-100` | `#FBE3E1` | Fondo error |
-| `--color-info-600` | `#1B6E80` | Informacion (reutiliza primario) |
+| Color       | Valor     | Uso en el sistema                                        |
+| ----------- | --------- | -------------------------------------------------------- |
+| Azul marino | `#132740` | Primario: encabezado del panel, boton principal, titulos |
+| Cian        | `#00ACC9` | Acento: datos, progreso, anillo de foco                  |
+| Verde lima  | `#80BA27` | Detalle decorativo (reticula del certificado)            |
+| Amarillo    | `#FFCE36` | Base de la familia de aviso                              |
+| Gris claro  | `#EFEFEF` | Fondos de superficie y campos                            |
+| Gris medio  | `#5F5E5E` | Texto secundario                                         |
 
-**Contraste WCAG AA minimo** (texto normal 4.5:1, texto grande y elementos de interfaz 3:1). La
-verificacion se hace en `apps/web` con un test unitario de contraste (ratio calculado sobre los
-tokens, se documenta el resultado en `docs/05-guia-diseno.md`).
+Rampas de 10 a 12 pasos con nombres consistentes: `primario` (azul marino), `acento` (cian),
+`lima`, `neutro`, `exito` (verde profundo), `aviso` (amarillo) y `error` (rojo).
 
 Reglas de color semantico:
+
 - **Verde** = exito (registro creado, refrigerio entregado).
 - **Ambar** = "ya registrado" / duplicado (nunca es error).
 - **Rojo** = error / no permitido / ID no encontrado.
 
+**Degradados.** Se permiten, siempre derivados de la propia rampa institucional
+(`--gradient-marca`: azul marino a cian) y nunca con la combinacion generica morado-azul de las
+plantillas. Se usan solo en la banda superior del certificado, el encabezado del panel, el boton
+principal y el relleno de las barras de progreso.
+
+> **DecisionOverride (2026-10-21).** El enunciado original prohibia los degradados. Con la
+> peticion explicita de la coordinacion y la referencia visual "gradient colored UI kit" se
+> autorizan **degradados propios** derivados de la rampa institucional, conservando la
+> prohibicion de paletas genericas.
+
+**Contraste WCAG AA minimo** (texto normal 4.5:1, elementos de interfaz 3:1). La verificacion es
+automatica en `apps/web/test/contraste.test.ts` y el resultado se documenta en
+`docs/05-guia-diseno.md`.
+
 ### 5.3 Tipografia
 
-Una sola familia sans-serif: **Inter** (cargada localmente en `apps/web/public/fonts` o via
-`@fontsource/inter`, sin CDN externo). Escala: 12/13/14/16/20/24/30/36, pesos 400/500/600/700,
-`line-height` 1.4 en texto y 1.15 en titulos. Sin decoraciones innecesarias.
+Una sola familia sans-serif: **Montserrat** (la familia de la institucion y de la referencia
+visual), servida localmente con `@fontsource/montserrat`, sin CDN externo. Escala: 12/13/15/16/18/20/24/30
+px, pesos 400/500/600/700, `line-height` 1.4 en texto y 1.25 en titulos. Sin decoraciones
+innecesarias.
 
 ### 5.4 Responsive mobile-first
 
@@ -230,7 +235,7 @@ Ver `apps/api/drizzle/0000_init.sql` (version de verdad) y `docs/04-reglas-negoc
 ### 6.3 Requisitos de BD
 
 - Indices pertinentes: PKs/FKs, `UNIQUE (asistente_id, jornada_id)`, `UNIQUE (asistente_id,
-  tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice GIN con `pg_trgm`
+tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice GIN con `pg_trgm`
   para busqueda por nombre/apellido, indice por `hora_ingreso` (ritmo de ingreso), indice por
   `entregado_at`.
 - Constraints e integridad referencial estrictas (`ON DELETE RESTRICT` en datos historicos).
@@ -521,7 +526,7 @@ La especificacion **OpenAPI se genera automaticamente** (Fastify Swagger) y se e
    sin excepcion auditada.
 4. Al cambiar la hora de fin en el panel, la **elegibilidad se recalcula** sin migraciones ni scripts.
 5. La interfaz **no contiene emojis**, usa una **unica biblioteca de iconos** y una **paleta propia
-   sin morado ni degradados genericos**.
+   sin morado ni degradados ajenos a la rampa institucional**.
 6. Todos los reportes **se exportan y coinciden con los totales** del dashboard.
 7. El sistema **soporta la prueba de carga** sin errores ni duplicados.
 8. Un certificado emitido **puede verificarse publicamente** con su codigo.

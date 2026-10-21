@@ -121,9 +121,7 @@ export async function registrarPluginAutenticacion(app: FastifyInstance): Promis
         throw errores.noAutenticado();
       }
       if (roles.length > 0 && !roles.includes(usuario.rol)) {
-        throw errores.noAutorizado(
-          'Esta operacion esta reservada al administrador del seminario',
-        );
+        throw errores.noAutorizado('Esta operacion esta reservada al administrador del seminario');
       }
     };
   });

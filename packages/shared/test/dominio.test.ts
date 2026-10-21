@@ -83,8 +83,16 @@ describe('evaluacion de elegibilidad para el certificado', () => {
     const resultado = evaluarElegibilidad({
       ...base,
       asistencias: [
-        { jornadaId: 1, horaIngreso: new Date('2026-11-20T12:00:00.000Z'), horaSalida: new Date('2026-11-20T17:00:00.000Z') },
-        { jornadaId: 2, horaIngreso: new Date('2026-11-20T18:00:00.000Z'), horaSalida: new Date('2026-11-20T22:50:00.000Z') },
+        {
+          jornadaId: 1,
+          horaIngreso: new Date('2026-11-20T12:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T17:00:00.000Z'),
+        },
+        {
+          jornadaId: 2,
+          horaIngreso: new Date('2026-11-20T18:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T22:50:00.000Z'),
+        },
       ],
     });
 
@@ -97,7 +105,11 @@ describe('evaluacion de elegibilidad para el certificado', () => {
     const resultado = evaluarElegibilidad({
       ...base,
       asistencias: [
-        { jornadaId: 1, horaIngreso: new Date('2026-11-20T12:00:00.000Z'), horaSalida: new Date('2026-11-20T17:00:00.000Z') },
+        {
+          jornadaId: 1,
+          horaIngreso: new Date('2026-11-20T12:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T17:00:00.000Z'),
+        },
       ],
     });
 
@@ -122,8 +134,16 @@ describe('evaluacion de elegibilidad para el certificado', () => {
     const resultado = evaluarElegibilidad({
       ...base,
       asistencias: [
-        { jornadaId: 1, horaIngreso: new Date('2026-11-20T12:00:00.000Z'), horaSalida: new Date('2026-11-20T17:00:00.000Z') },
-        { jornadaId: 2, horaIngreso: new Date('2026-11-20T18:00:00.000Z'), horaSalida: new Date('2026-11-20T22:00:00.000Z') },
+        {
+          jornadaId: 1,
+          horaIngreso: new Date('2026-11-20T12:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T17:00:00.000Z'),
+        },
+        {
+          jornadaId: 2,
+          horaIngreso: new Date('2026-11-20T18:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T22:00:00.000Z'),
+        },
       ],
     });
 
@@ -135,8 +155,16 @@ describe('evaluacion de elegibilidad para el certificado', () => {
     const resultado = evaluarElegibilidad({
       ...base,
       asistencias: [
-        { jornadaId: 1, horaIngreso: new Date('2026-11-20T12:00:00.000Z'), horaSalida: new Date('2026-11-20T17:00:00.000Z') },
-        { jornadaId: 2, horaIngreso: new Date('2026-11-20T18:00:00.000Z'), horaSalida: new Date('2026-11-20T22:45:00.000Z') },
+        {
+          jornadaId: 1,
+          horaIngreso: new Date('2026-11-20T12:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T17:00:00.000Z'),
+        },
+        {
+          jornadaId: 2,
+          horaIngreso: new Date('2026-11-20T18:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T22:45:00.000Z'),
+        },
       ],
     });
 
@@ -145,8 +173,16 @@ describe('evaluacion de elegibilidad para el certificado', () => {
 
   it('recalcula el resultado al cambiar la hora de fin', () => {
     const asistencias = [
-      { jornadaId: 1, horaIngreso: new Date('2026-11-20T12:00:00.000Z'), horaSalida: new Date('2026-11-20T17:00:00.000Z') },
-      { jornadaId: 2, horaIngreso: new Date('2026-11-20T18:00:00.000Z'), horaSalida: new Date('2026-11-20T20:00:00.000Z') },
+      {
+        jornadaId: 1,
+        horaIngreso: new Date('2026-11-20T12:00:00.000Z'),
+        horaSalida: new Date('2026-11-20T17:00:00.000Z'),
+      },
+      {
+        jornadaId: 2,
+        horaIngreso: new Date('2026-11-20T18:00:00.000Z'),
+        horaSalida: new Date('2026-11-20T20:00:00.000Z'),
+      },
     ];
 
     const antes = evaluarElegibilidad({ ...base, asistencias });
@@ -165,7 +201,11 @@ describe('evaluacion de elegibilidad para el certificado', () => {
       ...base,
       exigirAmbasJornadas: false,
       asistencias: [
-        { jornadaId: 2, horaIngreso: new Date('2026-11-20T18:00:00.000Z'), horaSalida: new Date('2026-11-20T22:50:00.000Z') },
+        {
+          jornadaId: 2,
+          horaIngreso: new Date('2026-11-20T18:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T22:50:00.000Z'),
+        },
       ],
     });
 

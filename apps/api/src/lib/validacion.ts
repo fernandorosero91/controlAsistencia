@@ -12,10 +12,7 @@ function aDetalle(issues: { path: (string | number)[]; message: string }[]) {
 export function validarCuerpo<S extends ZodTypeAny>(esquema: S, cuerpo: unknown): output<S> {
   const resultado = esquema.safeParse(cuerpo);
   if (!resultado.success) {
-    throw errores.validacion(
-      'Los datos enviados no son validos',
-      aDetalle(resultado.error.issues),
-    );
+    throw errores.validacion('Los datos enviados no son validos', aDetalle(resultado.error.issues));
   }
   return resultado.data;
 }

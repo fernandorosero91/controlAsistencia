@@ -17,7 +17,9 @@ declare module 'fastify' {
     /** Verifica el token de acceso y carga request.usuario. */
     autenticar: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     /** Exige una sesion valida y, opcionalmente, un rol especifico. */
-    autorizar: (roles: RolSistema[]) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    autorizar: (
+      roles: RolSistema[],
+    ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
 

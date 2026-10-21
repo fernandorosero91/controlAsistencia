@@ -74,11 +74,7 @@ export async function renovarToken(): Promise<boolean> {
       };
       useSesion.getState().establecerToken(datos.tokenAcceso, datos.expiraEn);
       if (datos.usuario) {
-        useSesion.getState().establecerSesion(
-          datos.usuario,
-          datos.tokenAcceso,
-          datos.expiraEn,
-        );
+        useSesion.getState().establecerSesion(datos.usuario, datos.tokenAcceso, datos.expiraEn);
       }
       return true;
     } catch {
@@ -176,14 +172,26 @@ async function ejecutar<T>(ruta: string, opciones: OpcionesPeticion): Promise<T>
 export const api = {
   obtener: <T>(ruta: string, opciones?: Omit<OpcionesPeticion, 'metodo' | 'cuerpo'>) =>
     ejecutar<T>(ruta, { ...opciones, metodo: 'GET' }),
-  enviar: <T>(ruta: string, cuerpo: unknown, opciones?: Omit<OpcionesPeticion, 'metodo' | 'cuerpo'>) =>
-    ejecutar<T>(ruta, { ...opciones, metodo: 'POST', cuerpo }),
-  crear: <T>(ruta: string, cuerpo: unknown, opciones?: Omit<OpcionesPeticion, 'metodo' | 'cuerpo'>) =>
-    ejecutar<T>(ruta, { ...opciones, metodo: 'POST', cuerpo }),
-  actualizar: <T>(ruta: string, cuerpo: unknown, opciones?: Omit<OpcionesPeticion, 'metodo' | 'cuerpo'>) =>
-    ejecutar<T>(ruta, { ...opciones, metodo: 'PATCH', cuerpo }),
-  reemplazar: <T>(ruta: string, cuerpo: unknown, opciones?: Omit<OpcionesPeticion, 'metodo' | 'cuerpo'>) =>
-    ejecutar<T>(ruta, { ...opciones, metodo: 'PUT', cuerpo }),
+  enviar: <T>(
+    ruta: string,
+    cuerpo: unknown,
+    opciones?: Omit<OpcionesPeticion, 'metodo' | 'cuerpo'>,
+  ) => ejecutar<T>(ruta, { ...opciones, metodo: 'POST', cuerpo }),
+  crear: <T>(
+    ruta: string,
+    cuerpo: unknown,
+    opciones?: Omit<OpcionesPeticion, 'metodo' | 'cuerpo'>,
+  ) => ejecutar<T>(ruta, { ...opciones, metodo: 'POST', cuerpo }),
+  actualizar: <T>(
+    ruta: string,
+    cuerpo: unknown,
+    opciones?: Omit<OpcionesPeticion, 'metodo' | 'cuerpo'>,
+  ) => ejecutar<T>(ruta, { ...opciones, metodo: 'PATCH', cuerpo }),
+  reemplazar: <T>(
+    ruta: string,
+    cuerpo: unknown,
+    opciones?: Omit<OpcionesPeticion, 'metodo' | 'cuerpo'>,
+  ) => ejecutar<T>(ruta, { ...opciones, metodo: 'PUT', cuerpo }),
   eliminar: <T>(ruta: string, opciones?: Omit<OpcionesPeticion, 'metodo' | 'cuerpo'>) =>
     ejecutar<T>(ruta, { ...opciones, metodo: 'DELETE' }),
   /** Cierra la sesion en el servidor: revoca el refresh token. */

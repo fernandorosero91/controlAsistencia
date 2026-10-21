@@ -27,13 +27,7 @@ function encontrarK6() {
     process.env.K6_BIN,
     'k6',
     'C:/Program Files/k6/k6.exe',
-    path.join(
-      process.env.LOCALAPPDATA ?? '',
-      'Microsoft',
-      'WinGet',
-      'Packages',
-      'k6',
-    ),
+    path.join(process.env.LOCALAPPDATA ?? '', 'Microsoft', 'WinGet', 'Packages', 'k6'),
   ].filter(Boolean);
 
   for (const candidato of candidatos) {
@@ -145,7 +139,8 @@ async function planificadorNode(opciones) {
   }
 
   const tiempos = latencias.sort((a, b) => a - b);
-  const percentil = (p) => tiempos[Math.min(tiempos.length - 1, Math.floor(tiempos.length * p))] ?? 0;
+  const percentil = (p) =>
+    tiempos[Math.min(tiempos.length - 1, Math.floor(tiempos.length * p))] ?? 0;
   const p95 = percentil(0.95);
   const tasaError = latencias.length > 0 ? errores / latencias.length : 0;
 

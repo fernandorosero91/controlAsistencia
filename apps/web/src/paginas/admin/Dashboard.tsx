@@ -86,9 +86,7 @@ export function Dashboard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-neutro-900">Estado del seminario</h2>
-          <p className="text-sm text-neutro-600">
-            Indicadores actualizados cada 5 segundos.
-          </p>
+          <p className="text-sm text-neutro-600">Indicadores actualizados cada 5 segundos.</p>
         </div>
         <Link to="/operador" className="boton-primario">
           <ScanLine className="h-4 w-4" aria-hidden="true" />
@@ -191,10 +189,7 @@ export function Dashboard() {
                       </p>
                     </div>
                     <div className="barra-progreso mt-1.5">
-                      <div
-                        className="barra-progreso-relleno"
-                        style={{ width: `${porcentaje}%` }}
-                      />
+                      <div className="barra-progreso-relleno" style={{ width: `${porcentaje}%` }} />
                     </div>
                     <p className="mt-1 text-xs text-neutro-500">
                       {formatearNumero(refrigerio.pendientes)} pendientes

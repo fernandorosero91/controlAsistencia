@@ -44,10 +44,9 @@ export const jornadaSchema = z.object({
 
 export type JornadaInput = z.infer<typeof jornadaSchema>;
 
-export const jornadaPartialSchema = jornadaSchema.partial().refine(
-  (datos) => Object.keys(datos).length > 0,
-  { message: 'Debe enviar al menos un campo' },
-);
+export const jornadaPartialSchema = jornadaSchema
+  .partial()
+  .refine((datos) => Object.keys(datos).length > 0, { message: 'Debe enviar al menos un campo' });
 
 export type JornadaPartialInput = z.infer<typeof jornadaPartialSchema>;
 

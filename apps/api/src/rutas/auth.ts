@@ -80,10 +80,7 @@ export async function registrarRutasAuth(app: FastifyInstance): Promise<void> {
         : false;
 
       if (!usuario || !passwordCorrecta || !usuario.activo) {
-        logger.warn(
-          { email: datos.email, ip: request.ip },
-          'Intento de inicio de sesion fallido',
-        );
+        logger.warn({ email: datos.email, ip: request.ip }, 'Intento de inicio de sesion fallido');
         throw errores.noAutenticado('Correo electronico o contrasena incorrectos');
       }
 
@@ -173,7 +170,10 @@ export async function registrarRutasAuth(app: FastifyInstance): Promise<void> {
       }
 
       // Rotacion: el refresh token usado se revoca y se emite uno nuevo.
-      await db.update(refreshTokens).set({ revocado: true }).where(eq(refreshTokens.id, registro.id));
+      await db
+        .update(refreshTokens)
+        .set({ revocado: true })
+        .where(eq(refreshTokens.id, registro.id));
       const nuevoRefresh = await emitirRefreshToken(usuario.id, {
         userAgent: request.headers['user-agent'],
         ip: request.ip,

@@ -52,9 +52,10 @@ function separarBloques(contenido: string): { arriba: string; abajo: string } {
   if (indiceUp === -1) {
     throw new Error('La migracion no contiene el bloque "-- migrate:up"');
   }
-  const arriba = indiceDown === -1
-    ? contenido.slice(indiceUp + MARCADOR_UP.length)
-    : contenido.slice(indiceUp + MARCADOR_UP.length, indiceDown);
+  const arriba =
+    indiceDown === -1
+      ? contenido.slice(indiceUp + MARCADOR_UP.length)
+      : contenido.slice(indiceUp + MARCADOR_UP.length, indiceDown);
   const abajo = indiceDown === -1 ? '' : contenido.slice(indiceDown + MARCADOR_DOWN.length);
   return { arriba: arriba.trim(), abajo: abajo.trim() };
 }
@@ -135,10 +136,10 @@ export async function aplicarMigraciones(): Promise<string[]> {
     try {
       await cliente.query('BEGIN');
       await cliente.query(arriba);
-      await cliente.query(
-        'INSERT INTO schema_migrations (version, checksum) VALUES ($1, $2)',
-        [archivo.version, checksum],
-      );
+      await cliente.query('INSERT INTO schema_migrations (version, checksum) VALUES ($1, $2)', [
+        archivo.version,
+        checksum,
+      ]);
       await cliente.query('COMMIT');
       ejecutadas.push(archivo.version);
     } catch (error) {
@@ -222,8 +223,7 @@ async function principal(): Promise<void> {
 }
 
 const invocadoDirectamente =
-  process.argv[1] !== undefined &&
-  fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+  process.argv[1] !== undefined && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 
 if (invocadoDirectamente) {
   principal().catch((error: unknown) => {

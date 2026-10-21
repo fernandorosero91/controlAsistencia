@@ -11,23 +11,23 @@ horaria de negocio es `America/Bogota`.
 
 ## 1. Que hace el sistema
 
-| Modulo | Quien lo usa | Que resuelve |
-| --- | --- | --- |
-| **Registro de asistencia** | Operador | Ingreso y salida por ID institucional (teclado o QR). Un solo registro por asistente y jornada, garantizado por la base de datos. |
-| **Entrega de refrigerios** | Operador | Una entrega por asistente y tipo de refrigerio, solo si tiene asistencia en la jornada correspondiente. |
-| **Panel de administracion** | Administrador | Dashboard en vivo, padron de asistentes, importacion masiva, carnets con QR, configuracion del evento, reportes y usuarios. |
-| **Certificados** | Administrador | Emision individual y masiva con barra de progreso, descarga en PDF o ZIP y revocacion auditada. |
-| **Verificacion publica** | Cualquiera | Pagina publica que confirma la autenticidad de un certificado mediante su codigo. |
+| Modulo                      | Quien lo usa  | Que resuelve                                                                                                                      |
+| --------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Registro de asistencia**  | Operador      | Ingreso y salida por ID institucional (teclado o QR). Un solo registro por asistente y jornada, garantizado por la base de datos. |
+| **Entrega de refrigerios**  | Operador      | Una entrega por asistente y tipo de refrigerio, solo si tiene asistencia en la jornada correspondiente.                           |
+| **Panel de administracion** | Administrador | Dashboard en vivo, padron de asistentes, importacion masiva, carnets con QR, configuracion del evento, reportes y usuarios.       |
+| **Certificados**            | Administrador | Emision individual y masiva con barra de progreso, descarga en PDF o ZIP y revocacion auditada.                                   |
+| **Verificacion publica**    | Cualquiera    | Pagina publica que confirma la autenticidad de un certificado mediante su codigo.                                                 |
 
 ### Como identifica el sistema a un asistente
 
 Cada asistente tiene tres datos, cargados previamente por el administrador:
 
-| Dato | Origen | Uso |
-| --- | --- | --- |
-| **ID institucional** | Cedula o codigo estudiantil de la universidad | Clave de negocio, inmutable. |
+| Dato                   | Origen                                                                                 | Uso                                                                     |
+| ---------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **ID institucional**   | Cedula o codigo estudiantil de la universidad                                          | Clave de negocio, inmutable.                                            |
 | **Codigo de registro** | **Lo genera el sistema**: 6 caracteres sin `O`, `I`, `0` ni `1` (por ejemplo `K7M4D2`) | Es lo que codifica el QR y lo que el operador dicta. Unico e inmutable. |
-| **Correo electronico** | Institucional del estudiante | Destino del codigo de registro y del QR. |
+| **Correo electronico** | Institucional del estudiante                                                           | Destino del codigo de registro y del QR.                                |
 
 La app del operador acepta **cualquiera de los dos** en el mismo campo y, antes de registrar,
 **muestra el nombre del asistente** para contrastarlo con la escarapela y con la persona.
@@ -47,15 +47,15 @@ Reglas que el sistema garantiza y que no dependen del comportamiento de la inter
 
 El sistema se parametriza por evento. La configuracion de ejemplo corresponde al:
 
-| Dato | Valor |
-| --- | --- |
-| Evento | IV Seminario de Ingenieria de Software |
-| Organiza | Facultad de Ingenieria - Universidad Cooperativa de Colombia |
-| Fecha | 27 de octubre de 2026 |
-| Horario | 8:00 a.m. a 6:00 p.m. (8 horas) |
-| Modalidad | Presencial |
-| Lugar | Camara de Comercio - Pasto |
-| Contacto | 311 781 7327 |
+| Dato      | Valor                                                        |
+| --------- | ------------------------------------------------------------ |
+| Evento    | IV Seminario de Ingenieria de Software                       |
+| Organiza  | Facultad de Ingenieria - Universidad Cooperativa de Colombia |
+| Fecha     | 27 de octubre de 2026                                        |
+| Horario   | 8:00 a.m. a 6:00 p.m. (8 horas)                              |
+| Modalidad | Presencial                                                   |
+| Lugar     | Camara de Comercio - Pasto                                   |
+| Contacto  | 311 781 7327                                                 |
 
 Todo esto se configura desde el panel (nombre, fecha, hora de fin, tolerancia, jornadas,
 lugar, facultad y **hasta tres firmantes** del certificado), no en el codigo.
@@ -141,12 +141,12 @@ docker compose up -d --build
 
 El sistema queda disponible en:
 
-| Servicio | URL |
-| --- | --- |
-| Aplicacion (web + API) | http://localhost:8080 |
-| API directa | http://localhost:3000 |
-| Documentacion OpenAPI | http://localhost:8080/api/docs |
-| Verificacion publica | http://localhost:8080/verificar/CODIGO |
+| Servicio               | URL                                    |
+| ---------------------- | -------------------------------------- |
+| Aplicacion (web + API) | http://localhost:8080                  |
+| API directa            | http://localhost:3000                  |
+| Documentacion OpenAPI  | http://localhost:8080/api/docs         |
+| Verificacion publica   | http://localhost:8080/verificar/CODIGO |
 
 Prepare la base de datos y los datos de arranque (crea el administrador y 600 asistentes
 de prueba):
@@ -172,20 +172,20 @@ npm run dev            # API en :3000 y web en :5173
 
 ### 4.4 Scripts disponibles
 
-| Comando | Que hace |
-| --- | --- |
-| `npm run dev` | Levanta API y web con recarga en caliente. |
-| `npm run build` | Compila el paquete compartido, la API y la web. |
-| `npm start` | Ejecuta la API compilada. |
-| `npm test` | Pruebas unitarias de los tres paquetes. |
-| `npm run test:integration` | Pruebas de integracion (incluye concurrencia real). |
-| `npm run test:e2e` | Pruebas de extremo a extremo con Playwright. |
-| `npm run lint` / `npm run format` | ESLint y Prettier. |
-| `npm run typecheck` | Verificacion de tipos de todo el monorepo. |
-| `npm run migrate` / `migrate:revert` / `migrate:status` | Migraciones reversibles. |
-| `npm run seed` | Datos de arranque. |
-| `npm run load-test` | Pruebas de carga (k6 si esta instalado; si no, planificador Node equivalente). |
-| `npm run docker:up` / `docker:down` / `docker:logs` | Ciclo de vida de los contenedores. |
+| Comando                                                 | Que hace                                                                       |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `npm run dev`                                           | Levanta API y web con recarga en caliente.                                     |
+| `npm run build`                                         | Compila el paquete compartido, la API y la web.                                |
+| `npm start`                                             | Ejecuta la API compilada.                                                      |
+| `npm test`                                              | Pruebas unitarias de los tres paquetes.                                        |
+| `npm run test:integration`                              | Pruebas de integracion (incluye concurrencia real).                            |
+| `npm run test:e2e`                                      | Pruebas de extremo a extremo con Playwright.                                   |
+| `npm run lint` / `npm run format`                       | ESLint y Prettier.                                                             |
+| `npm run typecheck`                                     | Verificacion de tipos de todo el monorepo.                                     |
+| `npm run migrate` / `migrate:revert` / `migrate:status` | Migraciones reversibles.                                                       |
+| `npm run seed`                                          | Datos de arranque.                                                             |
+| `npm run load-test`                                     | Pruebas de carga (k6 si esta instalado; si no, planificador Node equivalente). |
+| `npm run docker:up` / `docker:down` / `docker:logs`     | Ciclo de vida de los contenedores.                                             |
 
 ---
 
@@ -194,14 +194,14 @@ npm run dev            # API en :3000 y web en :5173
 Todas las variables estan documentadas en [`.env.example`](.env.example). Las
 obligatorias son:
 
-| Variable | Para que sirve |
-| --- | --- |
-| `DATABASE_URL` | Conexion a PostgreSQL. En produccion debe apuntar a PgBouncer. |
-| `JWT_SECRET` | Firma de los tokens de acceso. Minimo 32 caracteres. |
-| `REDIS_URL` | Cache compartida y rate limit distribuido. Opcional: sin Redis el sistema funciona con cache en memoria por proceso. |
-| `CORS_ORIGINS` | Origenes permitidos, separados por coma. |
-| `BASE_URL_PUBLICA` | URL con la que se construyen el QR de verificacion y los enlaces del certificado. |
-| `COOKIE_SECURE` | `true` en produccion (obligatorio si el sitio usa HTTPS). |
+| Variable           | Para que sirve                                                                                                       |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`     | Conexion a PostgreSQL. En produccion debe apuntar a PgBouncer.                                                       |
+| `JWT_SECRET`       | Firma de los tokens de acceso. Minimo 32 caracteres.                                                                 |
+| `REDIS_URL`        | Cache compartida y rate limit distribuido. Opcional: sin Redis el sistema funciona con cache en memoria por proceso. |
+| `CORS_ORIGINS`     | Origenes permitidos, separados por coma.                                                                             |
+| `BASE_URL_PUBLICA` | URL con la que se construyen el QR de verificacion y los enlaces del certificado.                                    |
+| `COOKIE_SECURE`    | `true` en produccion (obligatorio si el sitio usa HTTPS).                                                            |
 
 Secretos adicionales recomendados en produccion: `POSTGRES_PASSWORD`,
 `ADMIN_PASSWORD`, `JWT_REFRESH_TTL_SEGUNDOS`.
@@ -253,15 +253,15 @@ Resumen operativo; la version completa esta en
 
 ## 7. Plan de contingencia
 
-| Falla | Detected en | Respuesta inmediata | Respuesta definitiva |
-| --- | --- | --- | --- |
-| **Se cae internet** | Indicador "Sin conexion" en la app del operador | La app guarda el registro en el dispositivo (IndexedDB) con clave de idempotencia y lo sincroniza al volver la red. Los duplicados que se detecten al sincronizar se muestran como **conflicto** al operador. | Sincronizacion automatica cada 15 s. Verificar que no queden registros pendientes antes de emitir certificados. |
-| **Se cae la base de datos** | `/health/ready` responde 503; el panel muestra error | La API responde 503 sin caerse. El operador sigue registrando en su cola offline. | `docker compose restart postgres` (los datos estan en volumen). Si no levanta, `docker compose up -d postgres` y revise los logs. |
-| **Se cae la API** | El panel marca error de red | El operador continua en modo offline. | `docker compose restart api`. El proceso termina de forma ordenada (graceful shutdown) y las colas BullMQ se reanudan. |
-| **PgBouncer no responde** | La API reporta timeout de conexion | La API cae a la conexion directa si se configura `DATABASE_URL` con el host de Postgres. | Revise `docker compose logs pgbouncer` y las conexiones disponibles en Postgres. |
-| **Redis no responde** | Log "Redis no disponible" | La API sigue operando con cache en memoria y rate limit local. | `docker compose restart redis`. |
-| **Se emite un certificado por error** | Panel de certificados | Use **Revocar** con motivo: la verificacion publica pasa a "no valido" y queda auditado. | Re-emita el certificado corregido. |
-| **Se pierde el dispositivo de un operador** | Panel de asistencia | La sesion caduca en 15 minutos; las operaciones se reasignan a otro operador. | Cambie la contrasena del usuario en **Usuarios** y desactive la cuenta. |
+| Falla                                       | Detected en                                          | Respuesta inmediata                                                                                                                                                                                           | Respuesta definitiva                                                                                                              |
+| ------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Se cae internet**                         | Indicador "Sin conexion" en la app del operador      | La app guarda el registro en el dispositivo (IndexedDB) con clave de idempotencia y lo sincroniza al volver la red. Los duplicados que se detecten al sincronizar se muestran como **conflicto** al operador. | Sincronizacion automatica cada 15 s. Verificar que no queden registros pendientes antes de emitir certificados.                   |
+| **Se cae la base de datos**                 | `/health/ready` responde 503; el panel muestra error | La API responde 503 sin caerse. El operador sigue registrando en su cola offline.                                                                                                                             | `docker compose restart postgres` (los datos estan en volumen). Si no levanta, `docker compose up -d postgres` y revise los logs. |
+| **Se cae la API**                           | El panel marca error de red                          | El operador continua en modo offline.                                                                                                                                                                         | `docker compose restart api`. El proceso termina de forma ordenada (graceful shutdown) y las colas BullMQ se reanudan.            |
+| **PgBouncer no responde**                   | La API reporta timeout de conexion                   | La API cae a la conexion directa si se configura `DATABASE_URL` con el host de Postgres.                                                                                                                      | Revise `docker compose logs pgbouncer` y las conexiones disponibles en Postgres.                                                  |
+| **Redis no responde**                       | Log "Redis no disponible"                            | La API sigue operando con cache en memoria y rate limit local.                                                                                                                                                | `docker compose restart redis`.                                                                                                   |
+| **Se emite un certificado por error**       | Panel de certificados                                | Use **Revocar** con motivo: la verificacion publica pasa a "no valido" y queda auditado.                                                                                                                      | Re-emita el certificado corregido.                                                                                                |
+| **Se pierde el dispositivo de un operador** | Panel de asistencia                                  | La sesion caduca en 15 minutos; las operaciones se reasignan a otro operador.                                                                                                                                 | Cambie la contrasena del usuario en **Usuarios** y desactive la cuenta.                                                           |
 
 ---
 
@@ -306,13 +306,13 @@ proyectoAsistencia/
 
 ## 10. Documentacion
 
-| Documento | Contenido |
-| --- | --- |
-| [`docs/01-arquitectura.md`](docs/01-arquitectura.md) | Componentes, flujo de datos, pool de conexiones, cache, idempotencia y resiliencia. |
-| [`docs/02-decisiones-tecnicas.md`](docs/02-decisiones-tecnicas.md) | Decisiones con sus alternativas, trade-offs y estado de la regla de degradados. |
-| [`docs/03-operacion-dia-evento.md`](docs/03-operacion-dia-evento.md) | Manual operativo completo y plan de contingencia. |
-| [`docs/04-reglas-negocio.md`](docs/04-reglas-negocio.md) | Reglas de asistencia, refrigerios y elegibilidad del certificado. |
-| [`docs/05-guia-diseno.md`](docs/05-guia-diseno.md) | Paleta, tipografia, iconos, componentes y accesibilidad. |
-| [`docs/06-pruebas-carga.md`](docs/06-pruebas-carga.md) | Resultados medidos de las pruebas de carga. |
-| [`docs/07-manuales.md`](docs/07-manuales.md) | Manual breve para administrador y operador. |
-| [`docs/08-pruebas.md`](docs/08-pruebas.md) | Como ejecutar cada tipo de prueba y que se verifica en cada una. |
+| Documento                                                            | Contenido                                                                           |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| [`docs/01-arquitectura.md`](docs/01-arquitectura.md)                 | Componentes, flujo de datos, pool de conexiones, cache, idempotencia y resiliencia. |
+| [`docs/02-decisiones-tecnicas.md`](docs/02-decisiones-tecnicas.md)   | Decisiones con sus alternativas, trade-offs y estado de la regla de degradados.     |
+| [`docs/03-operacion-dia-evento.md`](docs/03-operacion-dia-evento.md) | Manual operativo completo y plan de contingencia.                                   |
+| [`docs/04-reglas-negocio.md`](docs/04-reglas-negocio.md)             | Reglas de asistencia, refrigerios y elegibilidad del certificado.                   |
+| [`docs/05-guia-diseno.md`](docs/05-guia-diseno.md)                   | Paleta, tipografia, iconos, componentes y accesibilidad.                            |
+| [`docs/06-pruebas-carga.md`](docs/06-pruebas-carga.md)               | Resultados medidos de las pruebas de carga.                                         |
+| [`docs/07-manuales.md`](docs/07-manuales.md)                         | Manual breve para administrador y operador.                                         |
+| [`docs/08-pruebas.md`](docs/08-pruebas.md)                           | Como ejecutar cada tipo de prueba y que se verifica en cada una.                    |

@@ -1,9 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
-import {
-  normalizarId,
-  type AsistenteResumen,
-  type RespuestaRegistro,
-} from '@seminario/shared';
+import { normalizarId, type AsistenteResumen, type RespuestaRegistro } from '@seminario/shared';
 import { db } from '../db/cliente.js';
 import {
   asistencias,
@@ -44,11 +40,7 @@ function aResumen(fila: {
 
 export async function buscarAsistentePorId(id: string) {
   const normalizado = normalizarId(id);
-  const filas = await db
-    .select()
-    .from(asistentes)
-    .where(eq(asistentes.id, normalizado))
-    .limit(1);
+  const filas = await db.select().from(asistentes).where(eq(asistentes.id, normalizado)).limit(1);
   return filas[0] ?? null;
 }
 
@@ -176,9 +168,7 @@ export async function registrarIngreso(
     .from(asistencias)
     .leftJoin(usuariosSistema, eq(usuariosSistema.id, asistencias.registradoPor))
     .innerJoin(jornadas, eq(jornadas.id, asistencias.jornadaId))
-    .where(
-      and(eq(asistencias.asistenteId, asistente.id), eq(asistencias.jornadaId, jornada.id)),
-    )
+    .where(and(eq(asistencias.asistenteId, asistente.id), eq(asistencias.jornadaId, jornada.id)))
     .limit(1);
 
   const original = existente[0];
@@ -281,9 +271,7 @@ export async function registrarSalida(
     .from(asistencias)
     .leftJoin(usuariosSistema, eq(usuariosSistema.id, asistencias.registradoPor))
     .innerJoin(jornadas, eq(jornadas.id, asistencias.jornadaId))
-    .where(
-      and(eq(asistencias.asistenteId, asistente.id), eq(asistencias.jornadaId, jornada.id)),
-    )
+    .where(and(eq(asistencias.asistenteId, asistente.id), eq(asistencias.jornadaId, jornada.id)))
     .limit(1);
 
   const original = existente[0];

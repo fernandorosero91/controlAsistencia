@@ -139,9 +139,13 @@ test.describe('App del operador en 360 px', () => {
     // Segundo intento: alerta ambar de duplicado con los datos del registro original
     await verificarYRegistrar(ID_PRUEBA);
     await expect(
-      pagina.getByTestId('resultado-registro').getByText('Asistencia ya registrada', { exact: true }),
+      pagina
+        .getByTestId('resultado-registro')
+        .getByText('Asistencia ya registrada', { exact: true }),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(pagina.getByTestId('resultado-registro').getByText('Registrado por')).toBeVisible();
+    await expect(
+      pagina.getByTestId('resultado-registro').getByText('Registrado por'),
+    ).toBeVisible();
 
     // Refrigerio
     await pagina.getByRole('tab', { name: /Refrigerio/ }).click();
@@ -275,7 +279,6 @@ test.describe('Panel de administracion', () => {
       headers: { Authorization: `Bearer ${token}` },
     });
     const estado = (await listado.json()).datos?.[0]?.estado as string | undefined;
-    console.log('estado en la API para el asistente de prueba:', estado);
 
     const botonEmitir = pagina.getByRole('button', { name: /^Emitir certificado/ }).first();
     if ((await botonEmitir.count()) === 0) {

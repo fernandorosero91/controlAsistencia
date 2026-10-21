@@ -41,22 +41,18 @@ export async function construirAplicacion(): Promise<FastifyInstance> {
   // Fastify responde 415 cuando un POST no trae Content-Type. Varias rutas de la
   // API (renovacion de sesion, cierre de sesion) se llaman sin cuerpo, asi que se
   // acepta cualquier tipo de contenido y un cuerpo vacio se interpreta como {}.
-  app.addContentTypeParser(
-    '*',
-    { parseAs: 'string' },
-    (_request, cuerpo, done) => {
-      const texto = typeof cuerpo === 'string' ? cuerpo.trim() : '';
-      if (texto.length === 0) {
-        done(null, undefined);
-        return;
-      }
-      try {
-        done(null, JSON.parse(texto));
-      } catch {
-        done(new Error('El cuerpo de la peticion no es JSON valido'), undefined);
-      }
-    },
-  );
+  app.addContentTypeParser('*', { parseAs: 'string' }, (_request, cuerpo, done) => {
+    const texto = typeof cuerpo === 'string' ? cuerpo.trim() : '';
+    if (texto.length === 0) {
+      done(null, undefined);
+      return;
+    }
+    try {
+      done(null, JSON.parse(texto));
+    } catch {
+      done(new Error('El cuerpo de la peticion no es JSON valido'), undefined);
+    }
+  });
 
   await app.register(helmet, {
     contentSecurityPolicy: {

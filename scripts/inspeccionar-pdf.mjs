@@ -17,13 +17,11 @@ const buffer = readFileSync(archivo);
 console.log(`Archivo: ${archivo} (${buffer.length} bytes)`);
 
 // Se recorren los objetos del PDF buscando flujos y recursos.
-/[\d]+ \d+ obj([\s\S]*?)endobj/g;
-
 const objetos = buffer.toString('latin1').match(/(\d+) 0 obj[\s\S]*?endobj/g) ?? [];
 console.log(`Objetos en el PDF: ${objetos.length}`);
 
-let texto = [];
-let imagenes = [];
+const texto = [];
+const imagenes = [];
 
 for (const objeto of objetos) {
   const referencia = /^(\d+) 0 obj/.exec(objeto)?.[1];

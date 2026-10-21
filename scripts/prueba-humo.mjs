@@ -45,7 +45,11 @@ const login = await peticion('/auth/login', {
   method: 'POST',
   body: JSON.stringify({ email: correo, password: clave }),
 });
-comprobar(login.estado === 200 && Boolean(login.cuerpo.tokenAcceso), 'login devuelve token', login.cuerpo);
+comprobar(
+  login.estado === 200 && Boolean(login.cuerpo.tokenAcceso),
+  'login devuelve token',
+  login.cuerpo,
+);
 const token = login.cuerpo?.tokenAcceso;
 if (!token) {
   console.log('No se puede continuar sin token.');
@@ -92,7 +96,11 @@ const ingreso = await peticion('/asistencias/ingreso', {
   headers: cabeceras,
   body: JSON.stringify({ asistenteId: 'EST00001', jornadaId }),
 });
-comprobar(ingreso.estado === 200 && ingreso.cuerpo.resultado === 'exito', 'primer ingreso: exito', ingreso.cuerpo);
+comprobar(
+  ingreso.estado === 200 && ingreso.cuerpo.resultado === 'exito',
+  'primer ingreso: exito',
+  ingreso.cuerpo,
+);
 
 const duplicado = await peticion('/asistencias/ingreso', {
   method: 'POST',
@@ -130,7 +138,10 @@ comprobar(
 );
 
 const dashboard = await peticion('/dashboard/resumen', { headers: cabeceras });
-comprobar(dashboard.estado === 200 && dashboard.cuerpo.totalAsistentes === 600, 'dashboard con 600 asistentes');
+comprobar(
+  dashboard.estado === 200 && dashboard.cuerpo.totalAsistentes === 600,
+  'dashboard con 600 asistentes',
+);
 const etag = dashboard.cabeceras.get('etag');
 comprobar(Boolean(etag), 'dashboard entrega ETag');
 const condicional = await fetch(`${base}/dashboard/resumen`, {
@@ -139,7 +150,11 @@ const condicional = await fetch(`${base}/dashboard/resumen`, {
 comprobar(condicional.status === 304, 'dashboard responde 304 con If-None-Match');
 
 const sinPermiso = await peticion('/certificados');
-comprobar(sinPermiso.estado === 401, 'listado de certificados exige autenticacion', sinPermiso.estado);
+comprobar(
+  sinPermiso.estado === 401,
+  'listado de certificados exige autenticacion',
+  sinPermiso.estado,
+);
 
 const noElegible = await peticion('/certificados/emitir/EST00002', {
   method: 'POST',
@@ -175,7 +190,10 @@ comprobar(
 );
 
 const pdf = await fetch(`${base}/certificados/EST00002/pdf`, { headers: cabeceras });
-comprobar(pdf.status === 200 && pdf.headers.get('content-type') === 'application/pdf', 'descarga de PDF admin');
+comprobar(
+  pdf.status === 200 && pdf.headers.get('content-type') === 'application/pdf',
+  'descarga de PDF admin',
+);
 
 const reporte = await fetch(`${base}/reportes/asistencia?formato=csv`, { headers: cabeceras });
 comprobar(reporte.status === 200, 'reporte CSV disponible', reporte.status);
@@ -183,5 +201,7 @@ comprobar(reporte.status === 200, 'reporte CSV disponible', reporte.status);
 const listado = await peticion('/asistentes?porPagina=5', { headers: cabeceras });
 comprobar(listado.estado === 200 && listado.cuerpo.total === 600, 'listado de asistentes paginado');
 
-console.log(fallos === 0 ? '\nTodas las comprobaciones pasaron.' : `\n${fallos} comprobaciones fallaron.`);
+console.log(
+  fallos === 0 ? '\nTodas las comprobaciones pasaron.' : `\n${fallos} comprobaciones fallaron.`,
+);
 process.exit(fallos === 0 ? 0 : 1);

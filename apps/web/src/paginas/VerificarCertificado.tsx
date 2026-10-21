@@ -79,7 +79,9 @@ export function VerificarCertificado() {
                 </div>
                 <div>
                   <dt className="font-medium text-neutro-600">Rol</dt>
-                  <dd className="text-neutro-900">{nombreRol(data.rol as 'estudiante' | 'docente' | null)}</dd>
+                  <dd className="text-neutro-900">
+                    {nombreRol(data.rol as 'estudiante' | 'docente' | null)}
+                  </dd>
                 </div>
                 <div>
                   <dt className="font-medium text-neutro-600">Seminario</dt>

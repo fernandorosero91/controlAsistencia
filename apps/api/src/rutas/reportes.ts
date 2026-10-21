@@ -51,7 +51,10 @@ export async function registrarRutasReportes(app: FastifyInstance): Promise<void
       if (filtros.formato === 'xlsx') {
         const contenido = await reporteComoXlsx(reporte);
         return reply
-          .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+          .header(
+            'Content-Type',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          )
           .header('Content-Disposition', `attachment; filename="${nombreArchivo}"`)
           .send(contenido);
       }

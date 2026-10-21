@@ -9,7 +9,8 @@ import {
   revocarCertificadoSchema,
 } from '@seminario/shared';
 import { db } from '../db/cliente.js';
-import { certificados, certificadosLotes } from '../db/esquema.js';import { errores } from '../plugins/errores.js';
+import { certificados, certificadosLotes } from '../db/esquema.js';
+import { errores } from '../plugins/errores.js';
 import { registrarAuditoria } from '../servicios/auditoria.js';
 import { ejecutarConIdempotencia } from '../servicios/idempotencia.js';
 import {
@@ -25,7 +26,9 @@ import { validarCuerpo, validarConsulta, validarParametros } from '../lib/valida
 
 const parametrosAsistente = z.object({ asistenteId: z.string().min(1).max(32) });
 const parametrosCertificado = z.object({ id: z.string().uuid('El identificador no es valido') });
-const parametrosLote = z.object({ loteId: z.string().uuid('El identificador del lote no es valido') });
+const parametrosLote = z.object({
+  loteId: z.string().uuid('El identificador del lote no es valido'),
+});
 
 export async function registrarRutasCertificados(app: FastifyInstance): Promise<void> {
   app.get(
@@ -69,12 +72,15 @@ export async function registrarRutasCertificados(app: FastifyInstance): Promise<
       const datos = validarCuerpo(emitirCertificadoSchema, cuerpo);
       const admin = request.usuario!;
 
-      const resultado = await ejecutarConIdempotencia(request, `certificados/emitir/${asistenteId}`, () =>
-        emitirCertificado(asistenteId, admin.id, {
-          excepcionManual: datos.excepcionManual,
-          motivo: datos.motivo,
-          regenerar: cuerpo.regenerar === true,
-        }),
+      const resultado = await ejecutarConIdempotencia(
+        request,
+        `certificados/emitir/${asistenteId}`,
+        () =>
+          emitirCertificado(asistenteId, admin.id, {
+            excepcionManual: datos.excepcionManual,
+            motivo: datos.motivo,
+            regenerar: cuerpo.regenerar === true,
+          }),
       );
 
       await registrarAuditoria(request, {
@@ -174,9 +180,7 @@ export async function registrarRutasCertificados(app: FastifyInstance): Promise<
           emitidoPor: certificados.emitidoPor,
         })
         .from(certificados)
-        .where(
-          and(eq(certificados.loteId, loteId), eq(certificados.revocado, false)),
-        );
+        .where(and(eq(certificados.loteId, loteId), eq(certificados.revocado, false)));
 
       if (certificadosLote.length === 0) {
         throw errores.noEncontrado('El lote no tiene certificados emitidos todavia');
@@ -202,10 +206,7 @@ export async function registrarRutasCertificados(app: FastifyInstance): Promise<
       const contenido = await zip.generateAsync({ type: 'nodebuffer' });
       return reply
         .header('Content-Type', 'application/zip')
-        .header(
-          'Content-Disposition',
-          `attachment; filename="certificados-lote-${loteId}.zip"`,
-        )
+        .header('Content-Disposition', `attachment; filename="certificados-lote-${loteId}.zip"`)
         .send(contenido);
     },
   );
@@ -224,10 +225,7 @@ export async function registrarRutasCertificados(app: FastifyInstance): Promise<
       const { pdf } = await obtenerPdfCertificado(asistenteId);
       return reply
         .header('Content-Type', 'application/pdf')
-        .header(
-          'Content-Disposition',
-          `attachment; filename="certificado-${asistenteId}.pdf"`,
-        )
+        .header('Content-Disposition', `attachment; filename="certificado-${asistenteId}.pdf"`)
         .send(pdf);
     },
   );

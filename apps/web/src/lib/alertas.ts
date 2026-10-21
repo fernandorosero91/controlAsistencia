@@ -46,9 +46,19 @@ const PATRONES_VIBRACION: Record<TipoAviso, number | number[]> = {
 };
 
 const FRECUENCIAS: Record<TipoAviso, [number, number][]> = {
-  exito: [[660, 0.09], [880, 0.12]],
-  aviso: [[520, 0.1], [0, 0.04], [520, 0.1]],
-  error: [[240, 0.16], [180, 0.2]],
+  exito: [
+    [660, 0.09],
+    [880, 0.12],
+  ],
+  aviso: [
+    [520, 0.1],
+    [0, 0.04],
+    [520, 0.1],
+  ],
+  error: [
+    [240, 0.16],
+    [180, 0.2],
+  ],
 };
 
 export function vibrar(tipo: TipoAviso): void {

@@ -90,7 +90,13 @@ function degradado(
  * Motivo visual: retícula de pixeles que evoca el software y la ingenieria.
  * Se dibuja en la esquina inferior derecha con baja opacidad.
  */
-function reticulaSoftware(pagina: PDFPage, x: number, y: number, columnas: number, filas: number): void {
+function reticulaSoftware(
+  pagina: PDFPage,
+  x: number,
+  y: number,
+  columnas: number,
+  filas: number,
+): void {
   const paso = 11;
   for (let fila = 0; fila < filas; fila += 1) {
     for (let columna = 0; columna < columnas; columna += 1) {
@@ -263,7 +269,13 @@ export async function generarCertificadoPDF(datos: DatosCertificado): Promise<Ui
   const nombreCompleto = datos.nombre;
   const lineasNombre = envolver(nombreCompleto, fuenteSerif, 26, 440);
   for (const linea of lineasNombre.slice(0, 2)) {
-    pagina.drawText(linea, { x: MARGEN, y: cursorY, size: 26, font: fuenteSerif, color: AZUL_NOCHE });
+    pagina.drawText(linea, {
+      x: MARGEN,
+      y: cursorY,
+      size: 26,
+      font: fuenteSerif,
+      color: AZUL_NOCHE,
+    });
     cursorY -= 30;
   }
 
@@ -379,7 +391,8 @@ export async function generarCertificadoPDF(datos: DatosCertificado): Promise<Ui
       color: GRIS,
     });
   }
-  const anchoFirma = (ANCHO - MARGEN * 2 - (firmantes.length - 1) * 30) / Math.max(firmantes.length, 1);
+  const anchoFirma =
+    (ANCHO - MARGEN * 2 - (firmantes.length - 1) * 30) / Math.max(firmantes.length, 1);
   firmantes.forEach((firmante, indice) => {
     const x = MARGEN + indice * (anchoFirma + 30);
     const y = 116;

@@ -14,17 +14,68 @@ import {
 import { aplicarMigraciones } from './migrate.js';
 
 const NOMBRES = [
-  'Ana', 'Andres', 'Beatriz', 'Camilo', 'Carla', 'Daniel', 'Diana', 'Eduardo',
-  'Elena', 'Felipe', 'Gabriela', 'Hector', 'Isabel', 'Javier', 'Laura', 'Manuel',
-  'Marcela', 'Nicolas', 'Paula', 'Ricardo', 'Sofia', 'Tomas', 'Valentina', 'Wilson',
-  'Ximena', 'Yolanda', 'Zulma', 'Sebastian', 'Lucia', 'Mateo',
+  'Ana',
+  'Andres',
+  'Beatriz',
+  'Camilo',
+  'Carla',
+  'Daniel',
+  'Diana',
+  'Eduardo',
+  'Elena',
+  'Felipe',
+  'Gabriela',
+  'Hector',
+  'Isabel',
+  'Javier',
+  'Laura',
+  'Manuel',
+  'Marcela',
+  'Nicolas',
+  'Paula',
+  'Ricardo',
+  'Sofia',
+  'Tomas',
+  'Valentina',
+  'Wilson',
+  'Ximena',
+  'Yolanda',
+  'Zulma',
+  'Sebastian',
+  'Lucia',
+  'Mateo',
 ];
 
 const APELLIDOS = [
-  'Acosta', 'Benitez', 'Cardona', 'Duarte', 'Escobar', 'Franco', 'Giraldo',
-  'Henao', 'Jaramillo', 'Lopez', 'Mejia', 'Navarro', 'Ochoa', 'Pelaez', 'Quintero',
-  'Restrepo', 'Sandoval', 'Torres', 'Uribe', 'Valencia', 'Zapata', 'Montoya',
-  'Ospina', 'Piedrahita', 'Cataño', 'Bedoya', 'Arango', 'Castillo', 'Gallego',
+  'Acosta',
+  'Benitez',
+  'Cardona',
+  'Duarte',
+  'Escobar',
+  'Franco',
+  'Giraldo',
+  'Henao',
+  'Jaramillo',
+  'Lopez',
+  'Mejia',
+  'Navarro',
+  'Ochoa',
+  'Pelaez',
+  'Quintero',
+  'Restrepo',
+  'Sandoval',
+  'Torres',
+  'Uribe',
+  'Valencia',
+  'Zapata',
+  'Montoya',
+  'Ospina',
+  'Piedrahita',
+  'Cataño',
+  'Bedoya',
+  'Arango',
+  'Castillo',
+  'Gallego',
   'Hoyos',
 ];
 
@@ -83,7 +134,7 @@ export async function sembrarDatos(): Promise<void> {
   const fecha = fechaSeminario();
   const inicio = horaDesdeTexto(entorno.SEMINARIO_HORA_INICIO);
   const fin = horaDesdeTexto(entorno.SEMINARIO_HORA_FIN);
-  const duracionTotal = (fin.hora + fin.minuto / 60) - (inicio.hora + inicio.minuto / 60);
+  const duracionTotal = fin.hora + fin.minuto / 60 - (inicio.hora + inicio.minuto / 60);
   const mitad = Math.round(duracionTotal / 2);
   const horaMedio = inicio.hora + mitad;
   const horaFin = conHora(fecha, fin.hora, fin.minuto);
@@ -230,8 +281,7 @@ async function principal(): Promise<void> {
   await pool.end();
 }
 
-const invocadoDirectamente =
-  process.argv[1] !== undefined && process.argv[1].includes('seed');
+const invocadoDirectamente = process.argv[1] !== undefined && process.argv[1].includes('seed');
 
 if (invocadoDirectamente) {
   principal().catch((error: unknown) => {

@@ -6,13 +6,13 @@ Mediciones reales ejecutadas con **k6 v2.3.0** contra la API en ejecucion.
 
 ## 1. Entorno de la medicion
 
-| Aspecto | Valor |
-| --- | --- |
-| Equipo | Windows 11, 12 nucleos, 32 GB de memoria |
-| API | Node 20 (tsx), 1 instancia, pool de 20 conexiones |
-| Datos | PostgreSQL 15 en Docker, PgBouncer en modo `transaction`, Redis 7 |
-| Padron | 600 asistentes de prueba (`K6L00000` a `K6L00599`) |
-| Version | k6 2.3.0 (Windows amd64) |
+| Aspecto | Valor                                                             |
+| ------- | ----------------------------------------------------------------- |
+| Equipo  | Windows 11, 12 nucleos, 32 GB de memoria                          |
+| API     | Node 20 (tsx), 1 instancia, pool de 20 conexiones                 |
+| Datos   | PostgreSQL 15 en Docker, PgBouncer en modo `transaction`, Redis 7 |
+| Padron  | 600 asistentes de prueba (`K6L00000` a `K6L00599`)                |
+| Version | k6 2.3.0 (Windows amd64)                                          |
 
 Reproducir:
 
@@ -33,17 +33,17 @@ evento real.
 **Criterio de aceptacion:** p95 por debajo de 300 ms, tasa de error por debajo del 1 % y cero
 duplicados.
 
-| Metrica | Resultado | Criterio | Estado |
-| --- | --- | --- | --- |
-| Peticiones de ingreso | 569 | unas 600 en 3 min | Correcto |
-| Tiempo medio | 20,21 ms | - | - |
-| Mediana | 16,19 ms | - | - |
-| **p90** | **23,58 ms** | - | - |
-| **p95** | **29,03 ms** | < 300 ms | **Correcto** |
-| Maximo | 715,68 ms | - | Un pico aislado |
-| **Tasa de error** | **0,00 %** (0 de 569) | < 1 % | **Correcto** |
-| Comprobaciones superadas | 100 % (1138 de 1138) | > 99 % | **Correcto** |
-| Respuestas 5xx | 0 | 0 | **Correcto** |
+| Metrica                  | Resultado             | Criterio          | Estado          |
+| ------------------------ | --------------------- | ----------------- | --------------- |
+| Peticiones de ingreso    | 569                   | unas 600 en 3 min | Correcto        |
+| Tiempo medio             | 20,21 ms              | -                 | -               |
+| Mediana                  | 16,19 ms              | -                 | -               |
+| **p90**                  | **23,58 ms**          | -                 | -               |
+| **p95**                  | **29,03 ms**          | < 300 ms          | **Correcto**    |
+| Maximo                   | 715,68 ms             | -                 | Un pico aislado |
+| **Tasa de error**        | **0,00 %** (0 de 569) | < 1 %             | **Correcto**    |
+| Comprobaciones superadas | 100 % (1138 de 1138)  | > 99 %            | **Correcto**    |
+| Respuestas 5xx           | 0                     | 0                 | **Correcto**    |
 
 La maxima de 715 ms corresponde al primer request tras la apertura del pool de conexiones: es
 calentamiento, no un problema sostenido (la mediana del mismo escenario es de 16 ms).
@@ -55,15 +55,15 @@ calentamiento, no un problema sostenido (la mediana del mismo escenario es de 16
 Ocho operadores piden el ingreso del **mismo** asistente durante un minuto: 1725 peticiones al
 mismo registro. Es la prueba de integridad bajo concurrencia.
 
-| Metrica | Resultado | Criterio | Estado |
-| --- | --- | --- | --- |
-| Peticiones | 1725 (9,54 por segundo) | - | - |
-| Tiempo medio | 27,17 ms | - | - |
-| **p95** | **41,45 ms** | < 300 ms | **Correcto** |
-| **Respuestas con alerta de duplicado** | **100 %** (1725 de 1725) | > 98 % | **Correcto** |
-| **Tasa de error** | **0,00 %** | < 1 % | **Correcto** |
-| **Respuestas 5xx** | **0** | 0 | **Correcto** |
-| Registros creados en la base de datos | **1** | 1 | **Correcto** |
+| Metrica                                | Resultado                | Criterio | Estado       |
+| -------------------------------------- | ------------------------ | -------- | ------------ |
+| Peticiones                             | 1725 (9,54 por segundo)  | -        | -            |
+| Tiempo medio                           | 27,17 ms                 | -        | -            |
+| **p95**                                | **41,45 ms**             | < 300 ms | **Correcto** |
+| **Respuestas con alerta de duplicado** | **100 %** (1725 de 1725) | > 98 %   | **Correcto** |
+| **Tasa de error**                      | **0,00 %**               | < 1 %    | **Correcto** |
+| **Respuestas 5xx**                     | **0**                    | 0        | **Correcto** |
+| Registros creados en la base de datos  | **1**                    | 1        | **Correcto** |
 
 Este es el resultado que respalda el criterio de aceptacion principal: **de 1725 peticiones
 simultaneas sobre el mismo asistente, el sistema creo un unico registro y respondio con la
@@ -76,15 +76,15 @@ alerta de duplicado las 1725 veces**, sin un solo error de servidor.
 Diez administradores consultando `/dashboard/resumen` cada 5 segundos durante 2 minutos
 (240 consultas en total, el comportamiento real del panel).
 
-| Metrica | Resultado | Criterio | Estado |
-| --- | --- | --- | --- |
-| Peticiones | 240 | 240 | Correcto |
-| Tiempo medio | 64,93 ms | - | - |
-| Mediana | 61,70 ms | - | - |
-| p95 | 139,40 ms | < 300 ms | **Correcto** |
-| Maximo | 234,81 ms | - | - |
-| **Tasa de error** | **0,00 %** (0 de 240) | < 1 % | **Correcto** |
-| Comprobaciones superadas | 100 % (720 de 720) | > 99 % | **Correcto** |
+| Metrica                  | Resultado             | Criterio | Estado       |
+| ------------------------ | --------------------- | -------- | ------------ |
+| Peticiones               | 240                   | 240      | Correcto     |
+| Tiempo medio             | 64,93 ms              | -        | -            |
+| Mediana                  | 61,70 ms              | -        | -            |
+| p95                      | 139,40 ms             | < 300 ms | **Correcto** |
+| Maximo                   | 234,81 ms             | -        | -            |
+| **Tasa de error**        | **0,00 %** (0 de 240) | < 1 %    | **Correcto** |
+| Comprobaciones superadas | 100 % (720 de 720)    | > 99 %   | **Correcto** |
 
 El endpoint responde con `ETag`: el panel envia `If-None-Match` y recibe `304 Not Modified` cuando
 no hay cambios, de modo que la base de datos no se consulta en cada iteracion. El tiempo de
@@ -106,22 +106,22 @@ depende del numero de asistentes elegibles, por lo que se mide sobre el padron c
 Ademas de la carga, la suite de integracion lanza **100 peticiones simultaneas** contra
 PostgreSQL real:
 
-| Prueba | Resultado |
-| --- | --- |
+| Prueba                                       | Resultado                                                 |
+| -------------------------------------------- | --------------------------------------------------------- |
 | 100 ingresos simultaneos del mismo asistente | 1 `exito`, 99 `duplicado`, **1 fila** en la base de datos |
-| 100 entregas de refrigerio simultaneas | 1 `exito`, 99 `duplicado`, **1 fila** en la base de datos |
-| Reintento con la misma `Idempotency-Key` | Misma respuesta, **1 sola fila** |
+| 100 entregas de refrigerio simultaneas       | 1 `exito`, 99 `duplicado`, **1 fila** en la base de datos |
+| Reintento con la misma `Idempotency-Key`     | Misma respuesta, **1 sola fila**                          |
 
 ---
 
 ## 7. Hallazgos y ajustes derivados de las pruebas
 
-| Hallazgo | Ajuste realizado |
-| --- | --- |
-| El limite de inicio de sesion por IP (10/min) bloqueaba a varios operadores que comparten la red de la sede. | El limite paso a ser **por cuenta** (`IP + correo`): cada operador tiene su propio cupo y la proteccion contra fuerza bruta se mantiene. |
-| Un perfil de llegada de 120 peticiones por segundo no representa un seminario: dispara el limite de solicitudes y mide la cola, no el sistema. | El perfil se ajusto a la llegada realista (2 a 5 por segundo) y la rafaga de duplicados se modero. |
-| El limite de 600 solicitudes por minuto y por operador se activo durante la rafaga sintetica. | Es la proteccion funcionando: en el evento cada operador envia unas pocas peticiones por segundo. |
-| El `setup()` de k6 puede coincidir con el limite de inicio de sesion. | El script espera y reintenta hasta 4 veces con 20 s de pausa. |
+| Hallazgo                                                                                                                                       | Ajuste realizado                                                                                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| El limite de inicio de sesion por IP (10/min) bloqueaba a varios operadores que comparten la red de la sede.                                   | El limite paso a ser **por cuenta** (`IP + correo`): cada operador tiene su propio cupo y la proteccion contra fuerza bruta se mantiene. |
+| Un perfil de llegada de 120 peticiones por segundo no representa un seminario: dispara el limite de solicitudes y mide la cola, no el sistema. | El perfil se ajusto a la llegada realista (2 a 5 por segundo) y la rafaga de duplicados se modero.                                       |
+| El limite de 600 solicitudes por minuto y por operador se activo durante la rafaga sintetica.                                                  | Es la proteccion funcionando: en el evento cada operador envia unas pocas peticiones por segundo.                                        |
+| El `setup()` de k6 puede coincidir con el limite de inicio de sesion.                                                                          | El script espera y reintenta hasta 4 veces con 20 s de pausa.                                                                            |
 
 ---
 

@@ -34,15 +34,17 @@ interface Props {
 export function TarjetaVerificacion({ verificacion, cargando, jornadaId }: Props) {
   if (cargando) {
     return (
-      <div
-        className="superficie flex items-center gap-3 p-4"
-        role="status"
-        aria-live="polite"
-      >
+      <div className="superficie flex items-center gap-3 p-4" role="status" aria-live="polite">
         <span className="h-8 w-8 animate-pulse rounded-xl bg-neutro-200" aria-hidden="true" />
         <div className="flex-1 space-y-2">
-          <span className="block h-4 w-2/3 animate-pulse rounded bg-neutro-200" aria-hidden="true" />
-          <span className="block h-3 w-1/3 animate-pulse rounded bg-neutro-200" aria-hidden="true" />
+          <span
+            className="block h-4 w-2/3 animate-pulse rounded bg-neutro-200"
+            aria-hidden="true"
+          />
+          <span
+            className="block h-3 w-1/3 animate-pulse rounded bg-neutro-200"
+            aria-hidden="true"
+          />
         </div>
         <span className="text-sm text-neutro-500">Buscando asistente</span>
       </div>
@@ -115,7 +117,10 @@ export function TarjetaVerificacion({ verificacion, cargando, jornadaId }: Props
 
       <ul className="divide-y divide-neutro-100 border-t border-neutro-100">
         {verificacion.jornadas.map((jornada) => (
-          <li key={jornada.jornadaId} className="flex items-center justify-between gap-2 px-4 py-2.5">
+          <li
+            key={jornada.jornadaId}
+            className="flex items-center justify-between gap-2 px-4 py-2.5"
+          >
             <span className="text-sm text-neutro-700">{jornada.jornadaNombre}</span>
             {jornada.tieneIngreso ? (
               <span className="flex items-center gap-1.5 text-xs font-semibold text-aviso-700">
@@ -133,8 +138,8 @@ export function TarjetaVerificacion({ verificacion, cargando, jornadaId }: Props
       {yaRegistrado ? (
         <p className="border-t border-aviso-200 bg-aviso-100 px-4 py-2.5 text-xs font-semibold text-aviso-700">
           Esta persona ya tiene ingreso registrado en la jornada activa
-          {jornadaActual?.registradoPor ? ` (${jornadaActual.registradoPor})` : ''}. Confirme que es la
-          misma persona antes de continuar.
+          {jornadaActual?.registradoPor ? ` (${jornadaActual.registradoPor})` : ''}. Confirme que es
+          la misma persona antes de continuar.
         </p>
       ) : null}
     </div>

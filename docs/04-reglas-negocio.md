@@ -11,11 +11,11 @@ prevalece el codigo, pero la discrepancia es un error que hay que corregir.
 
 Cada asistente tiene tres identificadores:
 
-| Identificador | Origen | Uso |
-| --- | --- | --- |
-| `id` | Institucional (cedula o codigo estudiantil) | Clave primaria. Se normaliza a mayusculas sin espacios. |
-| `codigo_registro` | Generado por el sistema | 6 caracteres del alfabeto `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (sin `O`, `I`, `0` ni `1` para que se pueda dictar). **Unico e inmutable.** |
-| `email` | Institucional o institucional del estudiante | Destino del codigo de registro y del QR. Opcional. |
+| Identificador     | Origen                                       | Uso                                                                                                                                      |
+| ----------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`              | Institucional (cedula o codigo estudiantil)  | Clave primaria. Se normaliza a mayusculas sin espacios.                                                                                  |
+| `codigo_registro` | Generado por el sistema                      | 6 caracteres del alfabeto `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (sin `O`, `I`, `0` ni `1` para que se pueda dictar). **Unico e inmutable.** |
+| `email`           | Institucional o institucional del estudiante | Destino del codigo de registro y del QR. Opcional.                                                                                       |
 
 - El `id` institucional es **inmutable** una vez creado.
 - El `codigo_registro` es **inmutable** (garantizado por trigger en la base de datos).
@@ -65,13 +65,13 @@ Cada asistente tiene tres identificadores:
 
 ### 2.3 Alertas de la interfaz
 
-| Situacion | Color | Icono | Mensaje |
-| --- | --- | --- | --- |
-| Registro creado | Verde | check | "Registro exitoso" |
-| Ya existia | Ambar | alerta | "Asistencia ya registrada" + hora y responsable |
-| ID no encontrado | Rojo | equis | "ID no encontrado" + busqueda manual |
-| Fuera de ventana | Ambar | informacion | Horario de la ventana y a quien llamar |
-| No permitido | Rojo | equis | Motivo (inactivo, sin asistencia...) |
+| Situacion        | Color | Icono       | Mensaje                                         |
+| ---------------- | ----- | ----------- | ----------------------------------------------- |
+| Registro creado  | Verde | check       | "Registro exitoso"                              |
+| Ya existia       | Ambar | alerta      | "Asistencia ya registrada" + hora y responsable |
+| ID no encontrado | Rojo  | equis       | "ID no encontrado" + busqueda manual            |
+| Fuera de ventana | Ambar | informacion | Horario de la ventana y a quien llamar          |
+| No permitido     | Rojo  | equis       | Motivo (inactivo, sin asistencia...)            |
 
 Un duplicado **nunca** es un error de servidor.
 
@@ -110,12 +110,12 @@ Un asistente es **elegible** si cumple las tres condiciones:
 
 ### 4.2 Motivos de inelegibilidad
 
-| Motivo | Significado |
-| --- | --- |
-| `falta_asistencia_jornada` | No tiene ingreso en una de las jornadas exigidas. |
-| `sin_registro_salida` | Tiene ingresos pero nunca registro su salida. |
-| `salida_antes_de_hora_fin` | Registro la salida antes de la hora de fin mas la tolerancia. |
-| `sin_jornadas_configuradas` | El seminario no tiene jornadas (error de configuracion). |
+| Motivo                      | Significado                                                   |
+| --------------------------- | ------------------------------------------------------------- |
+| `falta_asistencia_jornada`  | No tiene ingreso en una de las jornadas exigidas.             |
+| `sin_registro_salida`       | Tiene ingresos pero nunca registro su salida.                 |
+| `salida_antes_de_hora_fin`  | Registro la salida antes de la hora de fin mas la tolerancia. |
+| `sin_jornadas_configuradas` | El seminario no tiene jornadas (error de configuracion).      |
 
 El panel muestra estos motivos junto al nombre del asistente, para que la coordinacion
 sepa exactamente que falta.
@@ -126,13 +126,13 @@ sepa exactamente que falta.
 - `hora_fin_seminario = 2026-10-27 18:00 (America/Bogota)`.
 - `tolerancia_minutos = 15`, por lo que el umbral de salida es **17:45**.
 
-| Escenario | Resultado |
-| --- | --- |
-| Entro a las 08:05 y salio a las 18:10 | Elegible |
-| Entro a las 08:05 y salio a las 17:40 | No elegible: `salida_antes_de_hora_fin` |
-| Entro a las 08:05 y no salio | No elegible: `sin_registro_salida` |
-| Entro solo a la manana | No elegible: `falta_asistencia_jornada` |
-| Entro a ambas y salio a las 18:10, con `exigir_ambas_jornadas = false` | Elegible |
+| Escenario                                                              | Resultado                               |
+| ---------------------------------------------------------------------- | --------------------------------------- |
+| Entro a las 08:05 y salio a las 18:10                                  | Elegible                                |
+| Entro a las 08:05 y salio a las 17:40                                  | No elegible: `salida_antes_de_hora_fin` |
+| Entro a las 08:05 y no salio                                           | No elegible: `sin_registro_salida`      |
+| Entro solo a la manana                                                 | No elegible: `falta_asistencia_jornada` |
+| Entro a ambas y salio a las 18:10, con `exigir_ambas_jornadas = false` | Elegible                                |
 
 ---
 
@@ -196,14 +196,14 @@ obligatorio de al menos 10 caracteres, y queda en la auditoria.
 
 El archivo (XLSX o CSV) tiene las columnas:
 
-| Columna | Obligatoria | Regla |
-| --- | --- | --- |
-| `id` | Si | ID institucional, se normaliza a mayusculas y se valida con la expresion regular configurada. |
-| `nombres` | Si | Texto, maximo 80 caracteres. |
-| `apellidos` | Si | Texto, maximo 80 caracteres. |
-| `rol` | Si | `estudiante` o `docente`. |
-| `semestre` | Solo estudiantes | Entero entre 1 y 30. Vacio en docentes. |
-| `email` | No | Correo valido. Destino del QR. |
+| Columna     | Obligatoria      | Regla                                                                                         |
+| ----------- | ---------------- | --------------------------------------------------------------------------------------------- |
+| `id`        | Si               | ID institucional, se normaliza a mayusculas y se valida con la expresion regular configurada. |
+| `nombres`   | Si               | Texto, maximo 80 caracteres.                                                                  |
+| `apellidos` | Si               | Texto, maximo 80 caracteres.                                                                  |
+| `rol`       | Si               | `estudiante` o `docente`.                                                                     |
+| `semestre`  | Solo estudiantes | Entero entre 1 y 30. Vacio en docentes.                                                       |
+| `email`     | No               | Correo valido. Destino del QR.                                                                |
 
 El flujo es en **dos pasos**:
 

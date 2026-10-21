@@ -1,13 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
-import {
-  AlertTriangle,
-  CircleAlert,
-  Inbox,
-  Loader2,
-  RefreshCw,
-  X,
-} from 'lucide-react';
+import { AlertTriangle, CircleAlert, Inbox, Loader2, RefreshCw, X } from 'lucide-react';
 import clsx from 'clsx';
 
 export function PantallaCarga({ mensaje = 'Cargando' }: { mensaje?: string }) {
@@ -168,7 +161,10 @@ export function Aviso({
 
   return (
     <div
-      className={clsx('flex items-start gap-2.5 rounded-2xl border px-4 py-3 text-sm', estilos[tono])}
+      className={clsx(
+        'flex items-start gap-2.5 rounded-2xl border px-4 py-3 text-sm',
+        estilos[tono],
+      )}
       role="status"
     >
       {Icono ? <Icono className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> : null}

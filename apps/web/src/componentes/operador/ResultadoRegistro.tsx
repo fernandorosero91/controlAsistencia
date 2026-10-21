@@ -68,17 +68,15 @@ export function ResultadoRegistro({ resultado, alCerrar }: Props) {
 
   const estilos = ESTILOS[resultado.resultado];
   const { Icono } = estilos;
-  const existente = resultado.existente as
-    | {
-        horaIngreso?: string;
-        horaSalida?: string | null;
-        entregadoAt?: string;
-        registradoPor?: string | null;
-        entregadoPor?: string | null;
-        jornadaNombre?: string | null;
-        tipoRefrigerioNombre?: string | null;
-      }
-    | null;
+  const existente = resultado.existente as {
+    horaIngreso?: string;
+    horaSalida?: string | null;
+    entregadoAt?: string;
+    registradoPor?: string | null;
+    entregadoPor?: string | null;
+    jornadaNombre?: string | null;
+    tipoRefrigerioNombre?: string | null;
+  } | null;
 
   const hora = existente?.horaIngreso ?? existente?.entregadoAt ?? existente?.horaSalida ?? null;
   const responsable = existente?.registradoPor ?? existente?.entregadoPor ?? null;
@@ -159,13 +157,17 @@ export function ResultadoRegistro({ resultado, alCerrar }: Props) {
               ) : null}
               {contexto ? (
                 <div className="flex gap-2">
-                  <dt className="w-20 shrink-0 font-semibold text-neutro-500 sm:w-24">Referencia</dt>
+                  <dt className="w-20 shrink-0 font-semibold text-neutro-500 sm:w-24">
+                    Referencia
+                  </dt>
                   <dd className={estilos.texto}>{contexto}</dd>
                 </div>
               ) : null}
               {responsable ? (
                 <div className="flex gap-2">
-                  <dt className="w-20 shrink-0 font-semibold text-neutro-500 sm:w-24">Registrado por</dt>
+                  <dt className="w-20 shrink-0 font-semibold text-neutro-500 sm:w-24">
+                    Registrado por
+                  </dt>
                   <dd className={estilos.texto}>{responsable}</dd>
                 </div>
               ) : null}

@@ -120,8 +120,8 @@ export function ImportarAsistentes() {
             Seleccione el archivo de Excel con el padron de asistentes
           </p>
           <p className="mt-1 text-xs text-neutro-500">
-            Formato XLSX (primera hoja) o CSV. Maximo 10 MB y 5000 filas por importacion. El
-            codigo de registro y el QR los genera el sistema: no se importan.
+            Formato XLSX (primera hoja) o CSV. Maximo 10 MB y 5000 filas por importacion. El codigo
+            de registro y el QR los genera el sistema: no se importan.
           </p>
           <input
             ref={referenciaArchivo}
@@ -217,7 +217,9 @@ export function ImportarAsistentes() {
                       {String(fila.datos.nombres ?? '')} {String(fila.datos.apellidos ?? '')}
                     </td>
                     <td>{String(fila.datos.rol ?? '')}</td>
-                    <td>{fila.datos.semestre === null ? '-' : String(fila.datos.semestre ?? '-')}</td>
+                    <td>
+                      {fila.datos.semestre === null ? '-' : String(fila.datos.semestre ?? '-')}
+                    </td>
                     <td>
                       {fila.errores.length === 0 ? (
                         <Insignia tono="exito">Valida</Insignia>

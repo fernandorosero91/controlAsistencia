@@ -13,13 +13,10 @@ export const emitirCertificadoSchema = z
     excepcionManual: z.boolean().default(false),
     motivo: z.string().trim().max(500).optional(),
   })
-  .refine(
-    (datos) => !datos.excepcionManual || (datos.motivo && datos.motivo.length >= 10),
-    {
-      message: 'La excepcion manual exige un motivo de al menos 10 caracteres',
-      path: ['motivo'],
-    },
-  );
+  .refine((datos) => !datos.excepcionManual || (datos.motivo && datos.motivo.length >= 10), {
+    message: 'La excepcion manual exige un motivo de al menos 10 caracteres',
+    path: ['motivo'],
+  });
 
 export type EmitirCertificadoInput = z.infer<typeof emitirCertificadoSchema>;
 

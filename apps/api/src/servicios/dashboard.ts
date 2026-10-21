@@ -1,9 +1,6 @@
 import { createHash } from 'node:crypto';
 import { count, eq, gte, isNull, sql } from 'drizzle-orm';
-import {
-  evaluarElegibilidad,
-  type ResumenDashboard,
-} from '@seminario/shared';
+import { evaluarElegibilidad, type ResumenDashboard } from '@seminario/shared';
 import { cargarEntorno } from '../config/entorno.js';
 import { db } from '../db/cliente.js';
 import {
@@ -118,8 +115,7 @@ export async function calcularResumen(): Promise<ResumenDashboard> {
   const mapaRefrigerios = new Map(porRefrigerio.map((fila) => [fila.tipoRefrigerioId, fila]));
   const resumenRefrigerios = tipos.map((tipo) => {
     const entregados = mapaRefrigerios.get(tipo.id)?.entregados ?? 0;
-    const posibles =
-      mapaJornadas.get(tipo.jornadaId)?.ingresos ?? 0;
+    const posibles = mapaJornadas.get(tipo.jornadaId)?.ingresos ?? 0;
     return {
       tipoRefrigerioId: tipo.id,
       nombre: tipo.nombre,

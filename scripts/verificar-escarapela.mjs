@@ -25,7 +25,7 @@ const documento = await pdfjs.getDocument({ data: datos, useSystemFonts: false }
 console.log(`Archivo: ${archivo}`);
 console.log(`Paginas: ${documento.numPages}\n`);
 
-let codigosQr = [];
+const codigosQr = [];
 for (let numero = 1; numero <= documento.numPages; numero += 1) {
   const pagina = await documento.getPage(numero);
   const contenido = await pagina.getTextContent();
@@ -60,7 +60,9 @@ for (let numero = 1; numero <= documento.numPages; numero += 1) {
     const recurso = pagina.common.get(nombreImagen);
     if (!recurso?.data) continue;
     const buffer = Buffer.from(recurso.data);
-    if (!buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    if (
+      !buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    ) {
       continue;
     }
     const png = PNG.sync.read(buffer);
@@ -96,11 +98,7 @@ if (codigosQr.length === 0) {
         width: 512,
       }),
     );
-    const decodificado = jsQR(
-      new Uint8ClampedArray(png.data),
-      png.width,
-      png.height,
-    );
+    const decodificado = jsQR(new Uint8ClampedArray(png.data), png.width, png.height);
     const ok = decodificado?.data === codigo;
     console.log(`   ${ok ? 'OK' : 'FALLA'}  ${codigo} -> ${decodificado?.data ?? 'sin lectura'}`);
     if (!ok) process.exitCode = 1;

@@ -33,10 +33,7 @@ async function principal(): Promise<void> {
   });
 
   await app.listen({ host: entorno.HOST, port: entorno.PORT });
-  logger.info(
-    { puerto: entorno.PORT, entorno: entorno.NODE_ENV },
-    'API de asistencia iniciada',
-  );
+  logger.info({ puerto: entorno.PORT, entorno: entorno.NODE_ENV }, 'API de asistencia iniciada');
 }
 
 principal().catch((error: unknown) => {

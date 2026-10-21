@@ -63,8 +63,7 @@ export function Reportes() {
 
   const { data: jornadas } = useQuery({
     queryKey: ['jornadas'],
-    queryFn: () =>
-      api.obtener<{ jornadas: { id: number; nombre: string }[] }>('/jornadas'),
+    queryFn: () => api.obtener<{ jornadas: { id: number; nombre: string }[] }>('/jornadas'),
     staleTime: 60_000,
   });
 

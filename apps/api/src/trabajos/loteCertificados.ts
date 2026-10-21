@@ -20,7 +20,12 @@ let trabajador: Worker | null = null;
 
 function conexionRedis() {
   if (!redis) return null;
-  return { host: redis.options.host, port: redis.options.port, password: redis.options.password, db: redis.options.db };
+  return {
+    host: redis.options.host,
+    port: redis.options.port,
+    password: redis.options.password,
+    db: redis.options.db,
+  };
 }
 
 export function iniciarColaCertificados(): { cola: Queue | null; trabajador: Worker | null } {
