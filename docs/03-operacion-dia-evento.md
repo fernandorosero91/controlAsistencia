@@ -41,10 +41,10 @@ El sistema asigna a cada asistente un **codigo de registro** de 6 caracteres (po
 
 ### 1.3 Entregar el codigo de registro
 
-| Via    | Como                                                                    | Cuando                    |
-| ------ | ----------------------------------------------------------------------- | ------------------------- |
-| Correo | **Carnets y QR > Enviar codigo y QR por correo**                        | Si hay SMTP configurado   |
-| Papel  | **Carnets y QR > Descargar carta de QR** (PDF, una tarjeta por persona) | Alternativa o complemento |
+| Via    | Como                                                        | Cuando                    |
+| ------ | ----------------------------------------------------------- | ------------------------- |
+| Correo | **Carnets y QR > Enviar codigo y QR por correo**            | Si hay SMTP configurado   |
+| Papel  | **Carnets y QR > Descargar carta de QR** (PDF, escarapelas) | Alternativa o complemento |
 
 El correo incluye el codigo, la imagen del QR y la indicacion de que se puede dictar.
 La carta en PDF sirve para los asistentes sin correo o para entregarla en la puerta.
@@ -53,6 +53,10 @@ La carta en PDF sirve para los asistentes sin correo o para entregarla en la pue
 
 **Carnets y QR > Descargar carnets** genera un PDF con 6 escarapelas por hoja: codigo QR, nombre,
 rol, semestre, ID institucional y codigo de registro. Imprima en papel grueso o plastificado.
+
+**Carnets y QR > Descargar carta de QR** genera las escarapelas grandes: 4 por hoja, con el logo de
+la Universidad, el nombre del asistente en grande, el rol, la facultad, el QR con su codigo de
+registro en grande (por si el escaner falla) y los datos de identificacion (ID y cedula).
 
 ### 1.5 Configurar el evento
 

@@ -18,7 +18,7 @@ export const asistenteSchema = z.object({
   apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios').max(80),
   rol: z.enum(ROLES_ASISTENTE),
   semestre: z.number().int().min(1).max(30).nullable().optional(),
-  cedulaCiudadania: cedulaSchema.optional().or(z.literal('')),
+  cedulaCiudadania: cedulaSchema.nullable().optional().or(z.literal('')),
   email: z
     .string()
     .trim()
@@ -55,7 +55,7 @@ export const asistenteUpdateSchema = z
     apellidos: z.string().trim().min(1).max(80).optional(),
     rol: z.enum(ROLES_ASISTENTE).optional(),
     semestre: z.number().int().min(1).max(30).nullable().optional(),
-    cedulaCiudadania: cedulaSchema.optional().or(z.literal('')),
+    cedulaCiudadania: cedulaSchema.nullable().optional().or(z.literal('')),
     email: z
       .string()
       .trim()

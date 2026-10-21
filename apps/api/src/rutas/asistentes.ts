@@ -387,8 +387,12 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           },
           codigoRegistro: fila.codigoRegistro ?? fila.id,
           idInstitucional: fila.id,
+          cedulaCiudadania: fila.cedulaCiudadania,
           email: fila.email,
           nombreSeminario: config.nombre,
+          facultad: config.facultad,
+          fecha: config.fecha,
+          lugar: config.lugar,
         })),
       );
 

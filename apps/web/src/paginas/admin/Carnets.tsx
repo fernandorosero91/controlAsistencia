@@ -130,7 +130,7 @@ export function Carnets() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Tarjeta
           titulo="Carta de QR"
-          descripcion="Una tarjeta por asistente para entregar el codigo en papel"
+          descripcion="Escarapelas para entregar el codigo en papel"
           accion={
             <button
               type="button"
@@ -147,7 +147,8 @@ export function Carnets() {
         >
           <p className="text-sm text-neutro-600">
             Util cuando no hay servidor de correo configurado o cuando un asistente no tiene correo
-            registrado. El PDF trae el QR, el codigo, el nombre, el ID y el correo.
+            registrado. Son cuatro escarapelas por hoja, con el logo de la Universidad, el nombre
+            del asistente, el rol, el QR con su codigo de registro y los datos de identificacion.
           </p>
         </Tarjeta>
 

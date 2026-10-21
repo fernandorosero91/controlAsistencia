@@ -1,4 +1,11 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  type PDFFont,
+  type PDFImage,
+  type PDFPage,
+} from 'pdf-lib';
 import QRCode from 'qrcode';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -11,6 +18,67 @@ const AZUL_PETROLEO = rgb(0.082, 0.345, 0.4);
 const GRIS_TEXTO = rgb(0.227, 0.259, 0.286);
 const GRIS_LINEA = rgb(0.788, 0.824, 0.847);
 const NEGRO = rgb(0.078, 0.102, 0.122);
+
+// Rampa institucional de la aplicacion (ver apps/web/src/estilos/tokens.css).
+const AZUL_MARINO = rgb(0.075, 0.153, 0.251); // #132740
+const CIAN = rgb(0, 0.674, 0.788); // #00ACC9
+const CIAN_CLARO = rgb(0.929, 0.988, 0.996); // #ECFCFE
+const LIMA = rgb(0.502, 0.729, 0.153); // #80BA27
+const GRIS_SUAVE = rgb(0.937, 0.937, 0.937); // #EFEFEF
+const GRIS_MEDIO = rgb(0.373, 0.369, 0.369); // #5F5E5E
+
+const MESES_ES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+
+/** Convierte una fecha ISO (AAAA-MM-DD) en texto largo en espanol. */
+function fechaLarga(iso: string): string {
+  const [anio, mes, dia] = iso.split('-');
+  const nombre = MESES_ES[Number(mes) - 1] ?? mes;
+  return `${dia} de ${nombre} de ${anio}`;
+}
+
+/**
+ * Reduce el tamano de la fuente hasta que el texto quepa en el ancho dado.
+ * En una escarapela el nombre se ajusta, nunca se recorta: un nombre a medio
+ * leer es peor que un nombre un punto mas pequeno.
+ */
+function ajustarTamano(fuente: PDFFont, texto: string, tamano: number, anchoMax: number): number {
+  const ancho = fuente.widthOfTextAtSize(texto, tamano);
+  if (ancho <= anchoMax) return tamano;
+  return Math.max(9, (tamano * anchoMax) / ancho);
+}
+
+/** Centra un texto horizontalmente respecto a un punto. */
+function textoCentrado(
+  pagina: PDFPage,
+  texto: string,
+  centro: number,
+  y: number,
+  fuente: PDFFont,
+  tamano: number,
+  color: ReturnType<typeof rgb>,
+): void {
+  const ancho = fuente.widthOfTextAtSize(texto, tamano);
+  pagina.drawText(texto, {
+    x: centro - ancho / 2,
+    y,
+    size: tamano,
+    font: fuente,
+    color,
+  });
+}
 
 /** Ubica el logotipo institucional que se imprime en el certificado. */
 function rutaLogo(): string | null {
@@ -30,6 +98,38 @@ function rutaLogo(): string | null {
   return null;
 }
 
+/** Ubica la version en blanco del logotipo, para imprimirla sobre fondo oscuro. */
+function rutaLogoBlanco(): string | null {
+  const candidatos = [
+    process.env.LOGO_INSTITUCIONAL_BLANCO,
+    path.resolve(process.cwd(), 'assets', 'logo-ucc-blanco-horizontal.png'),
+    path.resolve(process.cwd(), 'apps', 'api', 'assets', 'logo-ucc-blanco-horizontal.png'),
+    path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '../../assets/logo-ucc-blanco-horizontal.png',
+    ),
+  ].filter((valor): valor is string => typeof valor === 'string' && valor.length > 0);
+
+  for (const candidato of candidatos) {
+    if (existsSync(candidato)) return candidato;
+  }
+  return null;
+}
+
+/**
+ * Carga el logotipo indicado para incrustarlo. Si el archivo no existe o no se
+ * puede leer, el documento se genera igual, sin logo: es preferible imprimir
+ * una escarapela sin logo a no imprimirla.
+ */
+async function leerLogo(documento: PDFDocument, ruta: string | null): Promise<PDFImage | null> {
+  if (!ruta) return null;
+  try {
+    return await documento.embedPng(await readFile(ruta));
+  } catch {
+    return null;
+  }
+}
+
 export interface DatosCarnet {
   asistente: AsistenteResumen;
   /** Codigo de registro corto: es lo que codifica el QR. */
@@ -41,8 +141,12 @@ export interface DatosCartaQr {
   asistente: AsistenteResumen;
   codigoRegistro: string;
   idInstitucional: string;
+  cedulaCiudadania: string | null;
   email: string | null;
   nombreSeminario: string;
+  facultad: string | null;
+  fecha: string;
+  lugar: string | null;
 }
 
 export interface DatosCertificado {
@@ -229,89 +333,279 @@ export async function generarCarnetsPDF(
 }
 
 /**
- * Carta de QR: una tarjeta por asistente con el codigo, el QR, el nombre, el ID
- * institucional y el correo. Sirve para entregar el codigo en papel cuando no
- * hay servidor de correo configurado.
+ * Carta de QR con forma de escarapela.
+ *
+ * Cuatro tarjetas verticales por hoja A4 (3,9 x 5,4 pulgadas), con el
+ * criterio de las escarapelas de eventos: el nombre es lo mas grande y
+ * legible, el logo institucional arriba, el QR con su zona de silencio y el
+ * codigo de registro en grande por si el escaner falla, y los datos personales
+ * en el tamano mas pequeno.
+ *
+ * Se imprime en papel y se entrega a mano cuando no hay servidor de correo
+ * configurado o cuando el asistente no tiene correo registrado.
  */
 export async function generarCartaQrPDF(datos: DatosCartaQr[]): Promise<Uint8Array> {
   const documento = await PDFDocument.create();
   const fuenteNormal = await documento.embedFont(StandardFonts.Helvetica);
   const fuenteNegrita = await documento.embedFont(StandardFonts.HelveticaBold);
+  const fuenteMono = await documento.embedFont(StandardFonts.CourierBold);
 
   const anchoPagina = 595.28;
   const altoPagina = 841.89;
-  const margen = 28;
-  const anchoTarjeta = anchoPagina - margen * 2;
-  const altoTarjeta = 118;
-  const tarjetasPorPagina = Math.floor((altoPagina - margen * 2 - 40) / (altoTarjeta + 10));
+  const anchoEsc = 280;
+  const altoEsc = 400;
+  const margenLateral = (anchoPagina - anchoEsc * 2) / 2;
+  const margenSuperior = 20;
+  const separacion = 14;
+  const columnas = 2;
+  const filas = 2;
+
+  const logoBlanco = await leerLogo(documento, rutaLogoBlanco());
 
   let pagina: PDFPage | null = null;
   let indice = 0;
 
   for (const item of datos) {
-    if (indice % tarjetasPorPagina === 0) {
+    const posicion = indice % (columnas * filas);
+    if (posicion === 0) {
       pagina = documento.addPage([anchoPagina, altoPagina]);
     }
     const actual = pagina!;
-    const y = altoPagina - margen - (indice % tarjetasPorPagina) * (altoTarjeta + 10) - altoTarjeta;
+    const columna = posicion % columnas;
+    const fila = Math.floor(posicion / columnas);
+    const x0 = margenLateral + columna * (anchoEsc + separacion);
+    const y0 = altoPagina - margenSuperior - (fila + 1) * altoEsc - fila * separacion;
 
+    // ---------------------------------------------------------- fondo y borde
     actual.drawRectangle({
-      x: margen,
-      y,
-      width: anchoTarjeta,
-      height: altoTarjeta,
+      x: x0,
+      y: y0,
+      width: anchoEsc,
+      height: altoEsc,
+      color: rgb(1, 1, 1),
       borderColor: GRIS_LINEA,
       borderWidth: 1,
+    });
+
+    const centro = x0 + anchoEsc / 2;
+    const yTop = y0 + altoEsc;
+
+    // ------------------------------------------------------ banda institucional
+    // El logo va centrado y el nombre del evento debajo: es la composicion
+    // tipica de una escarapela y evita que el texto se monte sobre el logotipo.
+    const altoBanda = 84;
+    actual.drawRectangle({
+      x: x0,
+      y: yTop - altoBanda,
+      width: anchoEsc,
+      height: altoBanda,
+      color: AZUL_MARINO,
+    });
+
+    if (logoBlanco) {
+      const anchoLogo = 108;
+      const altoLogo = (logoBlanco.height / logoBlanco.width) * anchoLogo;
+      actual.drawImage(logoBlanco, {
+        x: centro - anchoLogo / 2,
+        y: yTop - 8 - altoLogo,
+        width: anchoLogo,
+        height: altoLogo,
+      });
+    }
+
+    const nombreEvento = item.nombreSeminario;
+    const anchoDisponible = anchoEsc - 36;
+    const tamanoEvento = ajustarTamano(fuenteNegrita, nombreEvento, 10.5, anchoDisponible);
+    textoCentrado(
+      actual,
+      nombreEvento,
+      centro,
+      yTop - 54,
+      fuenteNegrita,
+      tamanoEvento,
+      rgb(1, 1, 1),
+    );
+
+    const pieEvento = [item.fecha ? fechaLarga(item.fecha) : null, item.lugar]
+      .filter((valor): valor is string => Boolean(valor))
+      .join('  ·  ');
+    if (pieEvento.length > 0) {
+      const tamanoPie = ajustarTamano(fuenteNormal, pieEvento, 7.5, anchoDisponible);
+      textoCentrado(actual, pieEvento, centro, yTop - 68, fuenteNormal, tamanoPie, CIAN);
+    }
+
+    // Filas de color: cian con un tramo en verde lima.
+    actual.drawRectangle({
+      x: x0,
+      y: yTop - altoBanda - 3,
+      width: anchoEsc,
+      height: 3,
+      color: CIAN,
+    });
+    actual.drawRectangle({
+      x: x0,
+      y: yTop - altoBanda - 3,
+      width: anchoEsc * 0.34,
+      height: 3,
+      color: LIMA,
+    });
+
+    let cursor = yTop - altoBanda - 3 - 14;
+
+    // ------------------------------------------------------------ rol y nombre
+    // Solo el rol: el semestre no se imprime en la escarapela.
+    const etiquetaRol = item.asistente.rol === 'docente' ? 'DOCENTE' : 'ESTUDIANTE';
+    const anchoEtiqueta = fuenteNegrita.widthOfTextAtSize(etiquetaRol, 9) + 24;
+    actual.drawRectangle({
+      x: centro - anchoEtiqueta / 2,
+      y: cursor - 19,
+      width: anchoEtiqueta,
+      height: 19,
+      color: CIAN_CLARO,
+      borderColor: CIAN,
+      borderWidth: 0.75,
+    });
+    textoCentrado(actual, etiquetaRol, centro, cursor - 13, fuenteNegrita, 9, AZUL_MARINO);
+    cursor -= 19 + 26;
+
+    const anchoTexto = anchoEsc - 40;
+    const tamanoNombres = ajustarTamano(fuenteNegrita, item.asistente.nombres, 25, anchoTexto);
+    textoCentrado(
+      actual,
+      item.asistente.nombres,
+      centro,
+      cursor,
+      fuenteNegrita,
+      tamanoNombres,
+      AZUL_MARINO,
+    );
+    cursor -= 23;
+
+    const tamanoApellidos = ajustarTamano(fuenteNegrita, item.asistente.apellidos, 19, anchoTexto);
+    textoCentrado(
+      actual,
+      item.asistente.apellidos,
+      centro,
+      cursor,
+      fuenteNegrita,
+      tamanoApellidos,
+      AZUL_MARINO,
+    );
+    cursor -= 18;
+
+    if (item.facultad) {
+      const tamanoFacultad = ajustarTamano(fuenteNormal, item.facultad, 9.5, anchoTexto);
+      textoCentrado(
+        actual,
+        item.facultad,
+        centro,
+        cursor,
+        fuenteNormal,
+        tamanoFacultad,
+        GRIS_MEDIO,
+      );
+      cursor -= 14;
+    }
+
+    // ------------------------------------------------------- panel con el QR
+    const altoPanel = 98;
+    const yPanel = cursor - altoPanel;
+    actual.drawRectangle({
+      x: x0 + 18,
+      y: yPanel,
+      width: anchoEsc - 36,
+      height: altoPanel,
+      color: GRIS_SUAVE,
+    });
+
+    const tamanoQr = 68;
+    const xQr = centro - tamanoQr / 2;
+    const yQr = yPanel + altoPanel - 6 - tamanoQr;
+    // El marco se dibuja primero: si se dibuja despues, su fondo blanco tapa
+    // el codigo.
+    actual.drawRectangle({
+      x: xQr - 4,
+      y: yQr - 4,
+      width: tamanoQr + 8,
+      height: tamanoQr + 8,
       color: rgb(1, 1, 1),
+      borderColor: GRIS_LINEA,
+      borderWidth: 0.75,
     });
-
     const qr = await documento.embedPng(await imagenQr(item.codigoRegistro));
-    actual.drawImage(qr, { x: margen + 14, y: y + 14, width: 90, height: 90 });
+    actual.drawImage(qr, { x: xQr, y: yQr, width: tamanoQr, height: tamanoQr });
+    textoCentrado(
+      actual,
+      'ESCANEE PARA REGISTRAR',
+      centro,
+      yPanel + 10,
+      fuenteNegrita,
+      7.5,
+      GRIS_MEDIO,
+    );
+    cursor = yPanel - 10;
 
-    const textoX = margen + 120;
-    let cursorY = y + altoTarjeta - 26;
+    // ------------------------------------------------------ codigo de registro
+    textoCentrado(actual, 'CODIGO DE REGISTRO', centro, cursor, fuenteNegrita, 8, GRIS_MEDIO);
+    cursor -= 16;
 
-    actual.drawText(`${item.asistente.nombres} ${item.asistente.apellidos}`, {
-      x: textoX,
-      y: cursorY,
-      size: 13,
-      font: fuenteNegrita,
-      color: NEGRO,
-      maxWidth: 330,
+    const tamanoCodigo = ajustarTamano(fuenteMono, item.codigoRegistro, 25, 200);
+    textoCentrado(
+      actual,
+      item.codigoRegistro,
+      centro,
+      cursor,
+      fuenteMono,
+      tamanoCodigo,
+      AZUL_MARINO,
+    );
+    cursor -= 17;
+
+    // ------------------------------------------------------------- datos
+    // La cedula va en su propia linea: es un dato de identificacion y debe
+    // leerse de un vistazo, igual que el nombre.
+    const identificacion = `ID ${item.idInstitucional}`;
+    const tamanoIdentificacion = ajustarTamano(fuenteNormal, identificacion, 9.5, anchoTexto);
+    textoCentrado(
+      actual,
+      identificacion,
+      centro,
+      cursor,
+      fuenteNormal,
+      tamanoIdentificacion,
+      GRIS_MEDIO,
+    );
+    cursor -= 12;
+
+    if (item.cedulaCiudadania) {
+      const cedula = `C.C. ${item.cedulaCiudadania}`;
+      const tamanoCedula = ajustarTamano(fuenteNegrita, cedula, 10, anchoTexto);
+      textoCentrado(actual, cedula, centro, cursor, fuenteNegrita, tamanoCedula, AZUL_MARINO);
+      cursor -= 12;
+    }
+
+    if (item.email) {
+      const tamanoCorreo = ajustarTamano(fuenteNormal, item.email, 8.5, anchoTexto);
+      textoCentrado(actual, item.email, centro, cursor, fuenteNormal, tamanoCorreo, GRIS_MEDIO);
+    }
+
+    // ------------------------------------------------------------- pie azul
+    actual.drawRectangle({
+      x: x0,
+      y: y0,
+      width: anchoEsc,
+      height: 24,
+      color: AZUL_MARINO,
     });
-    cursorY -= 17;
-    actual.drawText(`Codigo de registro: ${item.codigoRegistro}`, {
-      x: textoX,
-      y: cursorY,
-      size: 13,
-      font: fuenteNegrita,
-      color: AZUL_PETROLEO,
-    });
-    cursorY -= 14;
-    actual.drawText(`ID institucional: ${item.idInstitucional}`, {
-      x: textoX,
-      y: cursorY,
-      size: 10,
-      font: fuenteNormal,
-      color: GRIS_TEXTO,
-    });
-    cursorY -= 13;
-    actual.drawText(`Correo: ${item.email ?? 'no informado'}`, {
-      x: textoX,
-      y: cursorY,
-      size: 10,
-      font: fuenteNormal,
-      color: GRIS_TEXTO,
-    });
-    cursorY -= 13;
-    actual.drawText(item.nombreSeminario, {
-      x: textoX,
-      y: cursorY,
-      size: 9,
-      font: fuenteNormal,
-      color: GRIS_TEXTO,
-      maxWidth: 330,
-    });
+    textoCentrado(
+      actual,
+      'Universidad Cooperativa de Colombia',
+      centro,
+      y0 + 8,
+      fuenteNegrita,
+      8,
+      rgb(1, 1, 1),
+    );
 
     indice += 1;
   }
