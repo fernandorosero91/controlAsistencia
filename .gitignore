@@ -29,3 +29,7 @@ e2e/.auth/
 
 capturas/
 scripts/resultado-verificacion.txt
+
+# Archivos binarios de la referencia visual (se conservan en el disco, no en el repositorio)
+gradient-colored-ui-kit-collection/*.ai
+gradient-colored-ui-kit-collection/*.eps
