@@ -17,6 +17,9 @@ import { pool } from './cliente.js';
 const MARCADOR_UP = '-- migrate:up';
 const MARCADOR_DOWN = '-- migrate:down';
 
+/** Clave del cerrojo consultivo que serializa las migraciones (ver aplicarMigraciones). */
+const CERROJO_MIGRACIONES = '7712345678901';
+
 export interface MigracionAplicada {
   version: string;
   checksum: string;
@@ -120,37 +123,54 @@ export async function estadoMigraciones(): Promise<{
 }
 
 export async function aplicarMigraciones(): Promise<string[]> {
-  await asegurarTablaEstado();
-  const aplicadas = await migracionesAplicadas();
-  const aplicadasSet = new Set(aplicadas.map((m) => m.version));
-  const ejecutadas: string[] = [];
+  // Cerrojo consultivo de PostgreSQL: si dos replicas de la API arrancan a la
+  // vez (o el seed coincide con un despliegue), una espera a la otra en lugar de
+  // intentar crear las mismas tablas. Se toma sobre una conexion dedicada y se
+  // libera al terminar; si el proceso muere, la sesion se cierra y el cerrojo
+  // se suelta solo.
+  const cerrojo = await pool.connect();
+  try {
+    // La espera por el cerrojo puede durar mas que el statement_timeout global
+    // mientras la otra replica termina de migrar.
+    await cerrojo.query('SET statement_timeout = 0');
+    await cerrojo.query('SELECT pg_advisory_lock($1::bigint)', [CERROJO_MIGRACIONES]);
 
-  for (const archivo of await archivosMigracion()) {
-    if (aplicadasSet.has(archivo.version)) continue;
+    await asegurarTablaEstado();
+    const aplicadas = await migracionesAplicadas();
+    const aplicadasSet = new Set(aplicadas.map((m) => m.version));
+    const ejecutadas: string[] = [];
 
-    const contenido = await readFile(archivo.ruta, 'utf8');
-    const checksum = createHash('sha256').update(contenido).digest('hex');
-    const { arriba } = separarBloques(contenido);
+    for (const archivo of await archivosMigracion()) {
+      if (aplicadasSet.has(archivo.version)) continue;
 
-    const cliente = await pool.connect();
-    try {
-      await cliente.query('BEGIN');
-      await cliente.query(arriba);
-      await cliente.query('INSERT INTO schema_migrations (version, checksum) VALUES ($1, $2)', [
-        archivo.version,
-        checksum,
-      ]);
-      await cliente.query('COMMIT');
-      ejecutadas.push(archivo.version);
-    } catch (error) {
-      await cliente.query('ROLLBACK');
-      throw error;
-    } finally {
-      cliente.release();
+      const contenido = await readFile(archivo.ruta, 'utf8');
+      const checksum = createHash('sha256').update(contenido).digest('hex');
+      const { arriba } = separarBloques(contenido);
+
+      const cliente = await pool.connect();
+      try {
+        await cliente.query('BEGIN');
+        await cliente.query(arriba);
+        await cliente.query('INSERT INTO schema_migrations (version, checksum) VALUES ($1, $2)', [
+          archivo.version,
+          checksum,
+        ]);
+        await cliente.query('COMMIT');
+        ejecutadas.push(archivo.version);
+      } catch (error) {
+        await cliente.query('ROLLBACK');
+        throw error;
+      } finally {
+        cliente.release();
+      }
     }
-  }
 
-  return ejecutadas;
+    return ejecutadas;
+  } finally {
+    // Se destruye la conexion: al cerrarse la sesion PostgreSQL libera el cerrojo
+    // aunque el proceso haya fallado a mitad de camino.
+    cerrojo.release(true);
+  }
 }
 
 export async function revertirUltimaMigracion(): Promise<string | null> {

@@ -148,11 +148,11 @@ El sistema queda disponible en:
 | Documentacion OpenAPI  | http://localhost:8080/api/docs         |
 | Verificacion publica   | http://localhost:8080/verificar/CODIGO |
 
-Prepare la base de datos y los datos de arranque (crea el administrador y 600 asistentes
-de prueba):
+La base de datos se prepara sola al arrancar: el contenedor de la API aplica las migraciones pendientes
+y crea los datos iniciales (administrador, operadores, configuracion y jornadas) si la base esta
+vacia. Para cargar los 600 asistentes ficticios de la prueba de carga hay que ejecutar el seed:
 
 ```bash
-docker compose exec api node dist/db/migrate.js up
 docker compose exec api node dist/db/seed.js
 ```
 
@@ -165,15 +165,15 @@ Las credenciales iniciales salen de `ADMIN_EMAIL` y `ADMIN_PASSWORD` del `.env`.
 npm install
 cp .env.example .env
 docker compose up -d postgres pgbouncer redis   # solo la infraestructura de datos
-npm run migrate
-npm run seed
+npm run migrate        # opcional: el arranque de la API tambien migra
+npm run seed           # administrador + 600 asistentes de ejemplo
 npm run dev            # API en :3000 y web en :5173
 ```
 
 ### 4.4 Despliegue en produccion con Dokploy
 
 El repositorio incluye un compose listo para Dokploy con todo el sistema (PostgreSQL, PgBouncer,
-Redis, migraciones automaticas, API y frontend):
+Redis, API y frontend):
 
 ```bash
 # En Dokploy: Create Service > Docker Compose
@@ -187,8 +187,12 @@ Solo el servicio `web` publica puerto; el dominio con HTTPS se asigna en Dokploy
 `web:80`. La guia paso a paso (variables, dominio, datos iniciales, respaldos y diagnostico) esta en
 [`docs/09-despliegue-dokploy.md`](docs/09-despliegue-dokploy.md).
 
+Al desplegar no hay que ejecutar nada: el entrypoint de la API
+([`infra/docker/entrada-api.sh`](infra/docker/entrada-api.sh)) aplica las migraciones pendientes y crea
+el administrador, los operadores y la configuracion la primera vez. El servicio `seed` queda solo para
+resembrar a proposito (por ejemplo, agregar operadores):
+
 ```bash
-# Primera carga de datos: administrador, operadores, configuracion y jornadas
 docker compose -f docker-compose.dokploy.yml --profile datos run --rm seed
 ```
 
@@ -204,8 +208,9 @@ docker compose -f docker-compose.dokploy.yml --profile datos run --rm seed
 | `npm run test:e2e`                                      | Pruebas de extremo a extremo con Playwright.                                   |
 | `npm run lint` / `npm run format`                       | ESLint y Prettier.                                                             |
 | `npm run typecheck`                                     | Verificacion de tipos de todo el monorepo.                                     |
-| `npm run migrate` / `migrate:revert` / `migrate:status` | Migraciones reversibles.                                                       |
-| `npm run seed`                                          | Datos de arranque.                                                             |
+| `npm run migrate` / `migrate:revert` / `migrate:status` | Migraciones reversibles (el arranque de la API ya las aplica).                 |
+| `npm run bootstrap`                                     | Crea los datos iniciales solo si la base esta vacia.                           |
+| `npm run seed`                                          | Datos de arranque (incluye los asistentes ficticios).                          |
 | `npm run load-test`                                     | Pruebas de carga (k6 si esta instalado; si no, planificador Node equivalente). |
 | `npm run docker:up` / `docker:down` / `docker:logs`     | Ciclo de vida de los contenedores.                                             |
 

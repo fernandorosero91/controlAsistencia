@@ -23,12 +23,12 @@ services:
       - -c
       - log_min_duration_statement=1000
     ports:
-      - "127.0.0.1:5433:5432"
+      - '127.0.0.1:5433:5432'
     volumes:
       - postgres_datos:/var/lib/postgresql/data
       - ./infra/docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-seminario}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-seminario}']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -52,9 +52,9 @@ services:
       - ./infra/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
       - pgbouncer_estado:/var/lib/pgbouncer
     ports:
-      - "127.0.0.1:6432:6432"
+      - '127.0.0.1:6432:6432'
     healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 6432 || exit 1"]
+      test: ['CMD-SHELL', 'nc -z 127.0.0.1 6432 || exit 1']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -68,17 +68,17 @@ services:
     command:
       - redis-server
       - --appendonly
-      - "yes"
+      - 'yes'
       - --maxmemory
       - 256mb
       - --maxmemory-policy
       - allkeys-lru
     ports:
-      - "127.0.0.1:6379:6379"
+      - '127.0.0.1:6379:6379'
     volumes:
       - redis_datos:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -103,6 +103,26 @@ services:
       PORT: 3000
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgres://app:${POSTGRES_PASSWORD:-seminario_dev}@pgbouncer:6432/seminario
+      # Conexion directa, solo para las migraciones del arranque (el cerrojo que
+      # las serializa es de sesion y no debe pasar por PgBouncer).
+      DATABASE_URL_DIRECTA: postgres://app:${POSTGRES_PASSWORD:-seminario_dev}@postgres:5432/seminario
+      # Datos iniciales: solo se usan si la base esta vacia. Para cargar los 600
+      # asistentes ficticios hay que ejecutar el seed a proposito.
+      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Administrador del seminario}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@seminario.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Seminario2026}
+      OPERADOR_PASSWORD: ${OPERADOR_PASSWORD:-}
+      ADMIN_OPERADORES: ${ADMIN_OPERADORES:-2}
+      SEED_ASISTENTES: ${SEED_ASISTENTES:-600}
+      SEMINARIO_NOMBRE: ${SEMINARIO_NOMBRE:-IV Seminario de Ingenieria de Software}
+      SEMINARIO_FECHA: ${SEMINARIO_FECHA:-2026-10-27}
+      SEMINARIO_LUGAR: ${SEMINARIO_LUGAR:-Camara de Comercio - Pasto}
+      SEMINARIO_FACULTAD: ${SEMINARIO_FACULTAD:-Facultad de Ingenieria}
+      SEMINARIO_CONTACTO: ${SEMINARIO_CONTACTO:-311 781 7327}
+      SEMINARIO_INVERSION: ${SEMINARIO_INVERSION:-185.000}
+      SEMINARIO_HORA_INICIO: ${SEMINARIO_HORA_INICIO:-08:00}
+      SEMINARIO_HORA_FIN: ${SEMINARIO_HORA_FIN:-18:00}
+      SEMINARIO_TOLERANCIA_MINUTOS: ${SEMINARIO_TOLERANCIA_MINUTOS:-15}
       DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-20}
       DATABASE_POOL_MIN: ${DATABASE_POOL_MIN:-2}
       REDIS_URL: redis://redis:6379
@@ -118,7 +138,7 @@ services:
       UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-10485760}
       TZ: America/Bogota
     ports:
-      - "127.0.0.1:3000:3000"
+      - '127.0.0.1:3000:3000'
     volumes:
       - certificados:/app/apps/api/storage/certificados
     networks:
@@ -132,7 +152,7 @@ services:
     depends_on:
       - api
     ports:
-      - "8080:80"
+      - '8080:80'
     networks:
       - asistencia
 

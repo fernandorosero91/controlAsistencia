@@ -16,10 +16,13 @@ dependencias externas aparte de una base de datos y un dominio.
 | `postgres`  | `postgres:15-alpine`                | interno       | Datos, indices, constraints de unicidad                       |
 | `pgbouncer` | `infra/docker/Dockerfile.pgbouncer` | interno       | Pool de conexiones en modo `transaction`                      |
 | `redis`     | `redis:7-alpine`                    | interno       | Cache de configuracion, rate limit distribuido y colas BullMQ |
-| `migrate`   | `infra/docker/Dockerfile.api`       | -             | Aplica el SQL versionado y termina (una sola ejecucion)       |
 | `api`       | `infra/docker/Dockerfile.api`       | interno       | Fastify: auth, asistencias, refrigerios, certificados         |
 | `web`       | `infra/docker/Dockerfile.web`       | `${WEB_PORT}` | nginx: sirve la React y hace proxy de `/api` a la API         |
-| `seed`      | `infra/docker/Dockerfile.api`       | -             | Datos iniciales; solo con el perfil `datos`                   |
+| `seed`      | `infra/docker/Dockerfile.api`       | -             | Resiembra manual; solo con el perfil `datos` (opcional)       |
+
+La API se prepara sola al arrancar: su entrypoint (`infra/docker/entrada-api.sh`) aplica las
+migraciones pendientes y crea los datos iniciales si la base esta vacia. Desplegar es suficiente;
+no hay que ejecutar comandos a mano.
 
 Flujo de una peticion:
 
@@ -71,7 +74,7 @@ Abra la pestana **Environment** del servicio y pegue el contenido de
 | `POSTGRES_PASSWORD` | Cadena larga y aleatoria: `openssl rand -hex 24`                             |
 | `JWT_SECRET`        | `openssl rand -base64 48` (minimo 32 caracteres)                             |
 | `BASE_URL_PUBLICA`  | El dominio real, **sin barra final**: `https://asistencia.gestionxpress.app` |
-| `ADMIN_EMAIL`       | Correo del administrador del sistema                                         |
+| `ADMIN_EMAIL`       | Correo del administrador que se crea en el primer arranque                   |
 | `ADMIN_PASSWORD`    | Contrasena inicial del administrador (minimo 8 caracteres)                   |
 | `COOKIE_SECURE`     | `true` si el dominio usa HTTPS (lo normal en Dokploy)                        |
 | `WEB_PORT`          | Puerto del host para el acceso directo por IP; `8080` por defecto            |
@@ -82,7 +85,8 @@ Notas:
   con esa clave y el pooler no podria autenticarse.
 - `CORS_ORIGINS` se deja vacio a proposito: el frontend y la API comparten dominio y origen, asi que
   no hace falta abrir CORS.
-- `SEED_ASISTENTES=0` en produccion. Evita cargar los 600 asistentes ficticios de ejemplo.
+- `SEED_ASISTENTES=0` en produccion. El primer arranque nunca crea asistentes ficticios; el valor solo
+  aplica cuando se ejecuta el servicio `seed` a proposito.
 - Sin `SMTP_HOST` el envio de QR por correo queda deshabilitado y se usa la **carta de QR en PDF**,
   que no depende de internet.
 
@@ -180,22 +184,44 @@ Si el registro DNS del subdominio esta **proxificado** (nube naranja de Cloudfla
 ## 6. Primera puesta en marcha
 
 1. Pulse **Deploy**. Dokploy construye las imagenes y levanta la pila en este orden:
-   `postgres` -> `pgbouncer` -> `redis` -> `migrate` -> `api` -> `web`.
-   El servicio `migrate` aplica el SQL versionado y termina; si falla, la API no arranca.
-2. Espere a que todos los servicios queden **healthy** (Dokploy lo muestra en **Deployments** y en
-   **Containers**).
-3. Cree los datos iniciales (administrador, operadores, configuracion del seminario y jornadas).
-   Desde **Terminal** del servicio o por SSH en el servidor:
+   `postgres` -> `pgbouncer` -> `redis` -> `api` -> `web`.
+2. Al arrancar, el contenedor de la API ejecuta dos pasos y lo deja en el log:
 
-   ```bash
-   cd /etc/dokploy/compose/<proyecto>-<id>/code
-   docker compose -f docker-compose.dokploy.yml --profile datos run --rm seed
+   ```
+   [entrada] Aplicando migraciones pendientes
+   Migraciones aplicadas: 0000_init, 0001_codigo_registro, ...
+   [entrada] Verificando datos iniciales
+   {"msg":"Base de datos vacia: creando administrador, operadores y configuracion del evento"}
+   [entrada] Iniciando el servidor
    ```
 
-   El comando es idempotente: se puede repetir sin duplicar filas. Imprime las credenciales creadas.
+   Si la base **no** esta vacia los mismos pasos imprimen `La base de datos ya esta actualizada.` y
+   `Usuarios existentes: no se crean datos iniciales`, sin tocar nada.
 
-4. Entre a `https://asistencia.gestionxpress.app`, inicie sesion con `ADMIN_EMAIL` / `ADMIN_PASSWORD` y
-   **cambie la contrasena** desde el panel de usuarios.
+3. Espere a que todos los servicios queden **healthy** (Dokploy lo muestra en **Deployments** y en
+   **Containers**).
+4. Entre a `https://asistencia.gestionxpress.app` e inicie sesion con `ADMIN_EMAIL` / `ADMIN_PASSWORD`
+   (los definidos en el panel de variables). **Cambie la contrasena** desde el panel de usuarios.
+
+No hay que sembrar nada a mano: las credenciales del administrador y de los operadores
+(`ADMIN_*`, `OPERADOR_PASSWORD`, `ADMIN_OPERADORES`) se convierten en usuarios reales la primera vez
+que arranca la API sobre una base vacia.
+
+> Las variables `ADMIN_*` solo se leen en ese primer arranque. Si despues cambia `ADMIN_PASSWORD` en
+> Dokploy, el usuario existente conserva su contrasena anterior: hay que restablecerla desde el panel
+> de usuarios (o volver a ejecutar el seed, que no sobrescribe usuarios ya creados).
+
+### Recrear o ampliar usuarios despues
+
+El servicio `seed` sigue disponible para resembrar a proposito (por ejemplo, subir
+`ADMIN_OPERADORES` y crear los operadores nuevos):
+
+```bash
+cd /etc/dokploy/compose/<proyecto>-<id>/code
+docker compose -f docker-compose.dokploy.yml --profile datos run --rm seed
+```
+
+Es idempotente: no duplica filas ni cambia contrasenas existentes.
 
 ---
 
@@ -208,8 +234,10 @@ docker compose -f docker-compose.dokploy.yml ps
 # Salud de la API (debe responder {"estado":"ok","baseDatos":true})
 curl -fsS https://asistencia.gestionxpress.app/api/health/ready
 
-# Migraciones aplicadas
-docker compose -f docker-compose.dokploy.yml run --rm migrate node dist/db/migrate.js status
+# Migraciones aplicadas y usuarios creados
+docker compose -f docker-compose.dokploy.yml exec api node dist/db/migrate.js status
+docker compose -f docker-compose.dokploy.yml exec postgres \
+  psql -U app -d seminario -c "select email, rol from usuarios_sistema;"
 ```
 
 En la interfaz:
@@ -230,8 +258,8 @@ En la interfaz:
 ### Actualizar la aplicacion
 
 Dokploy > **Deploy** (o `git push` con auto-deploy activado). Las migraciones nuevas se aplican solas
-en el siguiente despliegue gracias al servicio `migrate`. Los volumenes (`postgres_datos`,
-`redis_datos`, `certificados`) se conservan.
+en el siguiente arranque de la API: su entrypoint ejecuta `node dist/db/migrate.js up` antes de
+levantar el servidor. Los volumenes (`postgres_datos`, `redis_datos`, `certificados`) se conservan.
 
 ### Copia de seguridad
 
@@ -285,21 +313,21 @@ Los contenedores emiten JSON (una linea por evento) con `request-id`, y la rotac
 | El escaner de camara no abre                                                         | El dominio no esta en HTTPS. Use el dominio con certificado o digite el codigo de 6 caracteres.                                                                                  |
 | Los certificados muestran un enlace equivocado                                       | `BASE_URL_PUBLICA` no coincide con el dominio publico. Corrija la variable y regenere los certificados.                                                                          |
 | El dominio responde **502** o **504** con los contenedores _healthy_                 | Traefik no alcanza el servicio: el dominio debe apuntar al servicio `web`, puerto **80**, y `web` debe estar unido a `dokploy-network`.                                          |
-| `migrate` termina con codigo distinto de 0                                           | La API no arranca a proposito. Revise `logs migrate`; el SQL es reversible con `node dist/db/migrate.js down`.                                                                   |
+| El contenedor `api` reinicia justo despues de `[entrada] Aplicando migraciones`      | Una migracion fallo y la API no arranca a proposito. Revise `logs api` para ver el SQL exacto; el cambio es reversible con `node dist/db/migrate.js down`.                       |
 | Cambio el dominio y los QR ya impresos no validan                                    | Los QR emitidos apuntan al dominio anterior: conserve el dominio o reimprima las cartas.                                                                                         |
 
 ---
 
 ## 10. Diferencias con el compose de desarrollo
 
-| Aspecto            | `docker-compose.yml` (desarrollo)                             | `docker-compose.dokploy.yml` (produccion)        |
-| ------------------ | ------------------------------------------------------------- | ------------------------------------------------ |
-| Puertos publicados | postgres 5433, pgbouncer 6432, redis 6379, api 3000, web 8080 | solo `web` (`${WEB_PORT}`)                       |
-| Migraciones        | manuales (`npm run migrate`)                                  | servicio `migrate` automatico en cada despliegue |
-| Datos iniciales    | `npm run seed` (600 asistentes de ejemplo)                    | perfil `datos`, `SEED_ASISTENTES=0`              |
-| Secretos           | valores por defecto comodos para local                        | obligatorios, sin valor por defecto (`:?`)       |
-| Cookies            | `COOKIE_SECURE=false`                                         | `COOKIE_SECURE=true` (HTTPS)                     |
-| Rotacion de logs   | sin limites                                                   | 3 archivos de 10 MB por servicio                 |
+| Aspecto            | `docker-compose.yml` (desarrollo)                              | `docker-compose.dokploy.yml` (produccion)               |
+| ------------------ | -------------------------------------------------------------- | ------------------------------------------------------- |
+| Puertos publicados | postgres 5433, pgbouncer 6432, redis 6379, api 3000, web 8080  | solo `web` (`${WEB_PORT}`)                              |
+| Migraciones        | automaticas al arrancar la API (`entrada-api.sh`)              | automaticas al arrancar la API (`entrada-api.sh`)       |
+| Datos iniciales    | automaticos si la base esta vacia; `npm run seed` para los 600 | automaticos si la base esta vacia (`SEED_ASISTENTES=0`) |
+| Secretos           | valores por defecto comodos para local                         | obligatorios, sin valor por defecto (`:?`)              |
+| Cookies            | `COOKIE_SECURE=false`                                          | `COOKIE_SECURE=true` (HTTPS)                            |
+| Rotacion de logs   | sin limites                                                    | 3 archivos de 10 MB por servicio                        |
 
 El compose de desarrollo se mantiene para trabajar en local; Dokploy usa exclusivamente
 `docker-compose.dokploy.yml`.

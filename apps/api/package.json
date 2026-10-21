@@ -16,6 +16,7 @@
     "migrate": "tsx src/db/migrate.ts up",
     "migrate:revert": "tsx src/db/migrate.ts down",
     "migrate:status": "tsx src/db/migrate.ts status",
+    "bootstrap": "tsx src/db/bootstrap.ts",
     "seed": "tsx src/db/seed.ts"
   },
   "dependencies": {

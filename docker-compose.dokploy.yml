@@ -18,7 +18,31 @@
 #
 # Solo el servicio web publica puerto. PostgreSQL, PgBouncer, Redis y la API
 # quedan en la red interna del proyecto.
+#
+# Las migraciones y los datos iniciales se aplican solos al arrancar la API
+# (infra/docker/entrada-api.sh): desplegar es suficiente, no hay que ejecutar
+# comandos a mano. El servicio "seed" queda solo para resembrar a proposito.
 # =============================================================================
+
+# Datos con los que se crea el administrador, los operadores y la configuracion
+# del evento la PRIMERA vez que arranca la API sobre una base vacia. Despues de
+# eso ya no se usan: un redespliegue no cambia contrasenas ni configuracion.
+x-datos-iniciales: &datos-iniciales
+  ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Administrador del seminario}
+  ADMIN_EMAIL: ${ADMIN_EMAIL:?Defina ADMIN_EMAIL en Dokploy}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD en Dokploy}
+  OPERADOR_PASSWORD: ${OPERADOR_PASSWORD:-}
+  ADMIN_OPERADORES: ${ADMIN_OPERADORES:-6}
+  SEED_ASISTENTES: ${SEED_ASISTENTES:-0}
+  SEMINARIO_NOMBRE: ${SEMINARIO_NOMBRE:-IV Seminario de Ingenieria de Software}
+  SEMINARIO_FECHA: ${SEMINARIO_FECHA:-2026-10-27}
+  SEMINARIO_LUGAR: ${SEMINARIO_LUGAR:-Camara de Comercio - Pasto}
+  SEMINARIO_FACULTAD: ${SEMINARIO_FACULTAD:-Facultad de Ingenieria}
+  SEMINARIO_CONTACTO: ${SEMINARIO_CONTACTO:-311 781 7327}
+  SEMINARIO_INVERSION: ${SEMINARIO_INVERSION:-$$185.000}
+  SEMINARIO_HORA_INICIO: ${SEMINARIO_HORA_INICIO:-08:00}
+  SEMINARIO_HORA_FIN: ${SEMINARIO_HORA_FIN:-18:00}
+  SEMINARIO_TOLERANCIA_MINUTOS: ${SEMINARIO_TOLERANCIA_MINUTOS:-15}
 
 services:
   # ---------------------------------------------------------------- base de datos
@@ -115,34 +139,10 @@ services:
     networks:
       - asistencia
 
-  # ---------------------------------------------------------------- migraciones
-  # Servicio de una sola ejecucion: aplica el SQL versionado antes de arrancar la
-  # API. Va directo a PostgreSQL (no al pooler) porque DDL y transacciones
-  # explicitas no deben pasar por el modo transaction.
-  migrate:
-    build:
-      context: .
-      dockerfile: infra/docker/Dockerfile.api
-    restart: 'no'
-    command: ['node', 'dist/db/migrate.js', 'up']
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      NODE_ENV: production
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-seminario}
-      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en Dokploy}
-      TZ: America/Bogota
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
-    networks:
-      - asistencia
-
   # ---------------------------------------------------------------- API
+  # Al arrancar, el entrypoint aplica las migraciones pendientes y crea los datos
+  # iniciales si la base esta vacia (infra/docker/entrada-api.sh). Correccion:
+  # la API habla con PgBouncer y las migraciones van directo a PostgreSQL.
   api:
     build:
       context: .
@@ -150,8 +150,6 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
     depends_on:
-      migrate:
-        condition: service_completed_successfully
       pgbouncer:
         condition: service_healthy
       redis:
@@ -162,6 +160,7 @@ services:
       PORT: 3000
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@pgbouncer:6432/${POSTGRES_DB:-seminario}
+      DATABASE_URL_DIRECTA: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-seminario}
       DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-20}
       DATABASE_POOL_MIN: ${DATABASE_POOL_MIN:-2}
       DATABASE_CONNECTION_TIMEOUT_MS: ${DATABASE_CONNECTION_TIMEOUT_MS:-5000}
@@ -193,15 +192,13 @@ services:
       SMTP_SEGURIDAD: ${SMTP_SEGURIDAD:-starttls}
       SMTP_REMITENTE: ${SMTP_REMITENTE:-no-reply@seminario.local}
       SMTP_REMITENTE_NOMBRE: ${SMTP_REMITENTE_NOMBRE:-Seminario}
+      # Solo se leen en el primer arranque, cuando la base esta vacia.
+      <<: *datos-iniciales
       TZ: America/Bogota
     volumes:
       - certificados:/app/apps/api/storage/certificados
     healthcheck:
-      test:
-        [
-          'CMD-SHELL',
-          'wget -q -O /dev/null http://127.0.0.1:3000/health/ready || exit 1',
-        ]
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3000/health/ready || exit 1']
       interval: 15s
       timeout: 5s
       retries: 5
@@ -245,11 +242,14 @@ services:
       - dokploy-network
 
   # ---------------------------------------------------------------- datos iniciales
-  # No se ejecuta con "docker compose up": solo cuando se invoca a proposito.
-  # Crea el administrador, los operadores, la configuracion del seminario y las
-  # jornadas. Con SEED_ASISTENTES=0 no crea asistentes ficticios.
+  # Ya NO hace falta para el primer despliegue: la API crea el administrador, los
+  # operadores y la configuracion sola cuando la base esta vacia.
+  # Este servicio sirve para resembrar a proposito (por ejemplo, agregar mas
+  # operadores despues de subir ADMIN_OPERADORES):
   #
   #   docker compose -f docker-compose.dokploy.yml --profile datos run --rm seed
+  #
+  # Es idempotente: no duplica filas ni cambia contrasenas existentes.
   seed:
     build:
       context: .
@@ -258,28 +258,14 @@ services:
     restart: 'no'
     command: ['node', 'dist/db/seed.js']
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-seminario}
       JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en Dokploy}
-      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Administrador del seminario}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:?Defina ADMIN_EMAIL en Dokploy}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD en Dokploy}
-      OPERADOR_PASSWORD: ${OPERADOR_PASSWORD:-}
-      ADMIN_OPERADORES: ${ADMIN_OPERADORES:-6}
-      SEED_ASISTENTES: ${SEED_ASISTENTES:-0}
-      SEMINARIO_NOMBRE: ${SEMINARIO_NOMBRE:-IV Seminario de Ingenieria de Software}
-      SEMINARIO_FECHA: ${SEMINARIO_FECHA:-2026-10-27}
-      SEMINARIO_LUGAR: ${SEMINARIO_LUGAR:-Camara de Comercio - Pasto}
-      SEMINARIO_FACULTAD: ${SEMINARIO_FACULTAD:-Facultad de Ingenieria}
-      SEMINARIO_CONTACTO: ${SEMINARIO_CONTACTO:-311 781 7327}
-      SEMINARIO_INVERSION: ${SEMINARIO_INVERSION:-$$185.000}
-      SEMINARIO_HORA_INICIO: ${SEMINARIO_HORA_INICIO:-08:00}
-      SEMINARIO_HORA_FIN: ${SEMINARIO_HORA_FIN:-18:00}
-      SEMINARIO_TOLERANCIA_MINUTOS: ${SEMINARIO_TOLERANCIA_MINUTOS:-15}
+      <<: *datos-iniciales
       TZ: America/Bogota
     logging:
       driver: json-file

@@ -99,10 +99,21 @@ function horaDesdeTexto(texto: string): { hora: number; minuto: number } {
   return { hora: Number(hora), minuto: Number(minuto) };
 }
 
-export async function sembrarDatos(): Promise<void> {
+export interface OpcionesSembrado {
+  /** Cantidad de asistentes ficticios. Por defecto toma SEED_ASISTENTES. */
+  asistentes?: number;
+  /** Aplicar migraciones antes de sembrar. El arranque de la API ya las aplica. */
+  migrar?: boolean;
+  /** Dominio de los correos de los operadores. Por defecto el de ADMIN_EMAIL. */
+  dominioCorreo?: string;
+}
+
+export async function sembrarDatos(opciones: OpcionesSembrado = {}): Promise<void> {
   const entorno = cargarEntorno();
 
-  await aplicarMigraciones();
+  if (opciones.migrar !== false) {
+    await aplicarMigraciones();
+  }
 
   // -------------------------------------------------------------- administrador
   const passwordHash = await argon2.hash(entorno.ADMIN_PASSWORD, { type: argon2.argon2id });
@@ -118,12 +129,16 @@ export async function sembrarDatos(): Promise<void> {
 
   const passwordOperador = entorno.OPERADOR_PASSWORD ?? entorno.ADMIN_PASSWORD;
   const hashOperador = await argon2.hash(passwordOperador, { type: argon2.argon2id });
+  // Los operadores viven en el mismo dominio del administrador, para que los
+  // correos sean coherentes con la institucion (operador1@dominio, ...).
+  const dominioCorreo =
+    opciones.dominioCorreo ?? entorno.ADMIN_EMAIL.split('@')[1] ?? 'seminario.local';
   for (let indice = 1; indice <= entorno.ADMIN_OPERADORES; indice += 1) {
     await db
       .insert(usuariosSistema)
       .values({
         nombre: `Operador ${indice}`,
-        email: `operador${indice}@seminario.local`,
+        email: `operador${indice}@${dominioCorreo}`.toLowerCase(),
         passwordHash: hashOperador,
         rol: 'operador',
       })
@@ -213,7 +228,7 @@ export async function sembrarDatos(): Promise<void> {
   }
 
   // ---------------------------------------------------------------- asistentes
-  const total = entorno.SEED_ASISTENTES;
+  const total = opciones.asistentes ?? entorno.SEED_ASISTENTES;
   if (total > 0) {
     const existentes = await db.select({ total: sql<number>`count(*)::int` }).from(asistentes);
     const yaSembrados = existentes[0]?.total ?? 0;
@@ -272,7 +287,7 @@ export async function sembrarDatos(): Promise<void> {
   const [final] = await db.select({ total: sql<number>`count(*)::int` }).from(asistentes);
   logger.info(
     { asistentes: final?.total ?? 0, jornada: fecha.toISOString() },
-    'Datos de prueba sembrados',
+    'Datos iniciales sembrados',
   );
 }
 
