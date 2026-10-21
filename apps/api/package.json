@@ -10,8 +10,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --dir test/unit",
-    "test:integration": "vitest run --dir test/integration --no-file-parallelism",
+    "test": "vitest run test/unit",
+    "test:integration": "vitest run test/integration --no-file-parallelism",
     "test:watch": "vitest",
     "migrate": "tsx src/db/migrate.ts up",
     "migrate:revert": "tsx src/db/migrate.ts down",
@@ -51,6 +51,6 @@
     "pino-pretty": "^13.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^3.2.7"
   }
 }

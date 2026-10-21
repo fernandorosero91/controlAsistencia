@@ -1,0 +1,67 @@
+/**
+ * Design tokens del sistema. Son la fuente de verdad de la paleta: Tailwind los
+ * replica en sus clases y aqui quedan disponibles para CSS puro.
+ * Contraste verificado con WCAG AA en apps/web/test/contraste.test.ts.
+ */
+:root {
+  color-scheme: light;
+
+  /* Primario: azul petroleo institucional */
+  --color-primary-50: #f2f8fa;
+  --color-primary-100: #dceef2;
+  --color-primary-200: #b7dce4;
+  --color-primary-300: #8ac4d1;
+  --color-primary-400: #4e9aac;
+  --color-primary-500: #1b6e80;
+  --color-primary-600: #145a6a;
+  --color-primary-700: #12505e;
+  --color-primary-800: #0e3d48;
+  --color-primary-900: #0b2b33;
+
+  /* Neutros: grises pizarra */
+  --color-neutral-50: #f7f9fa;
+  --color-neutral-100: #eef1f3;
+  --color-neutral-200: #e1e6e9;
+  --color-neutral-300: #c6cdd2;
+  --color-neutral-400: #9aa5ac;
+  --color-neutral-500: #6b767d;
+  --color-neutral-600: #525c63;
+  --color-neutral-700: #3a4249;
+  --color-neutral-800: #262c31;
+  --color-neutral-900: #16191c;
+
+  /* Semanticos */
+  --color-success-100: #dcf2e6;
+  --color-success-300: #8fd3af;
+  --color-success-600: #1e7a4b;
+  --color-success-700: #175f3b;
+  --color-warning-100: #fdf0d9;
+  --color-warning-300: #f2c878;
+  --color-warning-600: #b26a00;
+  --color-warning-700: #8b5200;
+  --color-danger-100: #fbe3e1;
+  --color-danger-300: #ef9b94;
+  --color-danger-600: #b3261e;
+  --color-danger-700: #8c1c16;
+  --color-info-600: #1b6e80;
+
+  /* Tipografia */
+  --font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-base: 0.9375rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+
+  /* Espaciado y radios */
+  --radio-control: 0.5rem;
+  --radio-tarjeta: 0.75rem;
+  --alto-toque: 48px;
+
+  /* Sombras */
+  --shadow-card: 0 1px 2px rgba(11, 43, 51, 0.08), 0 1px 3px rgba(11, 43, 51, 0.06);
+  --shadow-raised: 0 4px 12px rgba(11, 43, 51, 0.12);
+}

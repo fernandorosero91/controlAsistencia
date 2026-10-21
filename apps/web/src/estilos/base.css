@@ -1,0 +1,113 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-primario-50 text-neutro-900 font-sans text-base antialiased;
+    margin: 0;
+    min-height: 100dvh;
+  }
+
+  /* Foco visible y coherente en toda la aplicacion */
+  :focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background-color: var(--color-primary-100);
+  }
+
+  /* Los campos numericos en movil no deben mostrar flechas */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  .superficie {
+    @apply bg-white border border-neutro-200 rounded-xl shadow-tarjeta;
+  }
+
+  .etiqueta-campo {
+    @apply block text-sm font-medium text-neutro-700 mb-1.5;
+  }
+
+  .campo {
+    @apply w-full min-h-[48px] px-3.5 py-2.5 rounded-lg border border-neutro-300 bg-white
+           text-md text-neutro-900 placeholder:text-neutro-400
+           focus:border-primario-500 focus:ring-2 focus:ring-primario-100
+           disabled:bg-neutro-100 disabled:text-neutro-500;
+  }
+
+  .boton {
+    @apply inline-flex items-center justify-center gap-2 min-h-[48px] px-4 py-2.5
+           rounded-lg font-medium text-base transition-colors
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .boton-primario {
+    @apply boton bg-primario-700 text-white hover:bg-primario-800 active:bg-primario-900;
+  }
+
+  .boton-secundario {
+    @apply boton bg-white text-neutro-800 border border-neutro-300 hover:bg-neutro-100;
+  }
+
+  .boton-peligro {
+    @apply boton bg-error-600 text-white hover:bg-error-700;
+  }
+
+  .boton-compacto {
+    @apply inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 py-1.5
+           rounded-lg text-sm font-medium transition-colors
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .insignia {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+
+  .tabla {
+    @apply w-full text-sm border-collapse;
+  }
+
+  .tabla-cabecera {
+    @apply text-left font-semibold text-neutro-700 bg-neutro-100 whitespace-nowrap;
+  }
+
+  .tabla-cabecera th,
+  .tabla-cabecera td {
+    @apply px-3 py-2.5 border-b border-neutro-200;
+  }
+
+  .tabla-cuerpo tr:nth-child(even) {
+    @apply bg-neutro-50;
+  }
+}
+
+@layer utilities {
+  .sin-barra-espacial {
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .area-segura {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
