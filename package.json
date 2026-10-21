@@ -1,0 +1,56 @@
+{
+  "name": "proyecto-asistencia",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de control de asistencia, entrega de refrigerios y emision de certificados para seminario universitario",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm -w @seminario/api run dev",
+    "dev:web": "npm -w @seminario/web run dev",
+    "build": "npm -w @seminario/shared run build && npm -w @seminario/api run build && npm -w @seminario/web run build",
+    "build:shared": "npm -w @seminario/shared run build",
+    "start": "npm -w @seminario/api run start",
+    "test": "npm -w @seminario/shared run test && npm -w @seminario/api run test && npm -w @seminario/web run test",
+    "test:api": "npm -w @seminario/api run test",
+    "test:web": "npm -w @seminario/web run test",
+    "test:integration": "npm -w @seminario/api run test:integration",
+    "test:e2e": "npm run build && npm -w @seminario/api run start & npx playwright test",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm -w @seminario/shared run typecheck && npm -w @seminario/api run typecheck && npm -w @seminario/web run typecheck",
+    "migrate": "npm -w @seminario/api run migrate",
+    "migrate:revert": "npm -w @seminario/api run migrate:revert",
+    "migrate:status": "npm -w @seminario/api run migrate:status",
+    "seed": "npm -w @seminario/api run seed",
+    "load-test": "node load-tests/run.mjs",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:reset": "docker compose down -v"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.5",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.19.0",
+    "vitest": "^2.1.8"
+  }
+}

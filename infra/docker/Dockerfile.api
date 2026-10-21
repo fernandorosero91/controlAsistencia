@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1
+
+# ---------------------------------------------------------------- build
+FROM node:20-alpine AS build
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json packages/shared/package.json
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+RUN npm ci --no-audit --no-fund
+
+COPY packages/shared packages/shared
+COPY apps/api apps/api
+
+RUN npm -w @seminario/shared run build && npm -w @seminario/api run build
+
+# --------------------------------------------------------------- runtime
+FROM node:20-alpine AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+
+RUN apk add --no-cache tini
+
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json packages/shared/package.json
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+RUN npm ci --omit=dev --no-audit --no-fund \
+      --workspace @seminario/api --workspace @seminario/shared --include-workspace-root \
+ && npm cache clean --force
+
+COPY --from=build /app/packages/shared/dist packages/shared/dist
+COPY --from=build /app/apps/api/dist apps/api/dist
+COPY --from=build /app/apps/api/drizzle apps/api/drizzle
+
+RUN mkdir -p /app/apps/api/storage/certificados
+WORKDIR /app/apps/api
+
+EXPOSE 3000
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "dist/server.js"]

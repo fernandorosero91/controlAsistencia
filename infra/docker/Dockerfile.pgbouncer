@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+#
+# PgBouncer sobre Alpine. Se construye desde la distribucion oficial en lugar de
+# usar imagenes de terceros que cambian de catalogo, para que el despliegue sea
+# reproducible.
+
+FROM alpine:3.20
+
+RUN apk add --no-cache pgbouncer
+
+COPY infra/pgbouncer/pgbouncer.ini /etc/pgbouncer/pgbouncer.ini
+
+RUN addgroup -S pgbouncer \
+ && adduser -S -G pgbouncer -H -s /sbin/nologin pgbouncer \
+ && mkdir -p /var/lib/pgbouncer \
+ && chown -R pgbouncer:pgbouncer /etc/pgbouncer /var/lib/pgbouncer
+
+USER pgbouncer
+
+EXPOSE 6432
+ENTRYPOINT ["pgbouncer", "/etc/pgbouncer/pgbouncer.ini"]
