@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, asc, count, eq, ilike, inArray, or } from 'drizzle-orm';
 import ExcelJS from 'exceljs';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -15,7 +15,13 @@ import { asistentes } from '../db/esquema.js';
 import { errores } from '../plugins/errores.js';
 import { registrarAuditoria } from '../servicios/auditoria.js';
 import { obtenerConfig } from '../servicios/configuracion.js';
-import { crearAsistente, listarConCorreo, verificarAsistente } from '../servicios/asistentes.js';
+import {
+  crearAsistente,
+  crearAsistentesLote,
+  listarConCorreo,
+  verificarAsistente,
+  type DatosCrearAsistente,
+} from '../servicios/asistentes.js';
 import { correoConfigurado, enviarQrPorCorreo } from '../servicios/correo.js';
 import { generarCartaQrPDF, generarCarnetsPDF } from '../servicios/pdf.js';
 import {
@@ -26,6 +32,7 @@ import {
   type FormatoImportacion,
 } from '../servicios/importacion.js';
 import { validarCuerpo, validarConsulta, validarParametros } from '../lib/validacion.js';
+import { limiteEscaneo } from '../config/limites.js';
 import { cargarEntorno } from '../config/entorno.js';
 
 const parametrosAsistente = z.object({ id: z.string().min(1).max(32) });
@@ -382,6 +389,9 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
     '/asistentes/verificar',
     {
       onRequest: [app.autorizar(['admin', 'operador'])],
+      // Forma parte del flujo de escaneo: se limita por usuario como las
+      // registraciones, pero en su propio contador.
+      config: { rateLimit: limiteEscaneo() },
       schema: {
         tags: ['Asistentes'],
         description:
@@ -555,6 +565,12 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
       if (parseo.errorLectura) {
         throw errores.validacion(parseo.errorLectura);
       }
+      if (parseo.filas.length > 5000) {
+        throw errores.validacion(
+          `El archivo tiene ${parseo.filas.length} filas y el maximo por importacion es 5000. ` +
+            'Divida el padron en varios archivos.',
+        );
+      }
 
       const config = await obtenerConfig();
       const validaciones = parseo.filas.map((fila) =>
@@ -569,7 +585,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         ? await db
             .select({ id: asistentes.id })
             .from(asistentes)
-            .where(sql`${asistentes.id} = ANY(${idsValidos})`)
+            .where(inArray(asistentes.id, idsValidos))
         : [];
       const existentesSet = new Set(existentes.map((fila) => fila.id));
 
@@ -648,10 +664,10 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
       const existentes = await db
         .select({ id: asistentes.id })
         .from(asistentes)
-        .where(sql`${asistentes.id} = ANY(${ids})`);
+        .where(inArray(asistentes.id, ids));
       const existentesSet = new Set(existentes.map((fila) => fila.id));
 
-      let creados = 0;
+      const nuevos: DatosCrearAsistente[] = [];
       let actualizados = 0;
       let omitidos = 0;
 
@@ -677,7 +693,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           await db.update(asistentes).set(valores).where(eq(asistentes.id, id));
           actualizados += 1;
         } else {
-          await crearAsistente({
+          nuevos.push({
             id,
             nombres: valores.nombres,
             apellidos: valores.apellidos,
@@ -686,9 +702,14 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
             email: valores.email,
             activo: true,
           });
-          creados += 1;
         }
       }
+
+      // Los asistentes nuevos se insertan en bloque: 600 filas no pueden
+      // significar 600 viajes de ida y vuelta a la base de datos.
+      const lote = await crearAsistentesLote(nuevos);
+      const creados = lote.insertados;
+      omitidos += lote.fallidos;
 
       await registrarAuditoria(request, {
         accion: 'asistente.importado',

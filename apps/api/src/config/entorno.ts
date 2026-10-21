@@ -69,7 +69,9 @@ const esquema = z.object({
 
   RATE_LIMIT_LOGIN_MAX: z.coerce.number().int().min(1).max(1000).default(10),
   RATE_LIMIT_LOGIN_VENTANA_SEGUNDOS: z.coerce.number().int().min(1).default(60),
-  RATE_LIMIT_ESCANEO_MAX: z.coerce.number().int().min(1).max(100000).default(600),
+  // Escaneo del operador: por usuario autenticado. 80 por minuto alcanza para
+  // unas cuarenta registraciones por minuto y protege la base de datos.
+  RATE_LIMIT_ESCANEO_MAX: z.coerce.number().int().min(1).max(100000).default(80),
   RATE_LIMIT_ESCANEO_VENTANA_SEGUNDOS: z.coerce.number().int().min(1).default(60),
   RATE_LIMIT_VERIFICACION_MAX: z.coerce.number().int().min(1).max(1000).default(20),
   RATE_LIMIT_VERIFICACION_VENTANA_SEGUNDOS: z.coerce.number().int().min(1).default(60),

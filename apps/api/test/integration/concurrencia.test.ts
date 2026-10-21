@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import '../ayudas/limiteAlto.js';
+import { db } from '../../src/db/cliente.js';
+import { tiposRefrigerio } from '../../src/db/esquema.js';
 import {
   CLAVE_ADMIN,
   CORREO_ADMIN,
@@ -12,8 +15,6 @@ import {
   ID_ASISTENTE_3,
   prepararBaseDePruebas,
 } from '../ayudas/basePruebas.js';
-import { db } from '../../src/db/cliente.js';
-import { tiposRefrigerio } from '../../src/db/esquema.js';
 
 const descripcion = hayBaseDePruebas()
   ? 'concurrencia de registros'

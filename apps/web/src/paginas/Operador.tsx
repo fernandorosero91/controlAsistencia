@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ClipboardCheck,
   Info,
+  LayoutDashboard,
   LogOut,
   Package,
   ScanLine,
@@ -94,6 +95,7 @@ const MODOS: {
 
 export function Operador() {
   const navegar = useNavigate();
+  const usuario = useSesion((estado) => estado.usuario);
   const cerrarSesion = useSesion((estado) => estado.cerrarSesion);
 
   const [modo, setModo] = useState<ModoRegistro>('ingreso');
@@ -457,6 +459,17 @@ export function Operador() {
           </p>
         </div>
         <div className="flex items-center gap-1">
+          {usuario?.rol === 'admin' ? (
+            <button
+              type="button"
+              className="boton-compacto text-neutro-600 hover:bg-neutro-100"
+              onClick={() => navegar('/admin')}
+              aria-label="Volver al panel de administracion"
+              title="Volver al panel de administracion"
+            >
+              <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
+            </button>
+          ) : null}
           <button
             type="button"
             className="boton-compacto text-neutro-600 hover:bg-neutro-100"

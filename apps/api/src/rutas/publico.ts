@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { codigoVerificacionSchema } from '@seminario/shared';
 import { verificarCodigoPublico } from '../servicios/certificados.js';
 import { obtenerConfig } from '../servicios/configuracion.js';
+import { limiteVerificacionPublica } from '../config/limites.js';
 import { validarParametros } from '../lib/validacion.js';
 
 const parametrosCodigo = z.object({
@@ -37,7 +38,7 @@ export async function registrarRutasPublico(app: FastifyInstance): Promise<void>
     '/publico/verificar/:codigo',
     {
       config: {
-        rateLimit: { max: 20, timeWindow: '1 minute' },
+        rateLimit: limiteVerificacionPublica(),
       },
       schema: {
         tags: ['Publico'],

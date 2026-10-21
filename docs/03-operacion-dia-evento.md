@@ -27,12 +27,17 @@ Si `baseDatos` es `false`, la API no puede registrar: revise `docker compose log
 1. Panel de administracion > **Importar**.
 2. Descargue la **plantilla** y envie el archivo XLSX con las columnas `id`, `nombres`,
    `apellidos`, `rol`, `semestre` y `email`.
-3. Revise la **vista previa**: el sistema informa fila por fila que es valida y que no.
+3. Revise la **vista previa**: el sistema informa fila por fila que es valida y que no. La
+   tabla muestra las primeras 50 filas, pero el boton importa **todas** las filas validas del
+   archivo (hasta 5000 por importacion).
 4. Confirme la importacion.
 
 **Verificacion:** en **Asistentes** el total debe coincidir con el listado de la universidad.
 El sistema asigna a cada asistente un **codigo de registro** de 6 caracteres (por ejemplo
 `K7M4D2`) que es lo que va en el QR.
+
+> Si el archivo ya tiene los datos cargados, la importacion los **actualiza** en vez de
+> duplicarlos: el total de asistentes del panel no debe cambiar.
 
 ### 1.3 Entregar el codigo de registro
 

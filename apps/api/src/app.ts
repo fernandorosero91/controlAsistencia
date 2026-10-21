@@ -11,6 +11,7 @@ import { logger } from './config/log.js';
 import { cerrarPool } from './db/cliente.js';
 import { registrarManejadorErrores } from './plugins/errores.js';
 import { registrarPluginAutenticacion } from './plugins/autenticacion.js';
+import { limiteAdministracion } from './config/limites.js';
 import { conectarCache, redis } from './servicios/cache.js';
 import { registrarRutasAuth } from './rutas/auth.js';
 import { registrarRutasSalud } from './rutas/salud.js';
@@ -22,6 +23,7 @@ import { registrarRutasReportes } from './rutas/reportes.js';
 import { registrarRutasCertificados } from './rutas/certificados.js';
 import { registrarRutasUsuarios } from './rutas/usuarios.js';
 import { registrarRutasPublico } from './rutas/publico.js';
+import type { HookAutorizacion } from './tipos.js';
 import './tipos.js';
 
 export async function construirAplicacion(): Promise<FastifyInstance> {
@@ -37,6 +39,26 @@ export async function construirAplicacion(): Promise<FastifyInstance> {
 
   await registrarManejadorErrores(app);
   await conectarCache();
+
+  // El plugin de autenticacion se registra antes que el de limites de tasa:
+  // el hook onRoute de mas abajo necesita distinguir las rutas que exigen rol
+  // de administrador para aplicarle su propio limite.
+  await registrarPluginAutenticacion(app);
+
+  // Las rutas que exigen una sesion valida reciben el limite de tasa del
+  // panel de forma automatica. De lo contrario habria que repetirlo en cada
+  // una de las veinticinco rutas. Las rutas de escaneo traen su propio limite
+  // (mas bajo, por operador) y no se tocan.
+  app.addHook('onRoute', (routeOptions) => {
+    const ganchos = routeOptions.onRequest;
+    if (!Array.isArray(ganchos)) return;
+    if (routeOptions.config?.rateLimit) return;
+
+    const exigeSesion = ganchos.some((gancho) => Array.isArray((gancho as HookAutorizacion).roles));
+    if (!exigeSesion) return;
+
+    routeOptions.config = { ...routeOptions.config, rateLimit: limiteAdministracion() };
+  });
 
   // Fastify responde 415 cuando un POST no trae Content-Type. Varias rutas de la
   // API (renovacion de sesion, cierre de sesion) se llaman sin cuerpo, asi que se
@@ -134,8 +156,6 @@ export async function construirAplicacion(): Promise<FastifyInstance> {
     routePrefix: '/docs',
     uiConfig: { docExpansion: 'list', deepLinking: true },
   });
-
-  await registrarPluginAutenticacion(app);
 
   await registrarRutasSalud(app);
   await registrarRutasAuth(app);

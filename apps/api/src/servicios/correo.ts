@@ -63,7 +63,8 @@ async function imagenQr(codigo: string): Promise<string> {
   const resultado = await QRCode.toDataURL(codigo, {
     type: 'png',
     errorCorrectionLevel: 'M',
-    margin: 1,
+    // Zona de silencio de 4 modulos: facilita la lectura con el celular.
+    margin: 4,
     width: 512,
   } as never);
   return resultado as unknown as string;

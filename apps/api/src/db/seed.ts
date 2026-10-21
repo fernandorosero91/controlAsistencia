@@ -99,6 +99,18 @@ function horaDesdeTexto(texto: string): { hora: number; minuto: number } {
   return { hora: Number(hora), minuto: Number(minuto) };
 }
 
+/**
+ * Ventana de registro de una jornada: abre 30 minutos antes de que empiece y
+ * cierra 60 minutos despues de su inicio. Es la regla que usan las jornadas
+ * del seminario; el administrador puede ajustarla despues desde el panel.
+ */
+function ventanaCheckin(inicioJornada: Date): { apertura: Date; cierre: Date } {
+  return {
+    apertura: new Date(inicioJornada.getTime() - 30 * 60_000),
+    cierre: new Date(inicioJornada.getTime() + 60 * 60_000),
+  };
+}
+
 export interface OpcionesSembrado {
   /** Cantidad de asistentes ficticios. Por defecto toma SEED_ASISTENTES. */
   asistentes?: number;
@@ -197,14 +209,19 @@ export async function sembrarDatos(opciones: OpcionesSembrado = {}): Promise<voi
   // ------------------------------------------------------------------ jornadas
   const jornadasExistentes = await db.select().from(jornadas);
   if (jornadasExistentes.length === 0) {
+    const inicioManana = conHora(fecha, inicio.hora, inicio.minuto);
+    const inicioTarde = conHora(fecha, horaMedio, 0);
+    const ventanaManana = ventanaCheckin(inicioManana);
+    const ventanaTarde = ventanaCheckin(inicioTarde);
+
     const manana = await db
       .insert(jornadas)
       .values({
         nombre: 'Manana',
-        inicio: conHora(fecha, inicio.hora, inicio.minuto),
+        inicio: inicioManana,
         fin: conHora(fecha, horaMedio, 0),
-        ventanaCheckinInicio: conHora(fecha, Math.max(inicio.hora - 30, 0), inicio.minuto),
-        ventanaCheckinFin: conHora(fecha, inicio.hora + 60, inicio.minuto),
+        ventanaCheckinInicio: ventanaManana.apertura,
+        ventanaCheckinFin: ventanaManana.cierre,
         orden: 1,
       })
       .returning({ id: jornadas.id });
@@ -213,10 +230,10 @@ export async function sembrarDatos(opciones: OpcionesSembrado = {}): Promise<voi
       .insert(jornadas)
       .values({
         nombre: 'Tarde',
-        inicio: conHora(fecha, horaMedio, 0),
+        inicio: inicioTarde,
         fin: conHora(fecha, fin.hora, fin.minuto),
-        ventanaCheckinInicio: conHora(fecha, Math.max(horaMedio - 30, 0), 0),
-        ventanaCheckinFin: conHora(fecha, horaMedio + 60, 0),
+        ventanaCheckinInicio: ventanaTarde.apertura,
+        ventanaCheckinFin: ventanaTarde.cierre,
         orden: 2,
       })
       .returning({ id: jornadas.id });

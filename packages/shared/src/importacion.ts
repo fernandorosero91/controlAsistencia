@@ -35,7 +35,13 @@ export const vistaPreviaImportacionSchema = z.object({
   nuevos: z.number().int(),
   actualizados: z.number().int(),
   duplicadosEnArchivo: z.number().int(),
-  muestra: z.array(
+  /**
+   * Todas las filas del archivo, no solo una muestra: el panel devuelve las
+   * filas completas para poder confirmar la importacion de los ~600 asistentes.
+   * La tabla de la interfaz muestra solo las primeras, pero el boton de
+   * importar envia el archivo entero.
+   */
+  filas: z.array(
     z.object({
       fila: z.number().int(),
       datos: filaAsistenteImportadaSchema.partial(),

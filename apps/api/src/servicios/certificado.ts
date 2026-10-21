@@ -338,11 +338,12 @@ export async function generarCertificadoPDF(datos: DatosCertificado): Promise<Ui
     await QRCode.toBuffer(datos.urlVerificacion, {
       type: 'png',
       errorCorrectionLevel: 'M',
-      margin: 1,
+      // Zona de silencio de 4 modulos: facilita la lectura con el celular.
+      margin: 4,
       width: 640,
     }),
   );
-  const tamanoQr = 132;
+  const tamanoQr = 140;
   pagina.drawImage(qr, {
     x: panelX + (panelAncho - tamanoQr) / 2,
     y: panelY + 74,

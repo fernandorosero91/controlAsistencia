@@ -250,7 +250,10 @@ export function construirVistaPrevia(
     nuevos,
     actualizados,
     duplicadosEnArchivo: duplicados,
-    muestra: validaciones.slice(0, 50).map((validacion) => ({
+    // Se devuelven todas las filas: el panel necesita el archivo completo para
+    // confirmar la importacion (con una muestra de 50 solo se importaba una
+    // parte del padron).
+    filas: validaciones.map((validacion) => ({
       fila: validacion.fila,
       datos: validacion.datos,
       errores: validacion.errores,

@@ -9,7 +9,7 @@ import { cargarEntorno, usarCookieSegura } from '../config/entorno.js';
 import { db } from '../db/cliente.js';
 import { refreshTokens, usuariosSistema } from '../db/esquema.js';
 import { errores } from './errores.js';
-import type { UsuarioAutenticado } from '../tipos.js';
+import type { HookAutorizacion, UsuarioAutenticado } from '../tipos.js';
 
 const REFRESH_COOKIE = 'seminario_refresh';
 
@@ -114,7 +114,7 @@ export async function registrarPluginAutenticacion(app: FastifyInstance): Promis
   });
 
   app.decorate('autorizar', (roles: RolSistema[]) => {
-    return async (request: FastifyRequest, reply: FastifyReply) => {
+    const verificar: HookAutorizacion = async (request: FastifyRequest, reply: FastifyReply) => {
       await app.autenticar(request, reply);
       const usuario = request.usuario;
       if (!usuario) {
@@ -124,5 +124,10 @@ export async function registrarPluginAutenticacion(app: FastifyInstance): Promis
         throw errores.noAutorizado('Esta operacion esta reservada al administrador del seminario');
       }
     };
+    // Se marcan los roles exigidos: el hook onRoute de app.ts usa esta marca
+    // para aplicar el limite de tasa de administracion sin repetirlo en cada
+    // ruta.
+    verificar.roles = roles;
+    return verificar;
   });
 }

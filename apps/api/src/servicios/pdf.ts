@@ -85,7 +85,9 @@ async function imagenQr(contenido: string): Promise<Buffer> {
   return QRCode.toBuffer(contenido, {
     type: 'png',
     errorCorrectionLevel: 'M',
-    margin: 1,
+    // Zona de silencio de 4 modulos (la que pide la norma): sin ella la camara
+    // tarda mucho mas en encontrar el codigo.
+    margin: 4,
     width: 512,
   });
 }
@@ -147,7 +149,7 @@ export async function generarCarnetsPDF(
     });
 
     const qr = await documento.embedPng(await imagenQr(participante.codigoRegistro));
-    const tamanoQr = 92;
+    const tamanoQr = 100;
     actual.drawImage(qr, {
       x: x + 14,
       y: y + 18,

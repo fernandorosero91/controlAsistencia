@@ -14,6 +14,7 @@ import {
   tiposRefrigerio,
   usuariosSistema,
 } from '../db/esquema.js';
+import { limiteEscaneo } from '../config/limites.js';
 import { errores } from '../plugins/errores.js';
 import { registrarAuditoria } from '../servicios/auditoria.js';
 import { ejecutarConIdempotencia } from '../servicios/idempotencia.js';
@@ -22,14 +23,12 @@ import { validarCuerpo, validarParametros } from '../lib/validacion.js';
 
 const parametrosAsistente = z.object({ asistenteId: z.string().min(1).max(32) });
 
-const limiteEscaneo = { max: 600, timeWindow: '1 minute' };
-
 export async function registrarRutasRegistros(app: FastifyInstance): Promise<void> {
   app.post(
     '/asistencias/ingreso',
     {
       onRequest: [app.autenticar],
-      config: { rateLimit: limiteEscaneo },
+      config: { rateLimit: limiteEscaneo() },
       schema: {
         tags: ['Registros'],
         description: 'Registra el ingreso de un asistente a una jornada',
@@ -70,7 +69,7 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
     '/asistencias/salida',
     {
       onRequest: [app.autenticar],
-      config: { rateLimit: limiteEscaneo },
+      config: { rateLimit: limiteEscaneo() },
       schema: {
         tags: ['Registros'],
         description: 'Registra la salida (cierre) de un asistente en una jornada',
@@ -111,7 +110,7 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
     '/refrigerios/entregar',
     {
       onRequest: [app.autenticar],
-      config: { rateLimit: limiteEscaneo },
+      config: { rateLimit: limiteEscaneo() },
       schema: {
         tags: ['Registros'],
         description: 'Entrega un refrigerio a un asistente con asistencia en la jornada',

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Firmante } from '@seminario/shared';
-import { CalendarClock, Plus, Save, Timer } from 'lucide-react';
+import { CalendarClock, Pencil, Plus, Save, Timer } from 'lucide-react';
 import { api, ErrorPeticion } from '../../lib/api';
 import { formatearFechaHora } from '../../lib/formato';
 import { Aviso, EsqueletoTarjeta, Insignia, Modal, Tarjeta } from '../../componentes/comunes';
@@ -62,6 +62,8 @@ export function Configuracion() {
   const [exito, setExito] = useState<string | null>(null);
   const [nuevaJornada, setNuevaJornada] = useState(false);
   const [nuevoRefrigerio, setNuevoRefrigerio] = useState(false);
+  const [jornadaEnEdicion, setJornadaEnEdicion] = useState<Jornada | null>(null);
+  const [refrigerioEnEdicion, setRefrigerioEnEdicion] = useState<TipoRefrigerio | null>(null);
   const [firmas, setFirmas] = useState<Firmante[]>([]);
 
   const actualizarFirmante = (indice: number, campo: keyof Firmante, valor: string) => {
@@ -464,7 +466,18 @@ export function Configuracion() {
               <li key={jornada.id} className="rounded-lg border border-neutro-200 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-neutro-900">{jornada.nombre}</p>
-                  <Insignia tono="primario">Orden {jornada.orden}</Insignia>
+                  <div className="flex items-center gap-1">
+                    <Insignia tono="primario">Orden {jornada.orden}</Insignia>
+                    <button
+                      type="button"
+                      className="boton-compacto text-neutro-600 hover:bg-neutro-100"
+                      onClick={() => setJornadaEnEdicion(jornada)}
+                      aria-label={`Editar la jornada ${jornada.nombre}`}
+                      title="Editar jornada"
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
                 <p className="mt-1 flex items-center gap-1.5 text-xs text-neutro-600">
                   <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
@@ -477,6 +490,9 @@ export function Configuracion() {
                 </p>
               </li>
             ))}
+            {(jornadas?.jornadas.length ?? 0) === 0 ? (
+              <li className="text-sm text-neutro-600">No hay jornadas configuradas.</li>
+            ) : null}
           </ul>
         </Tarjeta>
 
@@ -495,45 +511,90 @@ export function Configuracion() {
           }
         >
           <ul className="space-y-2">
-            {(refrigerios?.tipos ?? []).map((tipo) => (
-              <li
-                key={tipo.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-neutro-200 px-3 py-2.5"
-              >
-                <span className="text-sm font-medium text-neutro-900">{tipo.nombre}</span>
-                {tipo.activo ? (
-                  <Insignia tono="exito">Activo</Insignia>
-                ) : (
-                  <Insignia tono="neutro">Inactivo</Insignia>
-                )}
-              </li>
-            ))}
+            {(refrigerios?.tipos ?? []).map((tipo) => {
+              const jornada = (jornadas?.jornadas ?? []).find((item) => item.id === tipo.jornadaId);
+              return (
+                <li
+                  key={tipo.id}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-neutro-200 px-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-neutro-900">{tipo.nombre}</p>
+                    <p className="truncate text-xs text-neutro-600">
+                      {jornada?.nombre ?? 'Sin jornada'} - Orden {tipo.orden}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {tipo.activo ? (
+                      <Insignia tono="exito">Activo</Insignia>
+                    ) : (
+                      <Insignia tono="neutro">Inactivo</Insignia>
+                    )}
+                    <button
+                      type="button"
+                      className="boton-compacto text-neutro-600 hover:bg-neutro-100"
+                      onClick={() => setRefrigerioEnEdicion(tipo)}
+                      aria-label={`Editar el refrigerio ${tipo.nombre}`}
+                      title="Editar refrigerio"
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
             {(refrigerios?.tipos.length ?? 0) === 0 ? (
               <li className="text-sm text-neutro-600">No hay refrigerios configurados.</li>
             ) : null}
           </ul>
         </Tarjeta>
       </div>
-      <Modal abierto={nuevaJornada} titulo="Nueva jornada" alCerrar={() => setNuevaJornada(false)}>
+      <Modal
+        abierto={nuevaJornada || jornadaEnEdicion !== null}
+        titulo={jornadaEnEdicion ? 'Editar jornada' : 'Nueva jornada'}
+        alCerrar={() => {
+          setNuevaJornada(false);
+          setJornadaEnEdicion(null);
+        }}
+      >
         <FormularioJornada
+          inicial={jornadaEnEdicion ?? undefined}
+          etiqueta={jornadaEnEdicion ? 'Guardar cambios' : 'Crear jornada'}
           alGuardar={async (datos) => {
-            await api.crear('/jornadas', datos);
+            if (jornadaEnEdicion) {
+              await api.actualizar(`/jornadas/${jornadaEnEdicion.id}`, datos);
+            } else {
+              await api.crear('/jornadas', datos);
+            }
             setNuevaJornada(false);
+            setJornadaEnEdicion(null);
             void cliente.invalidateQueries({ queryKey: ['jornadas'] });
+            void cliente.invalidateQueries({ queryKey: ['operador', 'contexto'] });
           }}
         />
       </Modal>
       <Modal
-        abierto={nuevoRefrigerio}
-        titulo="Nuevo refrigerio"
-        alCerrar={() => setNuevoRefrigerio(false)}
+        abierto={nuevoRefrigerio || refrigerioEnEdicion !== null}
+        titulo={refrigerioEnEdicion ? 'Editar refrigerio' : 'Nuevo refrigerio'}
+        alCerrar={() => {
+          setNuevoRefrigerio(false);
+          setRefrigerioEnEdicion(null);
+        }}
       >
         <FormularioRefrigerio
           jornadas={jornadas?.jornadas ?? []}
+          inicial={refrigerioEnEdicion ?? undefined}
+          etiqueta={refrigerioEnEdicion ? 'Guardar cambios' : 'Crear refrigerio'}
           alGuardar={async (datos) => {
-            await api.crear('/refrigerios/tipos', datos);
+            if (refrigerioEnEdicion) {
+              await api.actualizar(`/refrigerios/tipos/${refrigerioEnEdicion.id}`, datos);
+            } else {
+              await api.crear('/refrigerios/tipos', datos);
+            }
             setNuevoRefrigerio(false);
+            setRefrigerioEnEdicion(null);
             void cliente.invalidateQueries({ queryKey: ['refrigerios', 'tipos'] });
+            void cliente.invalidateQueries({ queryKey: ['operador', 'contexto'] });
           }}
         />
       </Modal>
@@ -545,14 +606,22 @@ export function Configuracion() {
   );
 }
 
-function FormularioJornada({ alGuardar }: { alGuardar: (datos: unknown) => Promise<void> }) {
+function FormularioJornada({
+  alGuardar,
+  inicial,
+  etiqueta,
+}: {
+  alGuardar: (datos: unknown) => Promise<void>;
+  inicial?: Jornada;
+  etiqueta: string;
+}) {
   const [datos, setDatos] = useState({
-    nombre: '',
-    inicio: '',
-    fin: '',
-    ventanaCheckinInicio: '',
-    ventanaCheckinFin: '',
-    orden: 1,
+    nombre: inicial?.nombre ?? '',
+    inicio: inicial ? aLocal(inicial.inicio) : '',
+    fin: inicial ? aLocal(inicial.fin) : '',
+    ventanaCheckinInicio: inicial ? aLocal(inicial.ventanaCheckinInicio) : '',
+    ventanaCheckinFin: inicial ? aLocal(inicial.ventanaCheckinFin) : '',
+    orden: inicial?.orden ?? 1,
   });
   const [guardando, setGuardando] = useState(false);
 
@@ -641,8 +710,23 @@ function FormularioJornada({ alGuardar }: { alGuardar: (datos: unknown) => Promi
           />
         </div>
       </div>
+      <div>
+        <label htmlFor="jornada-orden" className="etiqueta-campo">
+          Orden
+        </label>
+        <input
+          id="jornada-orden"
+          type="number"
+          min={0}
+          max={50}
+          className="campo"
+          value={datos.orden}
+          onChange={(evento) => setDatos({ ...datos, orden: Number(evento.target.value) })}
+          required
+        />
+      </div>
       <button type="submit" className="boton-primario w-full" disabled={guardando}>
-        {guardando ? 'Guardando' : 'Crear jornada'}
+        {guardando ? 'Guardando' : etiqueta}
       </button>
     </form>
   );
@@ -651,12 +735,18 @@ function FormularioJornada({ alGuardar }: { alGuardar: (datos: unknown) => Promi
 function FormularioRefrigerio({
   jornadas,
   alGuardar,
+  inicial,
+  etiqueta,
 }: {
   jornadas: Jornada[];
   alGuardar: (datos: unknown) => Promise<void>;
+  inicial?: TipoRefrigerio;
+  etiqueta: string;
 }) {
-  const [nombre, setNombre] = useState('');
-  const [jornadaId, setJornadaId] = useState<number>(jornadas[0]?.id ?? 0);
+  const [nombre, setNombre] = useState(inicial?.nombre ?? '');
+  const [jornadaId, setJornadaId] = useState<number>(inicial?.jornadaId ?? jornadas[0]?.id ?? 0);
+  const [activo, setActivo] = useState(inicial?.activo ?? true);
+  const [orden, setOrden] = useState(inicial?.orden ?? 1);
   const [guardando, setGuardando] = useState(false);
 
   return (
@@ -666,7 +756,7 @@ function FormularioRefrigerio({
         evento.preventDefault();
         setGuardando(true);
         try {
-          await alGuardar({ nombre, jornadaId, activo: true, orden: 1 });
+          await alGuardar({ nombre, jornadaId, activo, orden });
         } finally {
           setGuardando(false);
         }
@@ -701,8 +791,35 @@ function FormularioRefrigerio({
           ))}
         </select>
       </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label htmlFor="refrigerio-orden" className="etiqueta-campo">
+            Orden
+          </label>
+          <input
+            id="refrigerio-orden"
+            type="number"
+            min={0}
+            max={50}
+            className="campo"
+            value={orden}
+            onChange={(evento) => setOrden(Number(evento.target.value))}
+            required
+          />
+        </div>
+        <label className="flex min-h-[48px] items-center gap-3 self-end rounded-lg border border-neutro-200 px-3.5">
+          <input
+            id="refrigerio-activo"
+            type="checkbox"
+            className="h-5 w-5 accent-[#12505E]"
+            checked={activo}
+            onChange={(evento) => setActivo(evento.target.checked)}
+          />
+          <span className="text-sm font-medium text-neutro-800">Activo</span>
+        </label>
+      </div>
       <button type="submit" className="boton-primario w-full" disabled={guardando}>
-        {guardando ? 'Guardando' : 'Crear refrigerio'}
+        {guardando ? 'Guardando' : etiqueta}
       </button>
     </form>
   );

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BrowserMultiFormatReader, type IScannerControls } from '@zxing/browser';
+import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser';
 import { Camera, CameraOff } from 'lucide-react';
 import { ErrorPeticion } from '../../lib/api';
 
@@ -8,6 +8,32 @@ interface Props {
   alCerrar: () => void;
   alDetectar: (texto: string) => void;
 }
+
+/**
+ * Lector dedicado a codigos QR.
+ *
+ * El QR de la escarapela es un codigo pequeno y de un solo formato, asi que un
+ * lector multi-formato (que ademas intenta codigos de barras, Aztec y Data
+ * Matrix en cada intento) tarda mucho mas en reconocerlo. Ademas, la libreria
+ * espera 500 ms entre intentos: aqui se reduce a 100 ms, que es lo que hace
+ * que el operador perciba el escaneo como lento.
+ */
+const lector = new BrowserQRCodeReader(undefined, {
+  delayBetweenScanAttempts: 100,
+  delayBetweenScanSuccess: 100,
+  tryPlayVideoTimeout: 8000,
+});
+
+/** Se pide la camara trasera en una resolucion alta: un QR pequeno se
+ * reconoce antes cuanto mas pixeles tiene el cuadro. */
+const restriccionesVideo: MediaStreamConstraints = {
+  video: {
+    facingMode: 'environment',
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+  },
+  audio: false,
+};
 
 export function EscanerCamara({ abierto, alCerrar, alDetectar }: Props) {
   const contenedorRef = useRef<HTMLVideoElement | null>(null);
@@ -44,9 +70,8 @@ export function EscanerCamara({ abierto, alCerrar, alDetectar }: Props) {
 
     const iniciar = async () => {
       try {
-        const lector = new BrowserMultiFormatReader();
-        const controles = await lector.decodeFromVideoDevice(
-          undefined,
+        const controles = await lector.decodeFromConstraints(
+          restriccionesVideo,
           contenedorRef.current ?? undefined,
           (resultado) => {
             if (!resultado) return;

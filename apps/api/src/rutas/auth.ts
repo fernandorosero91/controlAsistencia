@@ -13,6 +13,7 @@ import {
   nombreCookieRefresh,
 } from '../plugins/autenticacion.js';
 import { registrarAuditoria } from '../servicios/auditoria.js';
+import { limiteLogin } from '../config/limites.js';
 import { validarCuerpo } from '../lib/validacion.js';
 import { logger } from '../config/log.js';
 
@@ -31,8 +32,7 @@ export async function registrarRutasAuth(app: FastifyInstance): Promise<void> {
     {
       config: {
         rateLimit: {
-          max: 10,
-          timeWindow: '1 minute',
+          ...limiteLogin(),
           // En el sede del evento todos los operadores comparten la misma IP:
           // el limite se aplica por cuenta, no solo por direccion de red.
           keyGenerator: (request: FastifyRequest) => {

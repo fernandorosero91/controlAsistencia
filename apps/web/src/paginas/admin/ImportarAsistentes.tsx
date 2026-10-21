@@ -12,12 +12,15 @@ interface VistaPrevia {
   nuevos: number;
   actualizados: number;
   duplicadosEnArchivo: number;
-  muestra: {
+  filas: {
     fila: number;
     datos: Record<string, unknown>;
     errores: { fila: number; campo: string | null; mensaje: string; valor: string | null }[];
   }[];
 }
+
+/** Filas que se muestran en la tabla: el archivo completo se importa igual. */
+const FILAS_MOSTRADAS = 50;
 
 export function ImportarAsistentes() {
   const cliente = useQueryClient();
@@ -71,7 +74,10 @@ export function ImportarAsistentes() {
   const confirmar = useMutation({
     mutationFn: async () => {
       if (!vistaPrevia) return;
-      const filas = vistaPrevia.muestra
+      // Se envian TODAS las filas validas del archivo, no solo las que aparecen
+      // en la tabla: con una muestra de 50 el padron de 600 asistentes se
+      // importaba incompleto.
+      const filas = vistaPrevia.filas
         .filter((fila) => fila.errores.length === 0)
         .map((fila) => ({
           fila: fila.fila,
@@ -80,6 +86,7 @@ export function ImportarAsistentes() {
           apellidos: String(fila.datos.apellidos ?? ''),
           rol: String(fila.datos.rol ?? 'estudiante') as 'estudiante' | 'docente',
           semestre: (fila.datos.semestre ?? null) as number | null,
+          email: String(fila.datos.email ?? ''),
         }));
       return api.crear<{ creados: number; actualizados: number; omitidos: number }>(
         '/asistentes/importar/confirmar',
@@ -209,7 +216,7 @@ export function ImportarAsistentes() {
                 </tr>
               </thead>
               <tbody className="tabla-cuerpo">
-                {vistaPrevia.muestra.map((fila) => (
+                {vistaPrevia.filas.slice(0, FILAS_MOSTRADAS).map((fila) => (
                   <tr key={fila.fila}>
                     <td className="text-neutro-500">{fila.fila}</td>
                     <td className="font-mono">{String(fila.datos.id ?? '')}</td>
@@ -236,7 +243,15 @@ export function ImportarAsistentes() {
             </table>
           </div>
 
-          {vistaPrevia.muestra.length === 0 ? (
+          {vistaPrevia.filas.length > FILAS_MOSTRADAS ? (
+            <p className="mt-2 text-xs text-neutro-500">
+              Se muestran las primeras {formatearNumero(FILAS_MOSTRADAS)} filas de{' '}
+              {formatearNumero(vistaPrevia.filas.length)}. Al confirmar se importan todas las filas
+              validas del archivo.
+            </p>
+          ) : null}
+
+          {vistaPrevia.filas.length === 0 ? (
             <EstadoVacio titulo="El archivo no tiene filas para mostrar" />
           ) : null}
         </Tarjeta>

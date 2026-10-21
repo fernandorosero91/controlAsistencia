@@ -154,6 +154,25 @@ cache en memoria **por proceso** y rate limit local.
 aplica **por replica**: el limite efectivo es `limite x replicas`. En el despliegue documentado
 Redis es obligatorio.
 
+### Como se aplica el limite
+
+El contador vive en Redis y se separa **por ruta**, con la clave del usuario autenticado (o de la
+direccion de red cuando la peticion no lleva sesion). Cada grupo de rutas tiene su propio
+presupuesto, de modo que el trafico de escaneo del operador no consume el del panel:
+
+| Grupo                   | Rutas                                            | Clave            | Valor por defecto |
+| ----------------------- | ------------------------------------------------ | ---------------- | ----------------- |
+| Escaneo del operador    | ingresos, salidas, refrigerios y busqueda previa | usuario          | 80 por minuto     |
+| Panel de administracion | rutas que exigen rol `admin`                     | usuario          | 600 por minuto    |
+| Inicio de sesion        | `POST /auth/login`                               | IP + correo      | 10 por minuto     |
+| Verificacion publica    | `GET /publico/verificar/:codigo`                 | direccion de red | 20 por minuto     |
+
+**Por que 80 por minuto para el operador.** En la sede todos los celulares salen por la misma IP
+publica, asi que un limite por direccion de red bloquearia a todo el equipo a la vez. Con el
+limite por usuario, cada operador puede registrar unos cuarenta asistentes por minuto (cada
+registro son dos peticiones: verificar el nombre y escribir el registro) sin que un solo
+dispositivo pueda saturar la base de datos. Las variables `RATE_LIMIT_*` adjustan cada valor.
+
 ---
 
 ## 11. Pool de conexiones y PgBouncer

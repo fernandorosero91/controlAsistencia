@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
   evaluarElegibilidad,
   sanitizarCeldaExportacion,
@@ -160,7 +160,7 @@ async function reporteAsistenciaParcial(_filtros: FiltrosReporte): Promise<Resul
   const filas = await db
     .select()
     .from(asistentes)
-    .where(sql`${asistentes.id} = ANY(${idsParciales})`)
+    .where(inArray(asistentes.id, idsParciales))
     .orderBy(asc(asistentes.apellidos));
 
   return {

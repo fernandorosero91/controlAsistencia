@@ -84,6 +84,67 @@ export async function crearAsistente(datos: DatosCrearAsistente) {
   return insertados[0]!;
 }
 
+export interface ResultadoLote {
+  insertados: number;
+  fallidos: number;
+}
+
+/**
+ * Inserta un lote de asistentes nuevos.
+ *
+ * Importar el padron completo son unas 600 filas: hacerlo con un insert por
+ * fila (y una consulta adicional por fila para buscar un codigo de registro
+ * libre) multiplica el tiempo de espera del administrador. Aqui los codigos se
+ * generan en memoria y se insertan en bloques de 200; solo si un codigo choca
+ * con uno existente (caso muy improbable) esa fila se reintenta por separado.
+ */
+export async function crearAsistentesLote(lista: DatosCrearAsistente[]): Promise<ResultadoLote> {
+  if (lista.length === 0) return { insertados: 0, fallidos: 0 };
+
+  const usados = new Set<string>();
+  const filas = lista.map((datos) => {
+    let codigo = generarCodigoRegistro();
+    while (usados.has(codigo)) codigo = generarCodigoRegistro();
+    usados.add(codigo);
+    return {
+      id: normalizarId(datos.id),
+      codigoRegistro: codigo,
+      email: datos.email ? datos.email.toLowerCase() : null,
+      nombres: datos.nombres,
+      apellidos: datos.apellidos,
+      rol: datos.rol,
+      semestre: datos.rol === 'docente' ? null : datos.semestre,
+      activo: datos.activo,
+    };
+  });
+
+  const insertadosIds = new Set<string>();
+  for (let indice = 0; indice < filas.length; indice += 200) {
+    const lote = filas.slice(indice, indice + 200);
+    const resultado = await db
+      .insert(asistentes)
+      .values(lote)
+      .onConflictDoNothing()
+      .returning({ id: asistentes.id });
+    for (const fila of resultado) insertadosIds.add(fila.id);
+  }
+
+  // Filas que chocaron con un codigo de registro ya usado: se reintentan una
+  // por una con un codigo nuevo.
+  for (const fila of filas) {
+    if (insertadosIds.has(fila.id)) continue;
+    const codigo = await generarCodigoDisponible();
+    const resultado = await db
+      .insert(asistentes)
+      .values({ ...fila, codigoRegistro: codigo })
+      .onConflictDoNothing()
+      .returning({ id: asistentes.id });
+    if (resultado.length > 0) insertadosIds.add(fila.id);
+  }
+
+  return { insertados: insertadosIds.size, fallidos: filas.length - insertadosIds.size };
+}
+
 export async function actualizarCorreo(asistenteId: string, email: string | null): Promise<void> {
   await db
     .update(asistentes)
