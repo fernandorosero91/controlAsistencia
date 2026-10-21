@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { KeyRound, LogIn } from 'lucide-react';
 import { loginSchema } from '@seminario/shared';
 import type { LoginInput } from '@seminario/shared';
-import { api, ErrorPeticion } from '../lib/api';
+import { api, ErrorPeticion, programarRenovacion } from '../lib/api';
 import { useSesion } from '../estado/sesion';
 import { Aviso } from '../componentes/comunes';
 
@@ -54,6 +54,9 @@ export function Login() {
       }>('/auth/login', datos, { reintentar: false });
 
       establecerSesion(respuesta.usuario, respuesta.tokenAcceso, respuesta.expiraEn);
+      // El token de acceso vence a los quince minutos: se renueva solo un
+      // minuto antes para que la sesion no se corte en mitad del evento.
+      programarRenovacion(respuesta.expiraEn);
       navegar(respuesta.usuario.rol === 'admin' ? '/admin' : '/operador', { replace: true });
     } catch (problema) {
       setError(

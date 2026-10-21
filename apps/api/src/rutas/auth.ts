@@ -1,5 +1,5 @@
 import argon2 from 'argon2';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { loginSchema } from '@seminario/shared';
 import { db } from '../db/cliente.js';
@@ -15,6 +15,7 @@ import {
 import { registrarAuditoria } from '../servicios/auditoria.js';
 import { limiteLogin } from '../config/limites.js';
 import { validarCuerpo } from '../lib/validacion.js';
+import { cargarEntorno } from '../config/entorno.js';
 import { logger } from '../config/log.js';
 
 const esquemaError = {
@@ -84,9 +85,10 @@ export async function registrarRutasAuth(app: FastifyInstance): Promise<void> {
         throw errores.noAutenticado('Correo electronico o contrasena incorrectos');
       }
 
+      const entorno = cargarEntorno();
       const tokenAcceso = app.jwt.sign(
         { sub: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol },
-        { expiresIn: '15m' },
+        { expiresIn: entorno.JWT_ACCESS_TTL_SEGUNDOS },
       );
 
       const refreshToken = await emitirRefreshToken(usuario.id, {
@@ -122,7 +124,7 @@ export async function registrarRutasAuth(app: FastifyInstance): Promise<void> {
           activo: usuario.activo,
         },
         tokenAcceso,
-        expiraEn: 900,
+        expiraEn: entorno.JWT_ACCESS_TTL_SEGUNDOS,
       });
     },
   );
@@ -141,14 +143,30 @@ export async function registrarRutasAuth(app: FastifyInstance): Promise<void> {
         throw errores.noAutenticado('No hay sesion activa');
       }
 
-      const registros = await db
-        .select()
-        .from(refreshTokens)
-        .where(eq(refreshTokens.tokenHash, hashToken(cookie)))
-        .limit(1);
-      const registro = registros[0];
+      // Rotacion atomica: el refresh token es de un solo uso. La actualizacion
+      // condicional (revocado = false) hace que dos peticiones simultaneas con
+      // la misma cookie (por ejemplo, dos pestanas del panel) no renueven la
+      // sesion dos veces ni invaliden la cookie de la otra.
+      const consumidos = await db
+        .update(refreshTokens)
+        .set({ revocado: true })
+        .where(
+          and(eq(refreshTokens.tokenHash, hashToken(cookie)), eq(refreshTokens.revocado, false)),
+        )
+        .returning({
+          id: refreshTokens.id,
+          usuarioId: refreshTokens.usuarioId,
+          expiraAt: refreshTokens.expiraAt,
+        });
 
-      if (!registro || registro.revocado || registro.expiraAt.getTime() < Date.now()) {
+      const registro = consumidos[0];
+      if (!registro) {
+        // El token no existe o ya se uso en otra renovacion. No se borra la
+        // cookie: otra pestana puede haberla actualizado ya con la rotacion.
+        throw errores.noAutenticado('La sesion expiro, inicie sesion nuevamente');
+      }
+
+      if (registro.expiraAt.getTime() < Date.now()) {
         limpiarCookieRefresh(reply);
         throw errores.noAutenticado('La sesion expiro, inicie sesion nuevamente');
       }
@@ -161,28 +179,20 @@ export async function registrarRutasAuth(app: FastifyInstance): Promise<void> {
       const usuario = usuarios[0];
 
       if (!usuario || !usuario.activo) {
-        await db
-          .update(refreshTokens)
-          .set({ revocado: true })
-          .where(eq(refreshTokens.id, registro.id));
         limpiarCookieRefresh(reply);
         throw errores.noAutenticado('La sesion ya no es valida');
       }
 
-      // Rotacion: el refresh token usado se revoca y se emite uno nuevo.
-      await db
-        .update(refreshTokens)
-        .set({ revocado: true })
-        .where(eq(refreshTokens.id, registro.id));
       const nuevoRefresh = await emitirRefreshToken(usuario.id, {
         userAgent: request.headers['user-agent'],
         ip: request.ip,
       });
       fijarCookieRefresh(reply, nuevoRefresh);
 
+      const entorno = cargarEntorno();
       const tokenAcceso = app.jwt.sign(
         { sub: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol },
-        { expiresIn: '15m' },
+        { expiresIn: entorno.JWT_ACCESS_TTL_SEGUNDOS },
       );
 
       return reply.send({
@@ -194,7 +204,7 @@ export async function registrarRutasAuth(app: FastifyInstance): Promise<void> {
           activo: usuario.activo,
         },
         tokenAcceso,
-        expiraEn: 900,
+        expiraEn: entorno.JWT_ACCESS_TTL_SEGUNDOS,
       });
     },
   );

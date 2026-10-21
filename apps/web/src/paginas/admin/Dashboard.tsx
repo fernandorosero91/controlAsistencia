@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Award, DoorOpen, ScanLine, TrendingUp, Users } from 'lucide-react';
 import clsx from 'clsx';
 import type { ResumenDashboard } from '@seminario/shared';
-import { BASE_API } from '../../lib/api';
+import { BASE_API, renovarTokenDetallado } from '../../lib/api';
 import { tokenActual } from '../../estado/sesion';
 import { formatearNumero, formatearPorcentaje } from '../../lib/formato';
 import { EsqueletoTarjeta, EstadoError, Tarjeta } from '../../componentes/comunes';
@@ -11,29 +11,41 @@ import { EsqueletoTarjeta, EstadoError, Tarjeta } from '../../componentes/comune
 const ETAG_RESUMEN = { valor: null as string | null };
 
 async function obtenerResumenConEtag(): Promise<ResumenDashboard> {
-  const cliente = new AbortController();
-  const token = tokenActual();
-  const respuesta = await fetch(`${BASE_API}/dashboard/resumen`, {
-    method: 'GET',
-    credentials: 'include',
-    signal: cliente.signal,
-    headers: {
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(ETAG_RESUMEN.valor ? { 'If-None-Match': ETAG_RESUMEN.valor } : {}),
-    },
-  });
+  // El resumen se pide con un fetch propio para poder enviar la cabecera
+  // If-None-Match. Por eso el 401 se atiende aqui: si el token vencio, se
+  // renueva y se reintenta, en lugar de dejar el panel en error.
+  for (let intento = 0; intento < 2; intento += 1) {
+    const cliente = new AbortController();
+    const token = tokenActual();
+    const respuesta = await fetch(`${BASE_API}/dashboard/resumen`, {
+      method: 'GET',
+      credentials: 'include',
+      signal: cliente.signal,
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(ETAG_RESUMEN.valor ? { 'If-None-Match': ETAG_RESUMEN.valor } : {}),
+      },
+    });
 
-  if (respuesta.status === 304) {
-    throw new Error('SIN_CAMBIOS');
+    if (respuesta.status === 401) {
+      const resultado = await renovarTokenDetallado();
+      if (resultado === 'ok') continue;
+    }
+
+    if (respuesta.status === 304) {
+      throw new Error('SIN_CAMBIOS');
+    }
+
+    if (!respuesta.ok) {
+      throw new Error('No se pudo cargar el resumen del seminario');
+    }
+
+    ETAG_RESUMEN.valor = respuesta.headers.get('etag');
+    return (await respuesta.json()) as ResumenDashboard;
   }
 
-  if (!respuesta.ok) {
-    throw new Error('No se pudo cargar el resumen del seminario');
-  }
-
-  ETAG_RESUMEN.valor = respuesta.headers.get('etag');
-  return (await respuesta.json()) as ResumenDashboard;
+  throw new Error('No se pudo cargar el resumen del seminario');
 }
 
 export function Dashboard() {

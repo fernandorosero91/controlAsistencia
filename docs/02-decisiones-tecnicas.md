@@ -116,6 +116,31 @@ archivo antes de tocar la base de datos.
 **Trade-off.** Dos pasos en lugar de uno. Se compensa con una plantilla XLSX descargable desde el
 propio panel, con las columnas exactas y una hoja de instrucciones.
 
+**La vista previa devuelve el archivo completo.** La tabla de la interfaz muestra solo las
+primeras 50 filas, pero la respuesta incluye todas: el boton de importar envia el padron entero.
+Devolver solo una muestra habria importado 50 de 600 asistentes sin avisar.
+
+---
+
+## 7 bis. Sesion: renovacion anticipada del token
+
+**Decision.** El token de acceso dura 15 minutos (`JWT_ACCESS_TTL_SEGUNDOS`) y el navegador lo
+renueva solo, **un minuto antes de que expire**. Si aun asi llega un 401, el cliente renueva y
+reintenta la peticion.
+
+**Por que.** Sin la renovacion anticipada, a los quince minutos de abrir el panel la primera
+consulta recibia un 401 y el operador veia un error en pantalla. Con la renovacion anticipada el
+token cambia solo: **cero errores 401** en uso normal.
+
+**Un fallo de red no cierra la sesion.** Si la renovacion falla por red, la sesion se conserva y el
+operador puede reintentar; solo se cierra cuando el servidor confirma que la sesion ya no existe.
+
+**El refresh token es de un solo uso, y la rotacion no borra la cookie.** Dos pestanas del mismo
+navegador comparten la cookie: si ambas renuevan en el mismo instante, una gana y la otra recibe
+un 401. Por eso la rotacion es atomica (`UPDATE ... WHERE revocado = false`) y la peticion que
+pierde **no borra la cookie**: la otra pestana sigue con su sesion valida. El cliente reintenta la
+renovacion una vez, por si la cookie se actualizo justo despues.
+
 ---
 
 ## 8. Correo electronico: opcional, con salida en papel
