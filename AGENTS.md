@@ -372,7 +372,9 @@ proyectoAsistencia/
   README.md
   package.json              # workspaces + scripts raiz (dev, build, test, lint, migrate, seed, load-test)
   docker-compose.yml
+  docker-compose.dokploy.yml # despliegue de produccion (Dokploy)
   .env.example
+  .env.dokploy.example      # variables del despliegue en Dokploy
   .eslintrc.cjs / eslint.config.js
   .prettierrc
   tsconfig.base.json

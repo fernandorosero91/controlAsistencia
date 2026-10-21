@@ -105,7 +105,7 @@ const esquema = z.object({
   SEMINARIO_LUGAR: z.string().default('Camara de Comercio - Pasto'),
   SEMINARIO_FACULTAD: z.string().default('Facultad de Ingenieria'),
   SEMINARIO_CONTACTO: z.string().default('311 781 7327'),
-  SEMINARIO_INVERSIION: z.string().default('$185.000'),
+  SEMINARIO_INVERSION: z.string().default('$185.000'),
   SEMINARIO_HORA_INICIO: z.string().default('08:00'),
   SEMINARIO_HORA_FIN: z.string().default('18:00'),
   SEMINARIO_TOLERANCIA_MINUTOS: z.coerce.number().int().min(0).max(240).default(15),

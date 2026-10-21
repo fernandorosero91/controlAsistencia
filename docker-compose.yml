@@ -26,6 +26,7 @@ services:
       - "127.0.0.1:5433:5432"
     volumes:
       - postgres_datos:/var/lib/postgresql/data
+      - ./infra/docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-seminario}"]
       interval: 10s
@@ -45,8 +46,11 @@ services:
         condition: service_healthy
     environment:
       TZ: America/Bogota
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-seminario_dev}
     volumes:
       - ./infra/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - pgbouncer_estado:/var/lib/pgbouncer
     ports:
       - "127.0.0.1:6432:6432"
     healthcheck:
@@ -94,7 +98,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
+      NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
       LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -136,6 +140,7 @@ volumes:
   postgres_datos:
   redis_datos:
   certificados:
+  pgbouncer_estado:
 
 networks:
   asistencia:

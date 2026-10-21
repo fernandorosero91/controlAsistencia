@@ -2,3 +2,7 @@
 *.png binary
 *.pdf binary
 *.pkt binary
+
+# Los scripts de shell conservan fin de linea LF dentro de los contenedores:
+# un CRLF rompe el shebang.
+*.sh text eol=lf

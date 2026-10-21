@@ -170,7 +170,29 @@ npm run seed
 npm run dev            # API en :3000 y web en :5173
 ```
 
-### 4.4 Scripts disponibles
+### 4.4 Despliegue en produccion con Dokploy
+
+El repositorio incluye un compose listo para Dokploy con todo el sistema (PostgreSQL, PgBouncer,
+Redis, migraciones automaticas, API y frontend):
+
+```bash
+# En Dokploy: Create Service > Docker Compose
+#   Repository   : fernandorosero91/controlAsistencia
+#   Branch       : main
+#   Compose Path : docker-compose.dokploy.yml
+#   Environment  : contenido de .env.dokploy.example, ajustado
+```
+
+Solo el servicio `web` publica puerto; el dominio con HTTPS se asigna en Dokploy apuntando a
+`web:80`. La guia paso a paso (variables, dominio, datos iniciales, respaldos y diagnostico) esta en
+[`docs/09-despliegue-dokploy.md`](docs/09-despliegue-dokploy.md).
+
+```bash
+# Primera carga de datos: administrador, operadores, configuracion y jornadas
+docker compose -f docker-compose.dokploy.yml --profile datos run --rm seed
+```
+
+### 4.5 Scripts disponibles
 
 | Comando                                                 | Que hace                                                                       |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -287,6 +309,10 @@ Resumen operativo; la version completa esta en
 ```
 proyectoAsistencia/
   AGENTS.md              # documento rector: contexto, restricciones y decisiones
+  docker-compose.yml     # desarrollo local (infraestructura publicada en 127.0.0.1)
+  docker-compose.dokploy.yml  # despliegue de produccion para Dokploy
+  .env.example           # variables de desarrollo
+  .env.dokploy.example   # variables de produccion (Dokploy)
   apps/
     api/                 # Fastify, Drizzle, servicios, migraciones y pruebas
     web/                 # React, Vite, Tailwind, PWA, app del operador y panel
@@ -316,3 +342,4 @@ proyectoAsistencia/
 | [`docs/06-pruebas-carga.md`](docs/06-pruebas-carga.md)               | Resultados medidos de las pruebas de carga.                                         |
 | [`docs/07-manuales.md`](docs/07-manuales.md)                         | Manual breve para administrador y operador.                                         |
 | [`docs/08-pruebas.md`](docs/08-pruebas.md)                           | Como ejecutar cada tipo de prueba y que se verifica en cada una.                    |
+| [`docs/09-despliegue-dokploy.md`](docs/09-despliegue-dokploy.md)     | Despliegue en Dokploy: compose, variables, dominio, respaldos y diagnostico.        |
