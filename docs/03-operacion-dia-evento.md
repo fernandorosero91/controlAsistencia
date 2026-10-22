@@ -52,11 +52,14 @@ La carta en PDF sirve para los asistentes sin correo o para entregarla en la pue
 ### 1.4 Imprimir los carnets
 
 **Carnets y QR > Descargar carnets** genera un PDF con 6 escarapelas por hoja: codigo QR, nombre,
-rol, semestre, ID institucional y codigo de registro. Imprima en papel grueso o plastificado.
+rol, semestre e ID institucional. Imprima en papel grueso o plastificado.
 
 **Carnets y QR > Descargar carta de QR** genera las escarapelas grandes: 4 por hoja, con el logo de
-la Universidad, el nombre del asistente en grande, el rol, la facultad, el QR con su codigo de
-registro en grande (por si el escaner falla) y los datos de identificacion (ID y cedula).
+la Universidad, el nombre del asistente en grande, el rol, la facultad, el QR, el **ID institucional
+en grande** y los datos de identificacion (cedula y correo).
+
+> El codigo de registro de 6 caracteres **no se imprime**: ya va dentro del QR. Si el escaner
+> falla, el operador puede dictarlo desde la lista del panel o buscando por nombre.
 
 ### 1.5 Configurar el evento
 
