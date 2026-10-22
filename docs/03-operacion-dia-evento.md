@@ -38,6 +38,13 @@ El sistema asigna a cada asistente un **codigo de registro** de 6 caracteres (po
 
 > Si el archivo ya tiene los datos cargados, la importacion los **actualiza** en vez de
 > duplicarlos: el total de asistentes del panel no debe cambiar.
+>
+> Si vas a hacer **pruebas** y necesitas empezar de cero, usa **Configuracion > Mantenimiento
+> de la base de datos > Borrar todos los datos**. Pide la contrasena del administrador y la frase
+> `BORRAR TODOS LOS DATOS`. Borra el padron, las asistencias, los refrigerios entregados, los
+> certificados, la auditoria y la idempotencia; conserva la configuracion, las jornadas, los
+> refrigerios configurados y las cuentas. Cuando la base ya tenga el padron **real**, apague la
+> funcion con `LIMPIAR_BASE_HABILITADO=false` en el entorno.
 
 ### 1.3 Entregar el codigo de registro
 

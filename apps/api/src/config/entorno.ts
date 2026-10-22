@@ -101,7 +101,11 @@ const esquema = z.object({
   ),
   ADMIN_OPERADORES: z.coerce.number().int().min(0).max(50).default(6),
   SEED_ASISTENTES: z.coerce.number().int().min(0).max(5000).default(600),
-
+  /**
+   * Permite borrar los datos operativos desde el panel (con contrasena de
+   * administrador). Se apaga con "false" cuando la base ya tiene datos reales.
+   */
+  LIMPIAR_BASE_HABILITADO: z.enum(['true', 'false']).default('true'),
   SEMINARIO_NOMBRE: z.string().default('IV Seminario de Ingenieria de Software'),
   SEMINARIO_FECHA: z.string().default('2026-10-27'),
   SEMINARIO_LUGAR: z.string().default('Camara de Comercio - Pasto'),

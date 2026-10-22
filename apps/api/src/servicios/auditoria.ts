@@ -23,6 +23,7 @@ export type AccionAuditada =
   | 'certificado.lote'
   | 'usuario.creado'
   | 'usuario.actualizado'
+  | 'mantenimiento.limpieza'
   | 'reporte.exportado';
 
 export interface EventoAuditoria {

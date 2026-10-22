@@ -22,6 +22,7 @@ import { registrarRutasDashboard } from './rutas/dashboard.js';
 import { registrarRutasReportes } from './rutas/reportes.js';
 import { registrarRutasCertificados } from './rutas/certificados.js';
 import { registrarRutasUsuarios } from './rutas/usuarios.js';
+import { registrarRutasMantenimiento } from './rutas/mantenimiento.js';
 import { registrarRutasPublico } from './rutas/publico.js';
 import type { HookAutorizacion } from './tipos.js';
 import './tipos.js';
@@ -166,6 +167,7 @@ export async function construirAplicacion(): Promise<FastifyInstance> {
   await registrarRutasReportes(app);
   await registrarRutasCertificados(app);
   await registrarRutasUsuarios(app);
+  await registrarRutasMantenimiento(app);
   await registrarRutasPublico(app);
 
   app.addHook('onClose', async () => {

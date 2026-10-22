@@ -299,6 +299,10 @@ tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice 
   cantidad de elegibles.
 - **Reportes** con filtros y exportacion CSV/XLSX/PDF: asistencia por jornada, asistencia parcial,
   refrigerios entregados y pendientes, elegibles/no elegibles, certificados emitidos, auditoria.
+- **Mantenimiento**: limpieza de los datos operativos (padron, asistencias, refrigerios,
+  certificados y auditoria) para volver a probar. Exige la **contrasena del administrador** y la
+  frase `BORRAR TODOS LOS DATOS`; conserva configuracion, jornadas, refrigerios y cuentas. Se
+  puede deshabilitar con `LIMPIAR_BASE_HABILITADO=false`.
 
 ### B. Aplicacion de operador (rol `operador`, mobile-first)
 
@@ -465,6 +469,8 @@ GET    /operador/contexto       (config, jornadas, jornada activa, refrigerios)
 GET    /usuarios
 POST   /usuarios
 PATCH  /usuarios/:id
+GET    /mantenimiento/resumen   (conteos de datos operativos)
+POST   /mantenimiento/limpiar   (borra datos de prueba; exige contrasena de admin)
 GET    /health/live
 GET    /health/ready
 ```

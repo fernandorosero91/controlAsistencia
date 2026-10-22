@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { Firmante } from '@seminario/shared';
-import { CalendarClock, Pencil, Plus, Save, Timer } from 'lucide-react';
+import { CalendarClock, Pencil, Plus, Save, ShieldAlert, Timer, Trash2 } from 'lucide-react';
 import { api, ErrorPeticion } from '../../lib/api';
 import { formatearFechaHora } from '../../lib/formato';
 import { Aviso, EsqueletoTarjeta, Insignia, Modal, Tarjeta } from '../../componentes/comunes';
@@ -576,6 +576,7 @@ export function Configuracion() {
         </Tarjeta>
       </div>
       <AccesosOperador jornadas={jornadas?.jornadas ?? []} />
+      <Mantenimiento />
       <Modal
         abierto={nuevaJornada || jornadaEnEdicion !== null}
         titulo={jornadaEnEdicion ? 'Editar jornada' : 'Nueva jornada'}
@@ -874,6 +875,217 @@ function AccesosOperador({ jornadas }: { jornadas: Jornada[] }) {
           <Aviso tono="exito">{mensaje}</Aviso>
         </div>
       ) : null}
+    </Tarjeta>
+  );
+}
+
+/**
+ * Limpieza de los datos operativos para volver a probar el sistema.
+ *
+ * Es la unica accion destructiva del panel: exige la contrasena del
+ * administrador y escribir una frase exacta. Se conservan la configuracion, las
+ * jornadas, los refrigerios y las cuentas.
+ */
+function Mantenimiento() {
+  const cliente = useQueryClient();
+  const [abierto, setAbierto] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmacion, setConfirmacion] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [mensaje, setMensaje] = useState<string | null>(null);
+  const [borradas, setBorradas] = useState<Record<string, number> | null>(null);
+
+  interface ResumenDatos {
+    asistentes: number;
+    asistencias: number;
+    entregas: number;
+    certificados: number;
+    lotes: number;
+    auditoria: number;
+    idempotencia: number;
+    fraseConfirmacion: string;
+    habilitado: boolean;
+  }
+
+  const { data: resumen } = useQuery({
+    queryKey: ['mantenimiento', 'resumen'],
+    queryFn: () => api.obtener<ResumenDatos>('/mantenimiento/resumen'),
+  });
+
+  const limpiar = useMutation({
+    mutationFn: () =>
+      api.crear<{ mensaje: string; filasBorradas: Record<string, number> }>(
+        '/mantenimiento/limpiar',
+        { password, confirmacion },
+      ),
+    onSuccess: (datos) => {
+      setError(null);
+      setMensaje(datos.mensaje);
+      setBorradas(datos.filasBorradas);
+      setAbierto(false);
+      setPassword('');
+      setConfirmacion('');
+      void cliente.invalidateQueries();
+    },
+    onError: (problema) => {
+      setMensaje(null);
+      setError(
+        problema instanceof ErrorPeticion
+          ? problema.message
+          : 'No se pudo limpiar la base de datos. Intente de nuevo.',
+      );
+    },
+  });
+
+  const frase = resumen?.fraseConfirmacion ?? 'BORRAR TODOS LOS DATOS';
+  const puedeBorrar = password.length > 0 && confirmacion.trim() === frase && !limpiar.isPending;
+
+  const cifras = [
+    { etiqueta: 'Asistentes', valor: resumen?.asistentes ?? 0 },
+    { etiqueta: 'Asistencias', valor: resumen?.asistencias ?? 0 },
+    { etiqueta: 'Refrigerios', valor: resumen?.entregas ?? 0 },
+    { etiqueta: 'Certificados', valor: resumen?.certificados ?? 0 },
+  ];
+
+  return (
+    <Tarjeta
+      titulo="Mantenimiento de la base de datos"
+      descripcion="Solo para pruebas: borra los datos operativos y deja el sistema en cero"
+    >
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {cifras.map((cifra) => (
+          <div key={cifra.etiqueta} className="rounded-lg border border-neutro-200 px-3 py-2">
+            <p className="text-xs text-neutro-500">{cifra.etiqueta}</p>
+            <p className="font-mono text-lg font-bold text-primario-900">{cifra.valor}</p>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-3 text-sm text-neutro-600">
+        Borra el padron, las asistencias, los refrigerios entregados, los certificados, la
+        auditoria y los registros de idempotencia. <strong>Se conservan</strong> la configuracion
+        del seminario, las jornadas, los refrigerios configurados y las cuentas de usuario.
+      </p>
+
+      <div className="mt-4">
+        <button
+          type="button"
+          className="boton-peligro"
+          onClick={() => {
+            setError(null);
+            setMensaje(null);
+            setAbierto(true);
+          }}
+          disabled={!resumen?.habilitado}
+        >
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
+          Borrar todos los datos
+        </button>
+        {resumen && !resumen.habilitado ? (
+          <p className="mt-2 text-xs text-neutro-500">
+            La limpieza esta deshabilitada en este servidor (variable LIMPIAR_BASE_HABILITADO).
+          </p>
+        ) : null}
+      </div>
+
+      {mensaje ? (
+        <div className="mt-3">
+          <Aviso tono="exito" titulo="Base de datos limpia">
+            {mensaje}
+            {borradas ? (
+              <span className="mt-1 block text-xs text-neutro-600">
+                Borrados: {borradas.asistentes ?? 0} asistentes, {borradas.asistencias ?? 0}{' '}
+                asistencias, {borradas.entregas ?? 0} refrigerios, {borradas.certificados ?? 0}{' '}
+                certificados, {borradas.auditoria ?? 0} registros de auditoria.
+              </span>
+            ) : null}
+          </Aviso>
+        </div>
+      ) : null}
+
+      <Modal
+        abierto={abierto}
+        titulo="Borrar todos los datos"
+        alCerrar={() => {
+          if (limpiar.isPending) return;
+          setAbierto(false);
+          setError(null);
+        }}
+      >
+        <Aviso tono="error" titulo="Esta operacion no se puede deshacer">
+          Se borraran {resumen?.asistentes ?? 0} asistentes con sus asistencias,{' '}
+          {resumen?.entregas ?? 0} refrigerios entregados, {resumen?.certificados ?? 0}{' '}
+          certificados y el historial de auditoria.
+        </Aviso>
+
+        <div className="mt-4 flex items-start gap-2 rounded-lg border border-error-200 bg-error-100/40 px-3.5 py-3">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-error-600" aria-hidden="true" />
+          <p className="text-xs text-neutro-700">
+            Se conservan la configuracion del seminario, las jornadas, los refrigerios configurados
+            y las cuentas. El sistema queda listo para cargar un padron nuevo.
+          </p>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          <div>
+            <label htmlFor="limpiar-password" className="etiqueta-campo">
+              Contrasena del administrador
+            </label>
+            <input
+              id="limpiar-password"
+              type="password"
+              className="campo"
+              value={password}
+              onChange={(evento) => setPassword(evento.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="limpiar-confirmacion" className="etiqueta-campo">
+              Escriba <span className="font-mono text-error-700">{frase}</span> para confirmar
+            </label>
+            <input
+              id="limpiar-confirmacion"
+              className="campo font-mono"
+              value={confirmacion}
+              onChange={(evento) => setConfirmacion(evento.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={frase}
+            />
+          </div>
+        </div>
+
+        {error ? (
+          <div className="mt-3">
+            <Aviso tono="error">{error}</Aviso>
+          </div>
+        ) : null}
+
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            className="boton-secundario"
+            onClick={() => {
+              setAbierto(false);
+              setError(null);
+            }}
+            disabled={limpiar.isPending}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="boton-peligro"
+            onClick={() => limpiar.mutate()}
+            disabled={!puedeBorrar}
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            {limpiar.isPending ? 'Borrando' : 'Borrar definitivamente'}
+          </button>
+        </div>
+      </Modal>
     </Tarjeta>
   );
 }
