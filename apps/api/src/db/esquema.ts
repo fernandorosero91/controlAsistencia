@@ -288,6 +288,29 @@ export const certificadosLotes = pgTable(
   (tabla) => [index('certificados_lotes_estado_idx').on(tabla.estado, tabla.iniciadoAt)],
 );
 
+export const plantillasCertificado = pgTable(
+  'plantillas_certificado',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    nombre: text('nombre').notNull(),
+    nombreArchivo: text('nombre_archivo'),
+    rutaArchivo: text('ruta_archivo').notNull(),
+    tamanoBytes: bigint('tamano_bytes', { mode: 'number' }),
+    camposDetectados: text('campos_detectados').array().notNull().default(sql`'{}'`),
+    esPredeterminada: boolean('es_predeterminada').notNull().default(false),
+    activa: boolean('activa').notNull().default(true),
+    creadoPor: uuid('creado_por').references(() => usuariosSistema.id, { onDelete: 'set null' }),
+    createdAt: creadoEn,
+    updatedAt: actualizadoEn,
+  },
+  (tabla) => [
+    uniqueIndex('plantillas_certificado_predeterminada_idx')
+      .on(tabla.esPredeterminada)
+      .where(sql`${tabla.esPredeterminada}`),
+    index('plantillas_certificado_activa_idx').on(tabla.activa),
+  ],
+);
+
 export const certificados = pgTable(
   'certificados',
   {
@@ -356,3 +379,4 @@ export type SeminarioConfig = typeof seminarioConfig.$inferSelect;
 export type TipoRefrigerio = typeof tiposRefrigerio.$inferSelect;
 export type Certificado = typeof certificados.$inferSelect;
 export type LoteCertificados = typeof certificadosLotes.$inferSelect;
+export type PlantillaCertificado = typeof plantillasCertificado.$inferSelect;

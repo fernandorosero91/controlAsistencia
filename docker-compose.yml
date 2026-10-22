@@ -135,12 +135,14 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       BASE_URL_PUBLICA: ${BASE_URL_PUBLICA:-http://localhost:8080}
       CERTIFICADOS_DIR: /app/apps/api/storage/certificados
+      PLANTILLAS_DIR: /app/apps/api/storage/plantillas
       UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-10485760}
       TZ: America/Bogota
     ports:
       - '127.0.0.1:3000:3000'
     volumes:
       - certificados:/app/apps/api/storage/certificados
+      - plantillas:/app/apps/api/storage/plantillas
     networks:
       - asistencia
 
@@ -160,6 +162,7 @@ volumes:
   postgres_datos:
   redis_datos:
   certificados:
+  plantillas:
   pgbouncer_estado:
 
 networks:

@@ -6,5 +6,6 @@ export * from './auth.js';
 export * from './registros.js';
 export * from './configuracion.js';
 export * from './certificados.js';
+export * from './plantillas-certificado.js';
 export * from './importacion.js';
 export * from './dashboard.js';

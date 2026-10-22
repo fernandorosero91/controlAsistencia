@@ -21,6 +21,7 @@ import { registrarRutasConfiguracion } from './rutas/configuracion.js';
 import { registrarRutasDashboard } from './rutas/dashboard.js';
 import { registrarRutasReportes } from './rutas/reportes.js';
 import { registrarRutasCertificados } from './rutas/certificados.js';
+import { registrarRutasPlantillas } from './rutas/plantillasCertificado.js';
 import { registrarRutasUsuarios } from './rutas/usuarios.js';
 import { registrarRutasMantenimiento } from './rutas/mantenimiento.js';
 import { registrarRutasPublico } from './rutas/publico.js';
@@ -148,6 +149,10 @@ export async function construirAplicacion(): Promise<FastifyInstance> {
         { name: 'Dashboard', description: 'Indicadores en tiempo real' },
         { name: 'Reportes', description: 'Reportes y exportaciones' },
         { name: 'Certificados', description: 'Emision y descarga de certificados (solo admin)' },
+        {
+          name: 'Plantillas de certificado',
+          description: 'Carga de plantillas .docx y generacion de certificados desde plantilla (solo admin)',
+        },
         { name: 'Publico', description: 'Superficie publica de verificacion' },
       ],
     },
@@ -166,6 +171,7 @@ export async function construirAplicacion(): Promise<FastifyInstance> {
   await registrarRutasDashboard(app);
   await registrarRutasReportes(app);
   await registrarRutasCertificados(app);
+  await registrarRutasPlantillas(app);
   await registrarRutasUsuarios(app);
   await registrarRutasMantenimiento(app);
   await registrarRutasPublico(app);

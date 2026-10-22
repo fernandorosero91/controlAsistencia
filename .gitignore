@@ -29,6 +29,7 @@ packages/*/dist/
 .env.backup
 
 e2e/.auth/
+certificadosDoc/
 
 capturas/
 scripts/resultado-verificacion.txt

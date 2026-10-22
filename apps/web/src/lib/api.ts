@@ -313,6 +313,31 @@ export const api = {
     }
     return respuesta.blob();
   },
+  /** Descarga un archivo generado por un POST (por ejemplo, un ZIP). */
+  descargarPost: async (ruta: string, cuerpo: unknown) => {
+    const token = tokenActual();
+    const respuesta = await fetch(`${BASE}${ruta}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        Accept: '*/*',
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(cuerpo ?? {}),
+    });
+    if (!respuesta.ok) {
+      let mensaje = 'No se pudo generar el archivo';
+      try {
+        const error = (await respuesta.json()) as { mensaje?: string };
+        if (error.mensaje) mensaje = error.mensaje;
+      } catch {
+        // El cuerpo no era JSON: se conserva el mensaje generico.
+      }
+      throw new ErrorPeticion(respuesta.status, 'INTERNO', mensaje);
+    }
+    return respuesta.blob();
+  },
 };
 
 export { nuevoClaveIdempotencia };

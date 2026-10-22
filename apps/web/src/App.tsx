@@ -12,6 +12,7 @@ import { Asistentes } from './paginas/admin/Asistentes';
 import { ImportarAsistentes } from './paginas/admin/ImportarAsistentes';
 import { Carnets } from './paginas/admin/Carnets';
 import { Certificados } from './paginas/admin/Certificados';
+import { CrearCertificados } from './paginas/admin/CrearCertificados';
 import { Configuracion } from './paginas/admin/Configuracion';
 import { Reportes } from './paginas/admin/Reportes';
 import { Usuarios } from './paginas/admin/Usuarios';
@@ -84,6 +85,7 @@ export function App() {
         <Route path="importar" element={<ImportarAsistentes />} />
         <Route path="carnets" element={<Carnets />} />
         <Route path="certificados" element={<Certificados />} />
+        <Route path="crear-certificados" element={<CrearCertificados />} />
         <Route path="configuracion" element={<Configuracion />} />
         <Route path="reportes" element={<Reportes />} />
         <Route path="usuarios" element={<Usuarios />} />

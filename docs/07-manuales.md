@@ -34,6 +34,22 @@ Dos manuales de una pagina: uno para el administrador y otro para el operador.
 5. **Exporte los reportes** en CSV, Excel o PDF (asistencia, refrigerios, elegibilidad,
    certificados y auditoria).
 
+### Certificados en Word (.docx)
+
+El modulo **Crear certificados** genera documentos de Word a partir de una plantilla propia, de
+forma adicional a los certificados PDF del flujo de emision.
+
+1. **Prepare la plantilla** en Word y marque los datos del titular entre dobles llaves. Campos
+   disponibles: `{{nombre}}`, `{{cedula}}`, `{{id}}`, `{{rol}}` y `{{semestre}}`.
+2. **Cargue la plantilla** en **Crear certificados**. El sistema la guarda y muestra los campos
+   detectados. Si no detecta ninguno, revise la ortografia de los marcadores.
+3. Marque una plantilla como **Predeterminada** si va a ser la habitual (solo puede haber una).
+4. Pulse **Generar**, elija el rol de los asistentes (todos, estudiantes o docentes) y use
+   **Previsualizar** para ver el conteo o **Descargar ZIP** para obtener todos los `.docx`.
+
+Los errores por fila (por ejemplo, un asistente sin cedula) se listan sin detener el lote. Cargar,
+actualizar o eliminar una plantilla queda en la auditoria.
+
 ### Excepciones y errores
 
 | Situacion                                     | Que hacer                                                                                                          |
