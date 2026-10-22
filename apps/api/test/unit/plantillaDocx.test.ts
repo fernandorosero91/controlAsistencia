@@ -108,4 +108,75 @@ describe('generacion de certificados desde plantilla', () => {
 
     await expect(abrirPlantilla(contenido)).rejects.toThrow(/word\/document\.xml/);
   });
+
+  it('rechaza un archivo que ni siquiera es un ZIP', async () => {
+    await expect(abrirPlantilla(Buffer.from('esto no es un docx'))).rejects.toThrow(
+      /no es un documento .docx valido/,
+    );
+  });
+
+  it('reemplaza los cinco campos reconocidos de la plantilla', async () => {
+    const documento =
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<w:document ${NS}><w:body>` +
+      parrafo('{{nombre}}|{{cedula}}|{{id}}|{{rol}}|{{semestre}}') +
+      `</w:body></w:document>`;
+    const plantilla = await abrirPlantilla(await construirDocx(documento));
+    const salida = await generarDocx(plantilla, DATOS);
+    const zip = await JSZip.loadAsync(salida);
+    const xml = await zip.file('word/document.xml')!.async('string');
+
+    expect(xml).toContain('ANA MARIA PEREZ GOMEZ|1088123456|EST00121|Estudiante|4');
+    expect(xml).not.toContain('{{');
+  });
+
+  it('detecta los campos aunque tengan espacios internos', () => {
+    const campos = detectarCampos(parrafo('{{ nombre }} y {{  cedula  }}'));
+    expect(campos.sort()).toEqual(['cedula', 'nombre']);
+  });
+
+  it('escapa los caracteres especiales de XML en los datos del titular', async () => {
+    const documento =
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<w:document ${NS}><w:body>${parrafo('{{nombre}}')}</w:body></w:document>`;
+    const plantilla = await abrirPlantilla(await construirDocx(documento));
+    const tituloRiesgoso = { ...DATOS, nombre: 'ANA & CIA <S.A.> "especial"' };
+    const salida = await generarDocx(plantilla, tituloRiesgoso);
+    const zip = await JSZip.loadAsync(salida);
+    const xml = await zip.file('word/document.xml')!.async('string');
+
+    // El XML debe quedar bien formado: los caracteres se escapan, no se interpolan crudos.
+    expect(xml).toContain('ANA &amp; CIA &lt;S.A.&gt; &quot;especial&quot;');
+    expect(xml).not.toContain('ANA & CIA');
+    // El documento sigue siendo un ZIP valido y parseable.
+    const salidaZip = new JSZip();
+    await expect(salidaZip.loadAsync(salida)).resolves.toBeTruthy();
+  });
+
+  it('deja vacio el campo del titular cuando el dato no viene', async () => {
+    const documento =
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<w:document ${NS}><w:body>${parrafo('Semestre: {{semestre}}.')}</w:body></w:document>`;
+    const plantilla = await abrirPlantilla(await construirDocx(documento));
+    const sinSemestre = { ...DATOS, semestre: '' };
+    const salida = await generarDocx(plantilla, sinSemestre);
+    const zip = await JSZip.loadAsync(salida);
+    const xml = await zip.file('word/document.xml')!.async('string');
+
+    expect(xml).toContain('Semestre: .');
+    expect(xml).not.toContain('{{semestre}}');
+  });
+
+  it('conserva el XML del encabezado y pie con campos', async () => {
+    const encabezado = `<w:hdr ${NS}>${parrafo('Certificado de {{nombre}}')}</w:hdr>`;
+    const plantilla = await abrirPlantilla(
+      await construirDocx(DOCUMENTO_BASE, { 'word/header1.xml': encabezado }),
+    );
+    const salida = await generarDocx(plantilla, DATOS);
+    const zip = await JSZip.loadAsync(salida);
+    const headerXml = await zip.file('word/header1.xml')!.async('string');
+
+    expect(headerXml).toContain('ANA MARIA PEREZ GOMEZ');
+    expect(headerXml).not.toContain('{{nombre}}');
+  });
 });

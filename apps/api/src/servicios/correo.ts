@@ -16,7 +16,17 @@ let transporteInicializado = false;
 
 export function correoConfigurado(): boolean {
   const entorno = cargarEntorno();
-  return Boolean(entorno.SMTP_HOST && entorno.SMTP_REMITENTE);
+  return Boolean(entorno.SMTP_HOST && (entorno.SMTP_REMITENTE || entorno.SMTP_USUARIO));
+}
+
+/**
+ * Restablece el singleton del transporte para que la proxima llamada
+ * lo inicialice de nuevo. Util cuando cambian las variables de entorno
+ * en tiempo de ejecucion (p. ej., tras un recarga en desarrollo).
+ */
+export function resetearTransporte(): void {
+  transporte = null;
+  transporteInicializado = false;
 }
 
 function obtenerTransporte(): Transporter | null {
@@ -32,6 +42,16 @@ function obtenerTransporte(): Transporter | null {
     return null;
   }
 
+  // Gmail y otros proveedores que exigen autenticacion requieren que el
+  // campo "from" use la misma direccion que SMTP_USUARIO. Si SMTP_REMITENTE
+  // no coincide, el envio falla con "Sender address rejected". Se usa el
+  // usuario como remitente cuando el remitente configurado parece un dominio
+  // local (sin punto real) o cuando es el valor por defecto de desarrollo.
+  const remitenteEfectivo =
+    entorno.SMTP_REMITENTE && !entorno.SMTP_REMITENTE.endsWith('.local')
+      ? entorno.SMTP_REMITENTE
+      : (entorno.SMTP_USUARIO ?? entorno.SMTP_REMITENTE);
+
   transporte = nodemailer.createTransport({
     host: entorno.SMTP_HOST,
     port: entorno.SMTP_PUERTO,
@@ -39,7 +59,12 @@ function obtenerTransporte(): Transporter | null {
     ...(entorno.SMTP_USUARIO
       ? { auth: { user: entorno.SMTP_USUARIO, pass: entorno.SMTP_CLAVE ?? '' } }
       : {}),
-  });
+  }) as Transporter;
+
+  // Adjuntamos el remitente efectivo al objeto de transporte para usarlo
+  // en enviarQrPorCorreo sin volver a leer el entorno.
+  (transporte as Transporter & { _remitenteEfectivo?: string })._remitenteEfectivo =
+    remitenteEfectivo;
 
   return transporte;
 }
@@ -81,13 +106,18 @@ export async function enviarQrPorCorreo(mensaje: MensajeQr): Promise<ResultadoEn
   }
 
   const entorno = cargarEntorno();
+  // Usa el remitente efectivo calculado al inicializar el transporte.
+  // Para Gmail (y similares) debe coincidir con la cuenta autenticada.
+  const remitenteEfectivo =
+    (transporteActivo as Transporter & { _remitenteEfectivo?: string })._remitenteEfectivo ??
+    entorno.SMTP_REMITENTE;
   const imagen = await imagenQr(mensaje.codigoRegistro);
 
   try {
     await transporteActivo.sendMail({
       from: {
         name: entorno.SMTP_REMITENTE_NOMBRE,
-        address: entorno.SMTP_REMITENTE,
+        address: remitenteEfectivo,
       },
       to: mensaje.destinatario,
       subject: `Tu codigo de registro para ${mensaje.nombreSeminario}`,

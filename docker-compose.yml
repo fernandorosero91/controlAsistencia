@@ -138,6 +138,13 @@ services:
       PLANTILLAS_DIR: /app/apps/api/storage/plantillas
       CERTIFICADOS_GENERADOS_DIR: /app/apps/api/storage/certificadosGenerados
       UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-10485760}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PUERTO: ${SMTP_PUERTO:-587}
+      SMTP_USUARIO: ${SMTP_USUARIO:-}
+      SMTP_CLAVE: ${SMTP_CLAVE:-}
+      SMTP_SEGURIDAD: ${SMTP_SEGURIDAD:-starttls}
+      SMTP_REMITENTE: ${SMTP_REMITENTE:-}
+      SMTP_REMITENTE_NOMBRE: ${SMTP_REMITENTE_NOMBRE:-Seminario}
       TZ: America/Bogota
     ports:
       - '127.0.0.1:3000:3000'

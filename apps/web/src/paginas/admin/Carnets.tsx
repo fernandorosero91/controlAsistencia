@@ -13,6 +13,7 @@ export function Carnets() {
     total: number;
     enviados: number;
     fallidos: number;
+    resultados?: { asistenteId: string; enviado: boolean; mensaje: string }[];
   } | null>(null);
 
   const { data, isPending } = useQuery({
@@ -24,15 +25,19 @@ export function Carnets() {
 
   const enviarQr = useMutation({
     mutationFn: async () =>
-      api.crear<{ total: number; enviados: number; fallidos: number; correoConfigurado: boolean }>(
-        '/asistentes/enviar-qr',
-        { todos: true },
-      ),
+      api.crear<{
+        total: number;
+        enviados: number;
+        fallidos: number;
+        correoConfigurado: boolean;
+        resultados: { asistenteId: string; enviado: boolean; mensaje: string }[];
+      }>('/asistentes/enviar-qr', { todos: true }),
     onSuccess: (resultado) => {
       setResultadoEnvio({
         total: resultado.total,
         enviados: resultado.enviados,
         fallidos: resultado.fallidos,
+        resultados: resultado.resultados,
       });
       setError(null);
     },
@@ -174,7 +179,7 @@ export function Carnets() {
           </p>
 
           {resultadoEnvio ? (
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
               <Aviso
                 tono={resultadoEnvio.fallidos === 0 ? 'exito' : 'aviso'}
                 titulo="Envio terminado"
@@ -182,9 +187,23 @@ export function Carnets() {
                 {formatearNumero(resultadoEnvio.enviados)} correos enviados de{' '}
                 {formatearNumero(resultadoEnvio.total)} asistentes.{' '}
                 {resultadoEnvio.fallidos > 0
-                  ? `${formatearNumero(resultadoEnvio.fallidos)} no pudieron enviarse: revise que tengan correo registrado.`
+                  ? `${formatearNumero(resultadoEnvio.fallidos)} no pudieron enviarse.`
                   : ''}
               </Aviso>
+              {resultadoEnvio.resultados && resultadoEnvio.fallidos > 0 ? (
+                <div className="rounded-md border border-aviso-200 bg-aviso-50 p-3 text-xs text-aviso-900">
+                  <p className="font-semibold mb-1">Detalle del intento de envio:</p>
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    {resultadoEnvio.resultados
+                      .filter((r) => !r.enviado)
+                      .map((r) => (
+                        <li key={r.asistenteId}>
+                          <span className="font-medium">{r.asistenteId}:</span> {r.mensaje}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </Tarjeta>
