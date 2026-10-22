@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { CheckCircle2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
 import { formatearFechaHora, nombreRol } from '../lib/formato';
-import { Esqueleto } from '../componentes/comunes';
+import { Esqueleto, Creditos } from '../componentes/comunes';
 
 interface RespuestaVerificacion {
   valido: boolean;
@@ -112,6 +112,10 @@ export function VerificarCertificado() {
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
           Consulta publica. No se muestran datos distintos a los del certificado.
         </p>
+
+        <div className="mt-6">
+          <Creditos />
+        </div>
       </div>
     </div>
   );

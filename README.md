@@ -349,3 +349,14 @@ proyectoAsistencia/
 | [`docs/07-manuales.md`](docs/07-manuales.md)                         | Manual breve para administrador y operador.                                         |
 | [`docs/08-pruebas.md`](docs/08-pruebas.md)                           | Como ejecutar cada tipo de prueba y que se verifica en cada una.                    |
 | [`docs/09-despliegue-dokploy.md`](docs/09-despliegue-dokploy.md)     | Despliegue en Dokploy: compose, variables, dominio, respaldos y diagnostico.        |
+
+## 11. Creditos
+
+Aplicacion desarrollada por estudiantes de **Ingenieria de Software** de la Universidad
+Cooperativa de Colombia:
+
+- **Elier Fernando Rosero Bravo**
+- **Edwar Alexander Benito Basante**
+
+Los creditos aparecen al pie del inicio de sesion, del panel de administracion, de la app del
+operador y de la verificacion publica de certificados.

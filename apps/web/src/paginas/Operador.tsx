@@ -35,7 +35,7 @@ import {
   TarjetaVerificacion,
   type VerificacionAsistente,
 } from '../componentes/operador/TarjetaVerificacion';
-import { Aviso, Esqueleto, Insignia, Modal } from '../componentes/comunes';
+import { Aviso, Creditos, Esqueleto, Insignia, Modal } from '../componentes/comunes';
 
 interface JornadaResumen {
   id: number;
@@ -782,6 +782,8 @@ export function Operador() {
           </ul>
         )}
       </section>
+
+      <Creditos compacto />
 
       <EscanerCamara
         abierto={escaneando}

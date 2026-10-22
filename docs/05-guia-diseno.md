@@ -180,6 +180,13 @@ persona. Si la jornada activa ya tiene un ingreso, la tarjeta lo dice en ambar.
 - En celular: la tabla se oculta y aparece una **tarjeta por fila** con la misma informacion
   reorganizada. Nunca hay scroll horizontal obligatorio.
 
+### 5.7 Creditos
+
+Componente `Creditos`: linea discreta al pie del inicio de sesion, del panel de administracion, de
+la app del operador y de la verificacion publica. Usa `Code2` de Lucide, texto en `neutro-500` y
+`neutro-400` a 11-12 px, y menciona a los desarrolladores y la carrera. No compite con el contenido:
+va fuera de las tarjetas de trabajo.
+
 ---
 
 ## 6. Accesibilidad

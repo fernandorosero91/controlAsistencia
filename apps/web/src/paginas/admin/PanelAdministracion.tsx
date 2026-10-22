@@ -18,6 +18,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../lib/api';
 import { useSesion } from '../../estado/sesion';
+import { Creditos } from '../../componentes/comunes';
 
 const SECCIONES = [
   { ruta: '/operador', etiqueta: 'Tomar asistencia', Icono: ScanLine, exacto: false },
@@ -125,6 +126,10 @@ export function PanelAdministracion() {
           <Outlet />
         </main>
       </div>
+
+      <footer className="mx-auto max-w-7xl px-4 pb-6 pt-2">
+        <Creditos />
+      </footer>
     </div>
   );
 }

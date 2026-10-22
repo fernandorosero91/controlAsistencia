@@ -8,7 +8,7 @@ import { loginSchema } from '@seminario/shared';
 import type { LoginInput } from '@seminario/shared';
 import { api, ErrorPeticion, programarRenovacion } from '../lib/api';
 import { useSesion } from '../estado/sesion';
-import { Aviso } from '../componentes/comunes';
+import { Aviso, Creditos } from '../componentes/comunes';
 
 type DatosLogin = LoginInput;
 
@@ -140,6 +140,9 @@ export function Login() {
             Las credenciales son entregadas por la coordinacion del seminario.
           </p>
         </form>
+      </div>
+      <div className="mx-auto mt-8 w-full max-w-sm">
+        <Creditos />
       </div>
     </div>
   );

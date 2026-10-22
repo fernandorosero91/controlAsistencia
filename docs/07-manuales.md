@@ -85,3 +85,10 @@ Dos manuales de una pagina: uno para el administrador y otro para el operador.
 | Un ID no aparece                    | Administrador del seminario |
 | Necesita registrar fuera de ventana | Administrador del seminario |
 | Perdio o rompio el celular          | Administrador del seminario |
+
+---
+
+## Creditos
+
+Aplicacion desarrollada por estudiantes de Ingenieria de Software de la Universidad Cooperativa
+de Colombia: **Elier Fernando Rosero Bravo** y **Edwar Alexander Benito Basante**.

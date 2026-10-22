@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
-import { AlertTriangle, CircleAlert, Inbox, Loader2, RefreshCw, X } from 'lucide-react';
+import { AlertTriangle, CircleAlert, Code2, Inbox, Loader2, RefreshCw, X } from 'lucide-react';
 import clsx from 'clsx';
 
 export function PantallaCarga({ mensaje = 'Cargando' }: { mensaje?: string }) {
@@ -269,5 +269,32 @@ export function Paginacion({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Creditos de la aplicacion. Se muestra discreto al pie de cada superficie:
+ * panel de administracion, app del operador, inicio de sesion y verificacion
+ * publica de certificados.
+ */
+export function Creditos({ compacto = false }: { compacto?: boolean }) {
+  return (
+    <footer
+      className={clsx(
+        'mx-auto flex flex-col items-center gap-0.5 text-center',
+        compacto ? 'text-[11px]' : 'text-xs',
+      )}
+    >
+      <p className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5 text-neutro-500">
+        <Code2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span>Desarrollado por</span>
+        <span className="font-semibold text-neutro-700">Elier Fernando Rosero Bravo</span>
+        <span aria-hidden="true">y</span>
+        <span className="font-semibold text-neutro-700">Edwar Alexander Benito Basante</span>
+      </p>
+      <p className="text-neutro-400">
+        Estudiantes de Ingenieria de Software - Universidad Cooperativa de Colombia
+      </p>
+    </footer>
   );
 }
