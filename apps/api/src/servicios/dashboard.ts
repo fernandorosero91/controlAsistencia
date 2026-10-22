@@ -139,6 +139,7 @@ export async function calcularResumen(): Promise<ResumenDashboard> {
       exigirAmbasJornadas: config.exigirAmbasJornadas,
       horaFinSeminario: new Date(config.horaFinSeminario),
       toleranciaMinutos: config.toleranciaMinutos,
+      minimoPermanenciaHoras: config.minimoPermanenciaHoras,
       jornadas: listaJornadas.map((jornada) => ({ id: jornada.id, fin: jornada.fin })),
       asistencias: lista.map((asistencia) => ({
         jornadaId: asistencia.jornadaId,

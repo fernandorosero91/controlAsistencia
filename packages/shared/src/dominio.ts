@@ -73,6 +73,7 @@ export const MOTIVOS_INELEGIBILIDAD = [
   'falta_asistencia_jornada',
   'sin_registro_salida',
   'salida_antes_de_hora_fin',
+  'permanencia_insuficiente',
   'sin_jornadas_configuradas',
 ] as const;
 
@@ -83,6 +84,8 @@ export const MENSAJE_MOTIVO: Record<MotivoInelegibilidad, string> = {
   sin_registro_salida: 'No tiene registro de salida (cierre) en las jornadas exigidas',
   salida_antes_de_hora_fin:
     'El registro de salida es anterior a la hora de fin del seminario dentro de la tolerancia',
+  permanencia_insuficiente:
+    'La permanencia en una de las jornadas exigidas fue menor al minimo de horas exigido',
   sin_jornadas_configuradas: 'El seminario no tiene jornadas configuradas',
 };
 
@@ -101,6 +104,11 @@ export interface ParametrosElegibilidad {
   exigirAmbasJornadas: boolean;
   horaFinSeminario: Date;
   toleranciaMinutos: number;
+  /**
+   * Horas minimas que el asistente debe permanecer en cada jornada exigida.
+   * Con cero la regla no se aplica.
+   */
+  minimoPermanenciaHoras: number;
   jornadas: JornadaEvaluable[];
   asistencias: AsistenciaEvaluable[];
 }
@@ -120,13 +128,16 @@ export interface ResultadoElegibilidad {
  *    Si es falso se exige asistencia unicamente en la jornada de cierre (la de fin mas tardio).
  * 2. Se exige al menos un registro de salida dentro de las jornadas exigidas con
  *    `hora_salida >= hora_fin_seminario - tolerancia`.
+ * 3. En cada jornada exigida el asistente debe permanecer al menos
+ *    `minimo_permanencia_horas` horas (de la entrada a la salida).
  *
- * La funcion es pura: cambiar la hora de fin o la tolerancia recalcula el resultado
- * de inmediato, sin necesidad de migraciones ni scripts.
+ * La funcion es pura: cambiar la hora de fin, la tolerancia o el minimo de
+ * permanencia recalcula el resultado de inmediato, sin migraciones ni scripts.
  */
 export function evaluarElegibilidad(parametros: ParametrosElegibilidad): ResultadoElegibilidad {
   const toleranciaMs = Math.max(0, parametros.toleranciaMinutos) * 60_000;
   const umbralCierre = new Date(parametros.horaFinSeminario.getTime() - toleranciaMs);
+  const permanenciaMinimaMs = Math.max(0, parametros.minimoPermanenciaHoras) * 60 * 60_000;
   const motivos: MotivoInelegibilidad[] = [];
 
   if (parametros.jornadas.length === 0) {
@@ -169,6 +180,20 @@ export function evaluarElegibilidad(parametros: ParametrosElegibilidad): Resulta
       (a) => jornadasExigidas.includes(a.jornadaId) && a.horaSalida !== null,
     );
     motivos.push(tieneAlgunaSalida ? 'salida_antes_de_hora_fin' : 'sin_registro_salida');
+  }
+
+  // Permanencia minima en cada jornada exigida: de la entrada a la salida.
+  if (permanenciaMinimaMs > 0) {
+    for (const jornadaId of jornadasExigidas) {
+      const asistencia = porJornada.get(jornadaId);
+      if (!asistencia || asistencia.horaSalida === null) continue;
+
+      const permanencia = asistencia.horaSalida.getTime() - asistencia.horaIngreso.getTime();
+      if (permanencia < permanenciaMinimaMs) {
+        motivos.push('permanencia_insuficiente');
+        break;
+      }
+    }
   }
 
   return {

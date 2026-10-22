@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   ClipboardCheck,
@@ -11,6 +11,7 @@ import {
   Search,
   Settings2,
   UserCheck,
+  Users,
   WifiOff,
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -36,24 +37,31 @@ import {
 } from '../componentes/operador/TarjetaVerificacion';
 import { Aviso, Esqueleto, Insignia, Modal } from '../componentes/comunes';
 
+interface JornadaResumen {
+  id: number;
+  nombre: string;
+  inicio: string;
+  fin: string;
+}
+
 interface ContextoOperador {
   config: {
     nombre: string;
     horaFinSeminario: string;
     toleranciaMinutos: number;
     exigirAmbasJornadas: boolean;
+    minimoPermanenciaHoras: number;
   };
-  jornadas: {
-    id: number;
-    nombre: string;
-    inicio: string;
-    fin: string;
-    ventanaCheckinInicio: string;
-    ventanaCheckinFin: string;
-    orden: number;
-  }[];
-  jornadaActiva: { id: number; nombre: string } | null;
+  /** Jornada que el servidor considera vigente. El operador no la elige. */
+  jornadaActiva: JornadaResumen | null;
+  motivoJornada: 'activa' | 'margen_cierre' | 'forzada' | 'fuera_de_horario' | 'sin_jornadas';
+  vigenteHasta: string | null;
+  proximaJornada: JornadaResumen | null;
   refrigerios: { id: number; nombre: string; jornadaId: number }[];
+  refrigerioActivo: { id: number; nombre: string; jornadaId: number } | null;
+  modulos: { ingreso: boolean; refrigerio: boolean; salida: boolean };
+  /** Registros de la jornada vigente, para mostrar el avance en vivo. */
+  registrosJornada: number;
   servidorHora: string;
 }
 
@@ -88,10 +96,21 @@ const MODOS: {
   {
     id: 'salida',
     etiqueta: 'Salida',
-    descripcion: 'Registra el cierre del semestre',
+    descripcion: 'Registra la salida de la jornada',
     Icono: ClipboardCheck,
   },
 ];
+
+/** Hora de una marca de tiempo en formato corto, en hora de Bogota. */
+function horaBogota(valor: string | null | undefined): string {
+  if (!valor) return '-';
+  return new Intl.DateTimeFormat('es-CO', {
+    timeZone: 'America/Bogota',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(valor));
+}
 
 export function Operador() {
   const navegar = useNavigate();
@@ -99,8 +118,7 @@ export function Operador() {
   const cerrarSesion = useSesion((estado) => estado.cerrarSesion);
 
   const [modo, setModo] = useState<ModoRegistro>('ingreso');
-  const [jornadaId, setJornadaId] = useState<number | null>(null);
-  const [tipoRefrigerioId, setTipoRefrigerioId] = useState<number | null>(null);
+  const [tipoRefrigerioElegido, setTipoRefrigerioElegido] = useState<number | null>(null);
   const [idTexto, setIdTexto] = useState('');
   const [codigoVerificado, setCodigoVerificado] = useState('');
   const [verificacion, setVerificacion] = useState<VerificacionAsistente | null>(null);
@@ -126,22 +144,48 @@ export function Operador() {
   } = useQuery({
     queryKey: ['operador', 'contexto'],
     queryFn: () => api.obtener<ContextoOperador>('/operador/contexto'),
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    // La jornada cambia sola con el horario y el administrador puede apagar un
+    // modulo en cualquier momento: el contexto se refresca cada 20 segundos y
+    // cada vez que la app vuelve al frente.
+    staleTime: 10_000,
+    refetchInterval: 20_000,
+    refetchOnWindowFocus: true,
   });
 
+  const cliente = useQueryClient();
+
+  // La jornada la decide el servidor: aqui solo se usa la que llega.
+  const jornadaId = contexto?.jornadaActiva?.id ?? null;
+
+  const refrigeriosDeLaJornada = useMemo(
+    () => (contexto?.refrigerios ?? []).filter((refrigerio) => refrigerio.jornadaId === jornadaId),
+    [contexto, jornadaId],
+  );
+
+  // Si hay un solo refrigerio en la jornada se usa ese, sin pedirle nada al
+  // operador; solo se muestran opciones cuando hay mas de uno.
+  const tipoRefrigerioId = refrigeriosDeLaJornada.some(
+    (refrigerio) => refrigerio.id === tipoRefrigerioElegido,
+  )
+    ? tipoRefrigerioElegido
+    : (contexto?.refrigerioActivo?.id ?? refrigeriosDeLaJornada[0]?.id ?? null);
+
+  const modulosDisponibles = useMemo(
+    () => MODOS.filter((opcion) => contexto?.modulos[opcion.id] ?? false),
+    [contexto],
+  );
+
+  const sinJornada = !jornadaId;
+  const sinRefrigerio = modo === 'refrigerio' && !tipoRefrigerioId;
+
+  // Si el administrador apaga el modulo que estaba en uso, se pasa al primero
+  // que siga habilitado.
   useEffect(() => {
     if (!contexto) return;
-    if (jornadaId === null) {
-      setJornadaId(contexto.jornadaActiva?.id ?? contexto.jornadas[0]?.id ?? null);
-    }
-    if (tipoRefrigerioId === null) {
-      const refrigerio = contexto.refrigerios.find(
-        (item) => item.jornadaId === (contexto.jornadaActiva?.id ?? contexto.jornadas[0]?.id),
-      );
-      setTipoRefrigerioId(refrigerio?.id ?? contexto.refrigerios[0]?.id ?? null);
-    }
-  }, [contexto, jornadaId, tipoRefrigerioId]);
+    if (contexto.modulos[modo]) return;
+    const primero = MODOS.find((opcion) => contexto.modulos[opcion.id]);
+    if (primero) setModo(primero.id);
+  }, [contexto, modo]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -236,6 +280,8 @@ export function Operador() {
               ? 'aviso'
               : 'error',
         );
+        // El contador de la jornada se actualiza al instante.
+        void cliente.invalidateQueries({ queryKey: ['operador', 'contexto'] });
       } catch (error) {
         if (error instanceof ErrorRed) {
           await agregarALaCola(registroCola);
@@ -271,7 +317,7 @@ export function Operador() {
         setEnviando(false);
       }
     },
-    [enLinea, enfocarCampo, jornadaId, modo, refrescarCola, registrarEnHistorial, tipoRefrigerioId],
+    [cliente, enLinea, enfocarCampo, jornadaId, modo, refrescarCola, registrarEnHistorial, tipoRefrigerioId],
   );
 
   /**
@@ -322,7 +368,8 @@ export function Operador() {
       if (modo !== 'refrigerio' && !jornadaId) {
         setResultado({
           resultado: 'no_permitido',
-          mensaje: 'No hay ninguna jornada configurada.',
+          mensaje:
+            'No hay ninguna jornada activa en este momento. Un administrador puede fijarla desde el panel.',
           asistente: null,
           existente: null,
           requiereBusquedaManual: false,
@@ -359,11 +406,15 @@ export function Operador() {
                 asistenteId: registro.asistenteId,
                 tipoRefrigerioId: registro.tipoRefrigerioId,
                 dispositivo: 'navegador',
+                // Se conserva la hora de captura y la API no exige que la
+                // jornada siga vigente: el registro se tomo cuando lo estaba.
+                registradoEn: registro.creadoEn,
               }
             : {
                 asistenteId: registro.asistenteId,
                 jornadaId: registro.jornadaId,
                 dispositivo: 'navegador',
+                registradoEn: registro.creadoEn,
               };
         const ruta =
           registro.tipo === 'ingreso'
@@ -410,16 +461,6 @@ export function Operador() {
     return () => window.clearInterval(temporizador);
   }, [enLinea, sincronizarPendientes]);
 
-  const jornadaSeleccionada = useMemo(
-    () => contexto?.jornadas.find((jornada) => jornada.id === jornadaId) ?? null,
-    [contexto, jornadaId],
-  );
-
-  const refrigeriosDisponibles = useMemo(
-    () => (contexto?.refrigerios ?? []).filter((refrigerio) => refrigerio.jornadaId === jornadaId),
-    [contexto, jornadaId],
-  );
-
   if (isError) {
     return (
       <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4">
@@ -446,17 +487,30 @@ export function Operador() {
           <h1 className="mt-1.5 truncate text-base font-bold text-primario-900">
             {contexto?.config.nombre ?? 'Control de asistencia'}
           </h1>
-          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-neutro-600">
-            {jornadaSeleccionada ? (
+          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-neutro-600">
+            {contexto?.jornadaActiva ? (
               <>
-                <span className="font-medium text-neutro-800">
-                  Jornada: {jornadaSeleccionada.nombre}
+                <span className="font-semibold text-neutro-800">
+                  Jornada: {contexto.jornadaActiva.nombre}
                 </span>
+                <span className="text-neutro-500">
+                  {horaBogota(contexto.jornadaActiva.inicio)} a{' '}
+                  {horaBogota(contexto.jornadaActiva.fin)}
+                </span>
+                {contexto.motivoJornada === 'forzada' ? (
+                  <Insignia tono="aviso">Fijada por el administrador</Insignia>
+                ) : null}
               </>
             ) : (
-              'Sin jornada seleccionada'
+              'Sin jornada activa'
             )}
           </p>
+          {contexto?.jornadaActiva ? (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-neutro-500">
+              <Users className="h-3.5 w-3.5" aria-hidden="true" />
+              {contexto.registrosJornada} registros en esta jornada
+            </p>
+          ) : null}
         </div>
         <div className="flex items-center gap-1">
           {usuario?.rol === 'admin' ? (
@@ -517,83 +571,91 @@ export function Operador() {
         </Aviso>
       ) : null}
 
-      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Modo de registro">
-        {MODOS.map(({ id, etiqueta, descripcion, Icono }) => {
-          const activo = modo === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={activo}
-              onClick={() => setModo(id)}
-              className={clsx(
-                'flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-3xl px-2 py-2 transition-all',
-                activo
-                  ? 'bg-marca text-white shadow-marca'
-                  : 'bg-white text-neutro-700 shadow-tarjeta hover:text-primario-700',
-              )}
-            >
-              <Icono className="h-6 w-6" aria-hidden="true" />
-              <span className="text-sm font-semibold">{etiqueta}</span>
-              <span
+      {modulosDisponibles.length === 0 ? (
+        <Aviso tono="error" titulo="Registro bloqueado por el administrador">
+          Ningun modulo de registro esta habilitado en este momento. Contacte al administrador.
+        </Aviso>
+      ) : (
+        <div
+          className={clsx(
+            'grid gap-2',
+            modulosDisponibles.length === 1
+              ? 'grid-cols-1'
+              : modulosDisponibles.length === 2
+                ? 'grid-cols-2'
+                : 'grid-cols-3',
+          )}
+          role="tablist"
+          aria-label="Modo de registro"
+        >
+          {modulosDisponibles.map(({ id, etiqueta, descripcion, Icono }) => {
+            const activo = modo === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={activo}
+                onClick={() => setModo(id)}
                 className={clsx(
-                  'text-center text-[11px] leading-tight',
-                  activo ? 'text-primario-100' : 'text-neutro-500',
+                  'flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-3xl px-2 py-2 transition-all',
+                  activo
+                    ? 'bg-marca text-white shadow-marca'
+                    : 'bg-white text-neutro-700 shadow-tarjeta hover:text-primario-700',
                 )}
               >
-                {' '}
-                {descripcion}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+                <Icono className="h-6 w-6" aria-hidden="true" />
+                <span className="text-sm font-semibold">{etiqueta}</span>
+                <span
+                  className={clsx(
+                    'text-center text-[11px] leading-tight',
+                    activo ? 'text-primario-100' : 'text-neutro-500',
+                  )}
+                >
+                  {' '}
+                  {descripcion}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {contexto && contexto.jornadas.length > 1 ? (
+      {contexto &&
+      (contexto.motivoJornada === 'fuera_de_horario' || contexto.motivoJornada === 'sin_jornadas') ? (
+        <Aviso tono="aviso" titulo="No hay jornada activa">
+          {contexto.proximaJornada
+            ? `La proxima jornada es ${contexto.proximaJornada.nombre}, a las ${horaBogota(
+                contexto.proximaJornada.inicio,
+              )}.`
+            : 'No hay jornadas programadas.'}
+        </Aviso>
+      ) : null}
+
+      {modo === 'refrigerio' && refrigeriosDeLaJornada.length > 1 ? (
         <div className="flex gap-2 overflow-x-auto sin-barra-espacial pb-1">
-          {contexto.jornadas.map((jornada) => (
+          {refrigeriosDeLaJornada.map((refrigerio) => (
             <button
-              key={jornada.id}
+              key={refrigerio.id}
               type="button"
-              onClick={() => setJornadaId(jornada.id)}
+              onClick={() => setTipoRefrigerioElegido(refrigerio.id)}
               className={clsx(
                 'min-h-[44px] shrink-0 rounded-2xl px-4 py-2 text-sm font-semibold transition-colors',
-                jornadaId === jornada.id
+                tipoRefrigerioId === refrigerio.id
                   ? 'bg-marca text-white shadow-marca'
                   : 'bg-white text-neutro-700 shadow-tarjeta',
               )}
             >
-              {jornada.nombre}
+              {refrigerio.nombre}
             </button>
           ))}
         </div>
       ) : null}
 
-      {modo === 'refrigerio' ? (
-        <div className="flex gap-2 overflow-x-auto sin-barra-espacial pb-1">
-          {refrigeriosDisponibles.length === 0 ? (
-            <p className="text-sm text-neutro-600">
-              No hay refrigerios configurados para la jornada seleccionada.
-            </p>
-          ) : (
-            refrigeriosDisponibles.map((refrigerio) => (
-              <button
-                key={refrigerio.id}
-                type="button"
-                onClick={() => setTipoRefrigerioId(refrigerio.id)}
-                className={clsx(
-                  'min-h-[44px] shrink-0 rounded-2xl px-4 py-2 text-sm font-semibold transition-colors',
-                  tipoRefrigerioId === refrigerio.id
-                    ? 'bg-marca text-white shadow-marca'
-                    : 'bg-white text-neutro-700 shadow-tarjeta',
-                )}
-              >
-                {refrigerio.nombre}
-              </button>
-            ))
-          )}
-        </div>
+      {modo === 'refrigerio' && refrigeriosDeLaJornada.length === 0 ? (
+        <Aviso tono="aviso" titulo="Sin refrigerio para esta jornada">
+          El administrador no ha configurado un refrigerio para la jornada en curso.
+        </Aviso>
       ) : null}
 
       <form onSubmit={manejarEnvio} className="superficie p-3">
@@ -654,6 +716,8 @@ export function Operador() {
             className="boton-primario flex-1"
             disabled={
               enviando ||
+              sinJornada ||
+              modulosDisponibles.length === 0 ||
               idTexto.trim().length === 0 ||
               codigoVerificado !== idTexto.replace(/\s+/g, '').trim().toUpperCase() ||
               !verificacion?.encontrado
@@ -661,9 +725,13 @@ export function Operador() {
           >
             {enviando
               ? 'Registrando'
-              : verificacion?.encontrado && verificacion.asistente
-                ? `Registrar a ${verificacion.asistente.nombres} ${verificacion.asistente.apellidos}`
-                : 'Verifique primero el nombre'}
+              : sinJornada
+                ? 'Sin jornada activa'
+                : sinRefrigerio
+                  ? 'Sin refrigerio configurado'
+                  : verificacion?.encontrado && verificacion.asistente
+                    ? `Registrar a ${verificacion.asistente.nombres} ${verificacion.asistente.apellidos}`
+                    : 'Verifique primero el nombre'}
           </button>
           <button
             type="button"

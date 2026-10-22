@@ -76,6 +76,8 @@ export const seminarioConfig = pgTable(
     toleranciaMinutos: integer('tolerancia_minutos').notNull().default(0),
     exigirAmbasJornadas: boolean('exigir_ambas_jornadas').notNull().default(true),
     intensidadHoraria: integer('intensidad_horaria').notNull().default(8),
+    /** Horas minimas de permanencia en cada jornada exigida para el certificado. */
+    minimoPermanenciaHoras: integer('minimo_permanencia_horas').notNull().default(3),
     permitirRegistroFueraDeVentana: boolean('permitir_registro_fuera_de_ventana')
       .notNull()
       .default(false),
@@ -89,11 +91,39 @@ export const seminarioConfig = pgTable(
     firmas: jsonb('firmas').notNull().default([]),
     idRegex: text('id_regex').notNull().default('^[A-Z0-9]{4,20}$'),
     urlPublica: text('url_publica'),
+    /** Modulos que el administrador deja visibles en la app del operador. */
+    operadorIngresoHabilitado: boolean('operador_ingreso_habilitado').notNull().default(true),
+    operadorRefrigerioHabilitado: boolean('operador_refrigerio_habilitado')
+      .notNull()
+      .default(true),
+    operadorSalidaHabilitado: boolean('operador_salida_habilitado').notNull().default(true),
+    /**
+     * Minutos despues del cierre de una jornada en los que la jornada sigue
+     * siendo la vigente, para alcanzar a registrar las salidas.
+     */
+    margenCierreMinutos: integer('margen_cierre_minutos').notNull().default(20),
+    /**
+     * Jornada fijada a mano por el administrador. Cuando es NULL la jornada se
+     * deduce del horario; se usa solo si el evento se corre.
+     */
+    jornadaForzadaId: integer('jornada_forzada_id').references(() => jornadas.id, {
+      onDelete: 'set null',
+    }),
     creadoPor: uuid('creado_por'),
     createdAt: creadoEn,
     updatedAt: actualizadoEn,
   },
-  (tabla) => [check('seminario_config_id_unico', sql`${tabla.id} = 1`)],
+  (tabla) => [
+    check('seminario_config_id_unico', sql`${tabla.id} = 1`),
+    check(
+      'seminario_config_margen_cierre_check',
+      sql`${tabla.margenCierreMinutos} BETWEEN 0 AND 180`,
+    ),
+    check(
+      'seminario_config_minimo_permanencia_check',
+      sql`${tabla.minimoPermanenciaHoras} BETWEEN 0 AND 12`,
+    ),
+  ],
 );
 
 export const jornadas = pgTable(

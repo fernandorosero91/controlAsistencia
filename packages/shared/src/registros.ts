@@ -5,6 +5,13 @@ export const identificadorAsistenteSchema = z.object({
   asistenteId: z.string().trim().min(1, 'El ID del asistente es obligatorio').max(32),
   jornadaId: z.coerce.number().int().positive('La jornada es obligatoria'),
   dispositivo: z.string().trim().max(120).optional(),
+  /**
+   * Momento en que se capturo el registro en el dispositivo. Solo lo envia la
+   * cola offline: cuando llega, el registro se guarda con esa hora y no se
+   * exige que la jornada siga vigente (pudo capturarse sin red y sincronizarse
+   * mas tarde).
+   */
+  registradoEn: z.coerce.date().optional(),
 });
 
 export type IdentificadorAsistenteInput = z.infer<typeof identificadorAsistenteSchema>;
@@ -13,6 +20,8 @@ export const entregaRefrigerioSchema = z.object({
   asistenteId: z.string().trim().min(1, 'El ID del asistente es obligatorio').max(32),
   tipoRefrigerioId: z.coerce.number().int().positive('El tipo de refrigerio es obligatorio'),
   dispositivo: z.string().trim().max(120).optional(),
+  /** Igual que en el ingreso: solo lo envia la cola offline. */
+  registradoEn: z.coerce.date().optional(),
 });
 
 export type EntregaRefrigerioInput = z.infer<typeof entregaRefrigerioSchema>;

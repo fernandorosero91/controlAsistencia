@@ -18,6 +18,20 @@ export interface ContextoOperador {
   dispositivo?: string | null;
   idempotencyKey?: string | null;
   ahora?: Date;
+  /**
+   * Jornada que el servidor considera vigente. Si llega y no coincide con la
+   * jornada del registro, se rechaza: el operador no puede registrar en otra
+   * jornada por error. Va en null en los registros diferidos (cola offline),
+   * que se capturaron cuando su jornada si estaba vigente.
+   */
+  jornadaVigente?: { id: number; nombre: string } | null;
+}
+
+function mensajeJornadaEquivocada(
+  jornadaVigente: { id: number; nombre: string },
+  jornadaSolicitada: string,
+): string {
+  return `La jornada activa es "${jornadaVigente.nombre}". Este registro corresponde a "${jornadaSolicitada}", que no es la jornada en curso.`;
 }
 
 function aResumen(fila: {
@@ -98,6 +112,16 @@ export async function registrarIngreso(
     return {
       resultado: 'no_permitido',
       mensaje: 'La jornada indicada no existe.',
+      asistente: aResumen(asistente),
+      existente: null,
+      requiereBusquedaManual: false,
+    };
+  }
+
+  if (parametros.jornadaVigente && parametros.jornadaVigente.id !== jornada.id) {
+    return {
+      resultado: 'no_permitido',
+      mensaje: mensajeJornadaEquivocada(parametros.jornadaVigente, jornada.nombre),
       asistente: aResumen(asistente),
       existente: null,
       requiereBusquedaManual: false,
@@ -225,6 +249,16 @@ export async function registrarSalida(
     };
   }
 
+  if (parametros.jornadaVigente && parametros.jornadaVigente.id !== jornada.id) {
+    return {
+      resultado: 'no_permitido',
+      mensaje: mensajeJornadaEquivocada(parametros.jornadaVigente, jornada.nombre),
+      asistente: aResumen(asistente),
+      existente: null,
+      requiereBusquedaManual: false,
+    };
+  }
+
   const actualizadas = await db
     .update(asistencias)
     .set({
@@ -337,6 +371,20 @@ export async function entregarRefrigerio(
     return {
       resultado: 'no_permitido',
       mensaje: 'El refrigerio no existe o no esta activo.',
+      asistente: aResumen(asistente),
+      existente: null,
+      requiereBusquedaManual: false,
+    };
+  }
+
+  if (parametros.jornadaVigente && parametros.jornadaVigente.id !== tipo.jornadaId) {
+    const jornadaDelTipo = await obtenerJornada(tipo.jornadaId);
+    return {
+      resultado: 'no_permitido',
+      mensaje: mensajeJornadaEquivocada(
+        parametros.jornadaVigente,
+        jornadaDelTipo?.nombre ?? 'otra jornada',
+      ),
       asistente: aResumen(asistente),
       existente: null,
       requiereBusquedaManual: false,

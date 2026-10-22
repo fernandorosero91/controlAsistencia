@@ -16,6 +16,7 @@ const esquema = z.object({
   toleranciaMinutos: z.coerce.number().int().min(0).max(240),
   exigirAmbasJornadas: z.boolean(),
   intensidadHoraria: z.coerce.number().int().min(1).max(24),
+  minimoPermanenciaHoras: z.coerce.number().int().min(0).max(12),
   permitirRegistroFueraDeVentana: z.boolean(),
   lugar: z.string().trim().max(160).optional(),
   facultad: z.string().trim().max(160).optional(),
@@ -105,6 +106,7 @@ export function Configuracion() {
       toleranciaMinutos: 15,
       exigirAmbasJornadas: true,
       intensidadHoraria: 8,
+      minimoPermanenciaHoras: 3,
       permitirRegistroFueraDeVentana: false,
       lugar: '',
       facultad: '',
@@ -127,6 +129,7 @@ export function Configuracion() {
       toleranciaMinutos: config.toleranciaMinutos,
       exigirAmbasJornadas: config.exigirAmbasJornadas,
       intensidadHoraria: config.intensidadHoraria,
+      minimoPermanenciaHoras: config.minimoPermanenciaHoras,
       permitirRegistroFueraDeVentana: config.permitirRegistroFueraDeVentana,
       lugar: config.lugar ?? '',
       facultad: config.facultad ?? '',
@@ -240,6 +243,29 @@ export function Configuracion() {
                   </label>
                   <input id="facultad" className="campo" {...register('facultad')} />
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="minimoPermanenciaHoras" className="etiqueta-campo">
+                  Permanencia minima por jornada (horas)
+                </label>
+                <input
+                  id="minimoPermanenciaHoras"
+                  type="number"
+                  min={0}
+                  max={12}
+                  className="campo"
+                  {...register('minimoPermanenciaHoras')}
+                />
+                <p className="mt-1 text-xs text-neutro-500">
+                  El asistente debe permanecer ese numero de horas en cada jornada exigida para
+                  que sea elegible para el certificado. Con 0 la regla no se aplica.
+                </p>
+                {errors.minimoPermanenciaHoras ? (
+                  <p className="mt-1 text-sm text-error-600">
+                    {errors.minimoPermanenciaHoras.message}
+                  </p>
+                ) : null}
               </div>
 
               <div>
@@ -549,6 +575,7 @@ export function Configuracion() {
           </ul>
         </Tarjeta>
       </div>
+      <AccesosOperador jornadas={jornadas?.jornadas ?? []} />
       <Modal
         abierto={nuevaJornada || jornadaEnEdicion !== null}
         titulo={jornadaEnEdicion ? 'Editar jornada' : 'Nueva jornada'}
@@ -603,6 +630,251 @@ export function Configuracion() {
         necesidad de migraciones ni scripts.
       </p>
     </div>
+  );
+}
+
+interface DatosAccesos {
+  operadorIngresoHabilitado: boolean;
+  operadorRefrigerioHabilitado: boolean;
+  operadorSalidaHabilitado: boolean;
+  margenCierreMinutos: number;
+  jornadaForzadaId: number | null;
+}
+
+type ClaveModulo =
+  | 'operadorIngresoHabilitado'
+  | 'operadorRefrigerioHabilitado'
+  | 'operadorSalidaHabilitado';
+
+const MODULOS_OPERADOR: { clave: ClaveModulo; titulo: string; descripcion: string }[] = [
+  {
+    clave: 'operadorIngresoHabilitado',
+    titulo: 'Ingreso',
+    descripcion: 'Registrar la entrada a la jornada',
+  },
+  {
+    clave: 'operadorRefrigerioHabilitado',
+    titulo: 'Refrigerio',
+    descripcion: 'Entregar el refrigerio de la jornada',
+  },
+  {
+    clave: 'operadorSalidaHabilitado',
+    titulo: 'Salida',
+    descripcion: 'Registrar la salida de la jornada',
+  },
+];
+
+function horaCorta(iso: string): string {
+  return new Intl.DateTimeFormat('es-CO', {
+    timeZone: 'America/Bogota',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(iso));
+}
+
+/**
+ * Controla lo que ve el operador. La jornada se deduce sola del horario: aqui
+ * solo se decide que modulos existen y, en caso de contingencia, cual es la
+ * jornada en curso.
+ */
+function AccesosOperador({ jornadas }: { jornadas: Jornada[] }) {
+  const cliente = useQueryClient();
+  const [accesos, setAccesos] = useState<DatosAccesos | null>(null);
+  const [servidor, setServidor] = useState<DatosAccesos | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [mensaje, setMensaje] = useState<string | null>(null);
+
+  const { data: config } = useQuery({
+    queryKey: ['config'],
+    queryFn: () => api.obtener<DatosAccesos>('/config'),
+  });
+
+  const { data: contexto } = useQuery({
+    queryKey: ['operador', 'contexto'],
+    queryFn: () =>
+      api.obtener<{
+        jornadaActiva: { id: number; nombre: string; inicio: string; fin: string } | null;
+      }>('/operador/contexto'),
+    refetchInterval: 30_000,
+  });
+
+  useEffect(() => {
+    if (!config) return;
+    const valores: DatosAccesos = {
+      operadorIngresoHabilitado: config.operadorIngresoHabilitado,
+      operadorRefrigerioHabilitado: config.operadorRefrigerioHabilitado,
+      operadorSalidaHabilitado: config.operadorSalidaHabilitado,
+      margenCierreMinutos: config.margenCierreMinutos,
+      jornadaForzadaId: config.jornadaForzadaId ?? null,
+    };
+    setServidor(valores);
+    setAccesos(valores);
+  }, [config]);
+
+  const guardar = useMutation({
+    mutationFn: (datos: Partial<DatosAccesos>) => api.actualizar('/config/operador', datos),
+    onSuccess: () => {
+      setError(null);
+      setMensaje('Cambio aplicado. La app del operador lo ve de inmediato.');
+      void cliente.invalidateQueries({ queryKey: ['config'] });
+      void cliente.invalidateQueries({ queryKey: ['operador', 'contexto'] });
+    },
+    onError: (problema) => {
+      setMensaje(null);
+      setError(
+        problema instanceof ErrorPeticion
+          ? problema.message
+          : 'No se pudo aplicar el cambio. Intente de nuevo.',
+      );
+      void cliente.invalidateQueries({ queryKey: ['config'] });
+    },
+  });
+
+  /**
+   * El valor se toma del evento, no del estado: React dispara el `onChange` de
+   * un checkbox controlado cuando corrige el valor tras cargar los datos, y en
+   * ese caso el estado y el evento coinciden. Si no coincide con lo que ya
+   * tiene el servidor, no se envia nada.
+   */
+  const alternar = (clave: ClaveModulo, marcado: boolean) => {
+    if (!accesos || !servidor) return;
+    if (accesos[clave] === marcado) return;
+    if (servidor[clave] === marcado) {
+      setAccesos({ ...accesos, [clave]: marcado });
+      return;
+    }
+    setAccesos({ ...accesos, [clave]: marcado });
+    guardar.mutate({ [clave]: marcado });
+  };
+
+  return (
+    <Tarjeta
+      titulo="Accesos del operador"
+      descripcion="Lo que el operador puede hacer desde el celular"
+    >
+      <p className="text-sm text-neutro-600">
+        La jornada no la elige el operador: se deduce del horario de cada jornada. Lo que apague
+        aqui desaparece de la app del operador, y la API tambien lo rechaza.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        {MODULOS_OPERADOR.map((modulo) => (
+          <label
+            key={modulo.clave}
+            className="flex min-h-[48px] items-center justify-between gap-4 rounded-lg border border-neutro-200 px-3.5"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-neutro-800">{modulo.titulo}</span>
+              <span className="block text-xs text-neutro-500">{modulo.descripcion}</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={accesos ? accesos[modulo.clave] : false}
+              disabled={!accesos}
+              onChange={(evento) => alternar(modulo.clave, evento.target.checked)}
+              className="h-5 w-5 shrink-0 accent-[#12505E]"
+              aria-label={`Habilitar ${modulo.titulo.toLowerCase()} en la app del operador`}
+            />
+          </label>
+        ))}
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="jornada-forzada" className="etiqueta-campo">
+            Jornada en curso
+          </label>
+          <select
+            id="jornada-forzada"
+            className="campo"
+            value={accesos?.jornadaForzadaId ?? ''}
+            onChange={(evento) => {
+              if (!accesos) return;
+              setAccesos({
+                ...accesos,
+                jornadaForzadaId: evento.target.value === '' ? null : Number(evento.target.value),
+              });
+            }}
+          >
+            <option value="">Automatica (segun el horario)</option>
+            {jornadas.map((jornada) => (
+              <option key={jornada.id} value={jornada.id}>
+                {jornada.nombre}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-neutro-500">
+            Fijela solo si el evento se corre o se adelanta. En automatico el sistema usa la
+            jornada del horario.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="margen-cierre" className="etiqueta-campo">
+            Minutos de margen despues del cierre
+          </label>
+          <input
+            id="margen-cierre"
+            type="number"
+            min={0}
+            max={180}
+            className="campo"
+            value={accesos?.margenCierreMinutos ?? 20}
+            onChange={(evento) => {
+              if (!accesos) return;
+              setAccesos({ ...accesos, margenCierreMinutos: Number(evento.target.value) });
+            }}
+          />
+          <p className="mt-1 text-xs text-neutro-500">
+            Tiempo en el que la jornada sigue vigente para registrar las salidas.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="boton-primario"
+          disabled={guardar.isPending || !accesos}
+          onClick={() => {
+            if (!accesos || !servidor) return;
+            if (
+              servidor.jornadaForzadaId === accesos.jornadaForzadaId &&
+              servidor.margenCierreMinutos === accesos.margenCierreMinutos
+            ) {
+              return;
+            }
+            guardar.mutate({
+              jornadaForzadaId: accesos.jornadaForzadaId,
+              margenCierreMinutos: accesos.margenCierreMinutos,
+            });
+          }}
+        >
+          <Save className="h-4 w-4" aria-hidden="true" />
+          {guardar.isPending ? 'Guardando' : 'Guardar jornada y margen'}
+        </button>
+        {contexto?.jornadaActiva ? (
+          <Insignia tono="exito">
+            Ahora: {contexto.jornadaActiva.nombre} ({horaCorta(contexto.jornadaActiva.inicio)} a{' '}
+            {horaCorta(contexto.jornadaActiva.fin)})
+          </Insignia>
+        ) : (
+          <Insignia tono="neutro">Ahora: no hay jornada activa</Insignia>
+        )}
+      </div>
+
+      {error ? (
+        <div className="mt-3">
+          <Aviso tono="error">{error}</Aviso>
+        </div>
+      ) : null}
+      {mensaje ? (
+        <div className="mt-3">
+          <Aviso tono="exito">{mensaje}</Aviso>
+        </div>
+      ) : null}
+    </Tarjeta>
   );
 }
 

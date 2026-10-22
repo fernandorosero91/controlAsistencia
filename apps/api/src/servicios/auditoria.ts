@@ -15,6 +15,7 @@ export type AccionAuditada =
   | 'asistencia.excepcion'
   | 'refrigerio.entregado'
   | 'config.actualizada'
+  | 'config.accesos_operador'
   | 'jornada.creada'
   | 'jornada.actualizada'
   | 'certificado.emitido'

@@ -5,6 +5,7 @@ import {
   entregaRefrigerioSchema,
   identificadorAsistenteSchema,
   normalizarId,
+  type RespuestaRegistro,
 } from '@seminario/shared';
 import { db } from '../db/cliente.js';
 import {
@@ -18,10 +19,97 @@ import { limiteEscaneo } from '../config/limites.js';
 import { errores } from '../plugins/errores.js';
 import { registrarAuditoria } from '../servicios/auditoria.js';
 import { ejecutarConIdempotencia } from '../servicios/idempotencia.js';
+import {
+  listarJornadas,
+  obtenerConfig,
+  resolverJornadaPorHorario,
+  type JornadaVigente,
+} from '../servicios/configuracion.js';
 import { entregarRefrigerio, registrarIngreso, registrarSalida } from '../servicios/registros.js';
 import { validarCuerpo, validarParametros } from '../lib/validacion.js';
 
 const parametrosAsistente = z.object({ asistenteId: z.string().min(1).max(32) });
+
+type ModuloOperador = 'ingreso' | 'refrigerio' | 'salida';
+
+const NOMBRE_MODULO: Record<ModuloOperador, string> = {
+  ingreso: 'el registro de ingreso',
+  refrigerio: 'la entrega de refrigerios',
+  salida: 'el registro de salida',
+};
+
+/** Doce horas es el maximo razonable para un registro capturado sin conexion. */
+const ANTIGUEDAD_MAXIMA_DIFERIDA_MS = 12 * 60 * 60_000;
+
+/**
+ * Revisa que el administrador tenga habilitado el modulo y devuelve la jornada
+ * vigente segun el reloj del servidor. La jornada no la elige el operador.
+ */
+async function validarAcceso(modulo: ModuloOperador): Promise<JornadaVigente> {
+  const config = await obtenerConfig();
+
+  const habilitado =
+    modulo === 'ingreso'
+      ? config.operadorIngresoHabilitado
+      : modulo === 'refrigerio'
+        ? config.operadorRefrigerioHabilitado
+        : config.operadorSalidaHabilitado;
+
+  if (!habilitado) {
+    throw errores.noAutorizado(
+      `El administrador tiene deshabilitado ${NOMBRE_MODULO[modulo]} en este momento.`,
+    );
+  }
+
+  return resolverJornadaPorHorario(await listarJornadas(), new Date(), {
+    jornadaForzadaId: config.jornadaForzadaId,
+    margenCierreMinutos: config.margenCierreMinutos,
+  });
+}
+
+/**
+ * Hora de captura de un registro que llego desde la cola offline. Se acota para
+ * que un reloj mal configurado no pueda fechar registros a futuro o muy atras.
+ */
+function horaDiferida(registradoEn: Date | undefined): Date | null {
+  if (!registradoEn) return null;
+  const instante = registradoEn.getTime();
+  const ahora = Date.now();
+
+  if (
+    Number.isNaN(instante) ||
+    instante > ahora + 60_000 ||
+    instante < ahora - ANTIGUEDAD_MAXIMA_DIFERIDA_MS
+  ) {
+    throw errores.validacion('La hora del registro pendiente no es valida');
+  }
+
+  return registradoEn;
+}
+
+function horaEnBogota(iso: string): string {
+  return new Date(iso).toLocaleTimeString('es-CO', {
+    timeZone: 'America/Bogota',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
+/** Respuesta cuando el reloj esta fuera de todas las jornadas programadas. */
+function respuestaSinJornada(vigente: JornadaVigente): RespuestaRegistro {
+  const proxima = vigente.proxima
+    ? ` La proxima es "${vigente.proxima.nombre}", que empieza a las ${horaEnBogota(vigente.proxima.inicio)}.`
+    : '';
+
+  return {
+    resultado: 'no_permitido',
+    mensaje: `No hay ninguna jornada activa en este momento.${proxima}`,
+    asistente: null,
+    existente: null,
+    requiereBusquedaManual: false,
+  };
+}
 
 export async function registrarRutasRegistros(app: FastifyInstance): Promise<void> {
   app.post(
@@ -38,6 +126,14 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
       const datos = validarCuerpo(identificadorAsistenteSchema, request.body);
       const usuario = request.usuario!;
 
+      const vigente = await validarAcceso('ingreso');
+      const capturadoEn = horaDiferida(datos.registradoEn);
+      const jornadaVigente = capturadoEn ? null : vigente.jornada;
+
+      if (!capturadoEn && !jornadaVigente) {
+        return reply.code(200).send(respuestaSinJornada(vigente));
+      }
+
       const resultado = await ejecutarConIdempotencia(request, 'asistencias/ingreso', () =>
         registrarIngreso({
           asistenteId: datos.asistenteId,
@@ -49,6 +145,10 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
             typeof request.headers['idempotency-key'] === 'string'
               ? request.headers['idempotency-key']
               : null,
+          ahora: capturadoEn ?? undefined,
+          jornadaVigente: jornadaVigente
+            ? { id: jornadaVigente.id, nombre: jornadaVigente.nombre }
+            : null,
         }),
       );
 
@@ -79,6 +179,14 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
       const datos = validarCuerpo(identificadorAsistenteSchema, request.body);
       const usuario = request.usuario!;
 
+      const vigente = await validarAcceso('salida');
+      const capturadoEn = horaDiferida(datos.registradoEn);
+      const jornadaVigente = capturadoEn ? null : vigente.jornada;
+
+      if (!capturadoEn && !jornadaVigente) {
+        return reply.code(200).send(respuestaSinJornada(vigente));
+      }
+
       const resultado = await ejecutarConIdempotencia(request, 'asistencias/salida', () =>
         registrarSalida({
           asistenteId: datos.asistenteId,
@@ -90,6 +198,10 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
             typeof request.headers['idempotency-key'] === 'string'
               ? request.headers['idempotency-key']
               : null,
+          ahora: capturadoEn ?? undefined,
+          jornadaVigente: jornadaVigente
+            ? { id: jornadaVigente.id, nombre: jornadaVigente.nombre }
+            : null,
         }),
       );
 
@@ -120,6 +232,14 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
       const datos = validarCuerpo(entregaRefrigerioSchema, request.body);
       const usuario = request.usuario!;
 
+      const vigente = await validarAcceso('refrigerio');
+      const capturadoEn = horaDiferida(datos.registradoEn);
+      const jornadaVigente = capturadoEn ? null : vigente.jornada;
+
+      if (!capturadoEn && !jornadaVigente) {
+        return reply.code(200).send(respuestaSinJornada(vigente));
+      }
+
       const resultado = await ejecutarConIdempotencia(request, 'refrigerios/entregar', () =>
         entregarRefrigerio({
           asistenteId: datos.asistenteId,
@@ -131,6 +251,10 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
             typeof request.headers['idempotency-key'] === 'string'
               ? request.headers['idempotency-key']
               : null,
+          ahora: capturadoEn ?? undefined,
+          jornadaVigente: jornadaVigente
+            ? { id: jornadaVigente.id, nombre: jornadaVigente.nombre }
+            : null,
         }),
       );
 

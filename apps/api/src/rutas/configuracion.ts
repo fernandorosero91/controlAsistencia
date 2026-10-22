@@ -1,7 +1,8 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
+  accesosOperadorSchema,
   jornadaPartialSchema,
   jornadaSchema,
   seminarioConfigSchema,
@@ -9,15 +10,16 @@ import {
   validarCoherenciaJornada,
 } from '@seminario/shared';
 import { db } from '../db/cliente.js';
-import { jornadas, tiposRefrigerio } from '../db/esquema.js';
+import { asistencias, jornadas, tiposRefrigerio } from '../db/esquema.js';
 import { errores } from '../plugins/errores.js';
 import { registrarAuditoria } from '../servicios/auditoria.js';
 import {
+  guardarAccesosOperador,
   guardarConfig,
   invalidarCacheConfiguracion,
   listarJornadas,
   obtenerConfig,
-  resolverJornadaActiva,
+  resolverJornadaPorHorario,
 } from '../servicios/configuracion.js';
 import { validarCuerpo, validarParametros } from '../lib/validacion.js';
 
@@ -276,6 +278,30 @@ export async function registrarRutasConfiguracion(app: FastifyInstance): Promise
     },
   );
 
+  app.patch(
+    '/config/operador',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Configuracion'],
+        description: 'Habilita o bloquea los modulos que ve el operador y fija la jornada en curso',
+      },
+    },
+    async (request, reply) => {
+      const datos = validarCuerpo(accesosOperadorSchema, request.body);
+      const config = await guardarAccesosOperador(datos);
+
+      await registrarAuditoria(request, {
+        accion: 'config.accesos_operador',
+        entidad: 'seminario_config',
+        entidadId: '1',
+        datosDespues: { ...datos },
+      });
+
+      return reply.send(config);
+    },
+  );
+
   app.get(
     '/operador/contexto',
     {
@@ -296,15 +322,52 @@ export async function registrarRutasConfiguracion(app: FastifyInstance): Promise
           .orderBy(asc(tiposRefrigerio.orden)),
       ]);
 
+      // La jornada no la elige el operador: la decide el reloj del servidor.
+      const vigente = resolverJornadaPorHorario(listaJornadas, new Date(), {
+        jornadaForzadaId: config.jornadaForzadaId,
+        margenCierreMinutos: config.margenCierreMinutos,
+      });
+
+      const refrigerios = tipos.map((tipo) => ({
+        id: tipo.id,
+        nombre: tipo.nombre,
+        jornadaId: tipo.jornadaId,
+      }));
+
+      // Contador en vivo de la jornada vigente: el operador ve como avanza el
+      // registro sin tener que abrir el panel.
+      const registrosJornada = vigente.jornada
+        ? (
+            await db
+              .select({ total: sql<number>`count(*)::int` })
+              .from(asistencias)
+              .where(eq(asistencias.jornadaId, vigente.jornada.id))
+          )[0]?.total ?? 0
+        : 0;
+
       return {
-        config,
-        jornadas: listaJornadas,
-        jornadaActiva: resolverJornadaActiva(listaJornadas),
-        refrigerios: tipos.map((tipo) => ({
-          id: tipo.id,
-          nombre: tipo.nombre,
-          jornadaId: tipo.jornadaId,
-        })),
+        config: {
+          nombre: config.nombre,
+          horaFinSeminario: config.horaFinSeminario,
+          toleranciaMinutos: config.toleranciaMinutos,
+          exigirAmbasJornadas: config.exigirAmbasJornadas,
+          minimoPermanenciaHoras: config.minimoPermanenciaHoras,
+        },
+        jornadaActiva: vigente.jornada,
+        motivoJornada: vigente.motivo,
+        vigenteHasta: vigente.vigenteHasta,
+        proximaJornada: vigente.proxima,
+        refrigerios,
+        refrigerioActivo: vigente.jornada
+          ? (refrigerios.find((refrigerio) => refrigerio.jornadaId === vigente.jornada!.id) ??
+            null)
+          : null,
+        modulos: {
+          ingreso: config.operadorIngresoHabilitado,
+          refrigerio: config.operadorRefrigerioHabilitado,
+          salida: config.operadorSalidaHabilitado,
+        },
+        registrosJornada,
         servidorHora: new Date().toISOString(),
       };
     },

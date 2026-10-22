@@ -100,16 +100,13 @@ function horaDesdeTexto(texto: string): { hora: number; minuto: number } {
 }
 
 /**
- * Ventana de registro de una jornada: abre 30 minutos antes de que empiece y
- * cierra 60 minutos despues de su inicio. Es la regla que usan las jornadas
- * del seminario; el administrador puede ajustarla despues desde el panel.
+ * Horarios del seminario en hora de Bogota. La app del operador deduce la
+ * jornada vigente de estos horarios, sin que el operador tenga que elegir.
  */
-function ventanaCheckin(inicioJornada: Date): { apertura: Date; cierre: Date } {
-  return {
-    apertura: new Date(inicioJornada.getTime() - 30 * 60_000),
-    cierre: new Date(inicioJornada.getTime() + 60 * 60_000),
-  };
-}
+const JORNADAS_SEMBRADO = [
+  { nombre: 'Manana', inicio: 8, fin: 12, orden: 1, refrigerio: 'Refrigerio manana' },
+  { nombre: 'Tarde', inicio: 14, fin: 18, orden: 2, refrigerio: 'Refrigerio tarde' },
+] as const;
 
 export interface OpcionesSembrado {
   /** Cantidad de asistentes ficticios. Por defecto toma SEED_ASISTENTES. */
@@ -159,11 +156,12 @@ export async function sembrarDatos(opciones: OpcionesSembrado = {}): Promise<voi
 
   // ------------------------------------------------------- configuracion general
   const fecha = fechaSeminario();
-  const inicio = horaDesdeTexto(entorno.SEMINARIO_HORA_INICIO);
   const fin = horaDesdeTexto(entorno.SEMINARIO_HORA_FIN);
-  const duracionTotal = fin.hora + fin.minuto / 60 - (inicio.hora + inicio.minuto / 60);
-  const mitad = Math.round(duracionTotal / 2);
-  const horaMedio = inicio.hora + mitad;
+  // Intensidad del certificado: suma de las dos jornadas del seminario.
+  const duracionTotal = JORNADAS_SEMBRADO.reduce(
+    (total, jornada) => total + (jornada.fin - jornada.inicio),
+    0,
+  );
   const horaFin = conHora(fecha, fin.hora, fin.minuto);
 
   await db
@@ -176,6 +174,7 @@ export async function sembrarDatos(opciones: OpcionesSembrado = {}): Promise<voi
       toleranciaMinutos: entorno.SEMINARIO_TOLERANCIA_MINUTOS,
       exigirAmbasJornadas: true,
       intensidadHoraria: Math.round(duracionTotal),
+      minimoPermanenciaHoras: 3,
       permitirRegistroFueraDeVentana: false,
       textoEncabezado: `${entorno.SEMINARIO_FACULTAD} - Universidad Cooperativa de Colombia certifica la participacion en el ${entorno.SEMINARIO_NOMBRE}.`,
       textoCierre: `Realizado el ${entorno.SEMINARIO_FECHA.split('-').reverse().join('/')} en ${entorno.SEMINARIO_LUGAR}. Informacion: ${entorno.SEMINARIO_CONTACTO}.`,
@@ -207,41 +206,34 @@ export async function sembrarDatos(opciones: OpcionesSembrado = {}): Promise<voi
     .onConflictDoNothing({ target: seminarioConfig.id });
 
   // ------------------------------------------------------------------ jornadas
+  // La ventana de registro de cada jornada cubre toda la jornada: la deteccion
+  // por horario ya impide registrar en la jornada equivocada, y asi una llegada
+  // tarde (por ejemplo 9:30) no queda bloqueada.
   const jornadasExistentes = await db.select().from(jornadas);
   if (jornadasExistentes.length === 0) {
-    const inicioManana = conHora(fecha, inicio.hora, inicio.minuto);
-    const inicioTarde = conHora(fecha, horaMedio, 0);
-    const ventanaManana = ventanaCheckin(inicioManana);
-    const ventanaTarde = ventanaCheckin(inicioTarde);
+    for (const definicion of JORNADAS_SEMBRADO) {
+      const inicioJornada = conHora(fecha, definicion.inicio);
+      const finJornada = conHora(fecha, definicion.fin);
 
-    const manana = await db
-      .insert(jornadas)
-      .values({
-        nombre: 'Manana',
-        inicio: inicioManana,
-        fin: conHora(fecha, horaMedio, 0),
-        ventanaCheckinInicio: ventanaManana.apertura,
-        ventanaCheckinFin: ventanaManana.cierre,
-        orden: 1,
-      })
-      .returning({ id: jornadas.id });
+      const insertada = await db
+        .insert(jornadas)
+        .values({
+          nombre: definicion.nombre,
+          inicio: inicioJornada,
+          fin: finJornada,
+          ventanaCheckinInicio: inicioJornada,
+          ventanaCheckinFin: finJornada,
+          orden: definicion.orden,
+        })
+        .returning({ id: jornadas.id });
 
-    const tarde = await db
-      .insert(jornadas)
-      .values({
-        nombre: 'Tarde',
-        inicio: inicioTarde,
-        fin: conHora(fecha, fin.hora, fin.minuto),
-        ventanaCheckinInicio: ventanaTarde.apertura,
-        ventanaCheckinFin: ventanaTarde.cierre,
-        orden: 2,
-      })
-      .returning({ id: jornadas.id });
-
-    await db.insert(tiposRefrigerio).values([
-      { nombre: 'Refrigerio manana', jornadaId: manana[0]!.id, activo: true, orden: 1 },
-      { nombre: 'Refrigerio tarde', jornadaId: tarde[0]!.id, activo: true, orden: 2 },
-    ]);
+      await db.insert(tiposRefrigerio).values({
+        nombre: definicion.refrigerio,
+        jornadaId: insertada[0]!.id,
+        activo: true,
+        orden: definicion.orden,
+      });
+    }
   }
 
   // ---------------------------------------------------------------- asistentes

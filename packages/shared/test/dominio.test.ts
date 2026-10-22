@@ -96,6 +96,7 @@ describe('evaluacion de elegibilidad para el certificado', () => {
     exigirAmbasJornadas: true,
     horaFinSeminario: horaFin,
     toleranciaMinutos: 15,
+    minimoPermanenciaHoras: 3,
     jornadas: [jornadaManana, jornadaTarde],
   };
 
@@ -201,7 +202,8 @@ describe('evaluacion de elegibilidad para el certificado', () => {
       {
         jornadaId: 2,
         horaIngreso: new Date('2026-11-20T18:00:00.000Z'),
-        horaSalida: new Date('2026-11-20T20:00:00.000Z'),
+        // Tres horas de permanencia, el minimo exigido.
+        horaSalida: new Date('2026-11-20T21:00:00.000Z'),
       },
     ];
 
@@ -237,6 +239,69 @@ describe('evaluacion de elegibilidad para el certificado', () => {
     const resultado = evaluarElegibilidad({ ...base, jornadas: [], asistencias: [] });
     expect(resultado.elegible).toBe(false);
     expect(resultado.motivos).toEqual(['sin_jornadas_configuradas']);
+  });
+
+  it('rechaza a quien no permanece el minimo de horas en una jornada', () => {
+    const resultado = evaluarElegibilidad({
+      ...base,
+      asistencias: [
+        {
+          jornadaId: 1,
+          horaIngreso: new Date('2026-11-20T12:00:00.000Z'),
+          // Permanencia de una hora: menos que el minimo de tres.
+          horaSalida: new Date('2026-11-20T13:00:00.000Z'),
+        },
+        {
+          jornadaId: 2,
+          horaIngreso: new Date('2026-11-20T18:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T22:50:00.000Z'),
+        },
+      ],
+    });
+
+    expect(resultado.elegible).toBe(false);
+    expect(resultado.motivos).toContain('permanencia_insuficiente');
+  });
+
+  it('acepta exactamente el minimo de permanencia', () => {
+    const resultado = evaluarElegibilidad({
+      ...base,
+      asistencias: [
+        {
+          jornadaId: 1,
+          horaIngreso: new Date('2026-11-20T12:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T15:00:00.000Z'),
+        },
+        {
+          jornadaId: 2,
+          horaIngreso: new Date('2026-11-20T18:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T21:00:00.000Z'),
+        },
+      ],
+    });
+
+    expect(resultado.motivos).not.toContain('permanencia_insuficiente');
+  });
+
+  it('con minimo de permanencia en cero la regla no se aplica', () => {
+    const resultado = evaluarElegibilidad({
+      ...base,
+      minimoPermanenciaHoras: 0,
+      asistencias: [
+        {
+          jornadaId: 1,
+          horaIngreso: new Date('2026-11-20T12:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T17:00:00.000Z'),
+        },
+        {
+          jornadaId: 2,
+          horaIngreso: new Date('2026-11-20T18:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T22:50:00.000Z'),
+        },
+      ],
+    });
+
+    expect(resultado.elegible).toBe(true);
   });
 });
 

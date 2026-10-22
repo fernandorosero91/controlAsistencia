@@ -65,18 +65,34 @@ En **Configuracion**, confirme:
 - Nombre del seminario y fecha: 27 de octubre de 2026.
 - **Hora de fin: 18:00**. Es el dato que determina quien recibe certificado.
 - **Tolerancia: 15 minutos** (se puede ajustar si el cierre se retrasa).
+- **Permanencia minima por jornada: 3 horas**. Es el tiempo que debe estar cada asistente en
+  cada jornada para ser elegible. Con 0 la regla no se aplica.
 - **Exigir asistencia en ambas jornadas**: activado.
-- Ventanas de check-in de las dos jornadas: 07:30 a 09:00 y 12:30 a 14:00.
+- Horarios de las jornadas: **manana de 8:00 a 12:00** y **tarde de 14:00 a 18:00**. La app del
+  operador toma la jornada de estos horarios; no hay que elegirla.
 - **Permitir registro fuera de la ventana**: activelo si espera filas o retrasos. Queda
   registrado en la auditoria.
+
+En **Configuracion > Accesos del operador**:
+
+- **Ingreso**, **Refrigerio** y **Salida**: deje encendido solo lo que corresponda a cada
+  momento. Lo que se apague desaparece de la app del operador y la API lo rechaza.
+- **Jornada en curso**: en *Automatica (segun el horario)*. Solo fijela si el evento se corre o
+  se adelanta.
+- **Minutos de margen despues del cierre**: 20 por defecto; es el tiempo extra para registrar
+  las salidas de la jornada que acaba de terminar.
 
 ### 1.6 Probar con un celular
 
 1. Entre como operador desde el celular.
-2. Registre un ingreso de prueba y compruebe que aparece el **nombre** del asistente para
+2. Compruebe que arriba aparece la **jornada vigente con su horario** y que no hay selector de
+   jornada.
+3. Registre un ingreso de prueba y compruebe que aparece el **nombre** del asistente para
    contrastarlo con la escarapela.
-3. Pruebe el escaner de QR.
-4. **Elimine el registro de prueba** o use un ID de prueba que no exista en el padron.
+4. Pruebe el escaner de QR.
+5. **Elimine el registro de prueba** o use un ID de prueba que no exista en el padron.
+6. Apague y vuelva a encender el interruptor **Refrigerio** en el panel y confirme que el boton
+   desaparece y reaparece en el celular en menos de medio minuto.
 
 > La camara del navegador **solo funciona en un sitio seguro (HTTPS)**. Si se accede por IP
 > local, el operador debe digitar el codigo de 6 caracteres. La aplicacion lo avisa.
@@ -99,17 +115,22 @@ Cada operador inicia sesion con **su propia cuenta**. Las credenciales se entreg
 
 ### 2.2 Flujo del operador
 
-1. Elige el modo: **Ingreso**, **Refrigerio** o **Salida**.
+1. Elige el modo habilitado: **Ingreso**, **Refrigerio** o **Salida**.
 2. El participante entrega la escarapela o dicta su codigo.
 3. El operador escribe o escanea. La app **verifica y muestra el nombre**: se compara con la
    escarapela y con el rostro. Si no coincide, **no se registra**.
 4. Se pulsa **Registrar**.
 5. La app muestra el resultado y deja el campo listo para el siguiente.
 
+- La **jornada** y el **refrigerio** salen solos de la hora; el operador no los escoge.
+- Arriba se ve cuantos registros lleva la jornada en curso, actualizado cada 20 segundos.
 - Un duplicado **no es un error**: sale una alerta ambar con la hora del registro original y el
-  operador que lo hizo. Se continua con la siguiente persona.
+  operador que lo hizo, **aunque el primero lo haya registrado un companero**. Se continua con la
+  siguiente persona.
 - Un ID desconocido sale una alerta roja y ofrece la busqueda manual por nombre.
 - El icono de la camara abre el escaner; el QR se lee solo.
+- **No hay jornada activa** (entre jornadas o despues del margen): la app avisa y bloquea el
+  registro. Si el evento se corre, el administrador fija la jornada en el panel.
 
 ### 2.3 Cierre de cada jornada
 
@@ -144,6 +165,7 @@ El panel de administracion muestra en vivo:
 
 | Falla                                       | Como se detecta                                 | Respuesta inmediata                                                                                                                                     | Respuesta definitiva                                                                                     |
 | ------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **El evento se corre o se adelanta**        | La app dice "No hay jornada activa"             | El administrador fija la jornada en **Configuracion > Accesos del operador > Jornada en curso**.                                                         | Volver a *Automatica (segun el horario)* cuando el cronograma se normalice.                              |
 | **Se cae internet**                         | Indicador "Sin conexion" en la app del operador | La app guarda el registro en el dispositivo y lo sincroniza al volver la red. Los duplicados que aparezcan al sincronizar se marcan como **conflicto**. | Sincronizacion automatica cada 15 s. Antes de emitir certificados, verifique que no queden pendientes.   |
 | **Se cae la base de datos**                 | `/api/health/ready` responde 503                | La API responde 503 sin caerse. El operador sigue registrando en la cola offline.                                                                       | `docker compose restart postgres`. Los datos estan en el volumen `postgres_datos`.                       |
 | **Se cae la API**                           | El panel muestra error de red                   | El operador continua en modo offline.                                                                                                                   | `docker compose restart api`. El cierre es ordenado y las colas se reanudan.                             |

@@ -299,18 +299,12 @@ export async function generarCarnetsPDF(
       color: GRIS_TEXTO,
     });
     cursorY -= 16;
+    // Solo el ID: el codigo de registro ya va dentro del QR. El ID se imprime
+    // grande porque es lo que el operador compara con la persona.
     actual.drawText(`ID: ${participante.asistente.id}`, {
       x: textoX,
       y: cursorY,
-      size: 11,
-      font: fuenteNegrita,
-      color: AZUL_PETROLEO,
-    });
-    cursorY -= 14;
-    actual.drawText(`Codigo: ${participante.codigoRegistro}`, {
-      x: textoX,
-      y: cursorY,
-      size: 13,
+      size: 16,
       font: fuenteNegrita,
       color: AZUL_PROFUNDO,
     });
@@ -348,7 +342,6 @@ export async function generarCartaQrPDF(datos: DatosCartaQr[]): Promise<Uint8Arr
   const documento = await PDFDocument.create();
   const fuenteNormal = await documento.embedFont(StandardFonts.Helvetica);
   const fuenteNegrita = await documento.embedFont(StandardFonts.HelveticaBold);
-  const fuenteMono = await documento.embedFont(StandardFonts.CourierBold);
 
   const anchoPagina = 595.28;
   const altoPagina = 841.89;
@@ -545,43 +538,32 @@ export async function generarCartaQrPDF(datos: DatosCartaQr[]): Promise<Uint8Arr
     );
     cursor = yPanel - 10;
 
-    // ------------------------------------------------------ codigo de registro
-    textoCentrado(actual, 'CODIGO DE REGISTRO', centro, cursor, fuenteNegrita, 8, GRIS_MEDIO);
-    cursor -= 16;
+    // ------------------------------------------------------------------- ID
+    // El codigo de registro ya viaja dentro del QR: lo que debe leerse de un
+    // vistazo es el ID institucional, y por eso va grande.
+    textoCentrado(actual, 'ID INSTITUCIONAL', centro, cursor, fuenteNegrita, 8, GRIS_MEDIO);
+    cursor -= 21;
 
-    const tamanoCodigo = ajustarTamano(fuenteMono, item.codigoRegistro, 25, 200);
+    const tamanoId = ajustarTamano(fuenteNegrita, item.idInstitucional, 24, anchoTexto);
     textoCentrado(
       actual,
-      item.codigoRegistro,
+      item.idInstitucional,
       centro,
       cursor,
-      fuenteMono,
-      tamanoCodigo,
+      fuenteNegrita,
+      tamanoId,
       AZUL_MARINO,
     );
-    cursor -= 17;
+    cursor -= 18;
 
     // ------------------------------------------------------------- datos
     // La cedula va en su propia linea: es un dato de identificacion y debe
     // leerse de un vistazo, igual que el nombre.
-    const identificacion = `ID ${item.idInstitucional}`;
-    const tamanoIdentificacion = ajustarTamano(fuenteNormal, identificacion, 9.5, anchoTexto);
-    textoCentrado(
-      actual,
-      identificacion,
-      centro,
-      cursor,
-      fuenteNormal,
-      tamanoIdentificacion,
-      GRIS_MEDIO,
-    );
-    cursor -= 12;
-
     if (item.cedulaCiudadania) {
       const cedula = `C.C. ${item.cedulaCiudadania}`;
-      const tamanoCedula = ajustarTamano(fuenteNegrita, cedula, 10, anchoTexto);
+      const tamanoCedula = ajustarTamano(fuenteNegrita, cedula, 11, anchoTexto);
       textoCentrado(actual, cedula, centro, cursor, fuenteNegrita, tamanoCedula, AZUL_MARINO);
-      cursor -= 12;
+      cursor -= 13;
     }
 
     if (item.email) {

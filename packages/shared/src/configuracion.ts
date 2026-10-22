@@ -17,6 +17,8 @@ export const seminarioConfigSchema = z.object({
   toleranciaMinutos: z.coerce.number().int().min(0).max(240),
   exigirAmbasJornadas: z.boolean(),
   intensidadHoraria: z.coerce.number().int().min(1).max(24),
+  /** Horas minimas de permanencia en cada jornada exigida para el certificado. */
+  minimoPermanenciaHoras: z.coerce.number().int().min(0).max(12).default(3),
   permitirRegistroFueraDeVentana: z.boolean().default(false),
   textoEncabezado: z.string().trim().max(200).optional(),
   textoCierre: z.string().trim().max(600).optional(),
@@ -71,6 +73,34 @@ export const jornadaPartialSchema = jornadaSchema
   .refine((datos) => Object.keys(datos).length > 0, { message: 'Debe enviar al menos un campo' });
 
 export type JornadaPartialInput = z.infer<typeof jornadaPartialSchema>;
+
+/**
+ * Accesos que el administrador controla en la app del operador.
+ *
+ * La jornada no se elige: se deduce del horario. Lo que el administrador decide
+ * es que modulos ve el operador y, en caso de que el evento se corra, cual es la
+ * jornada en curso.
+ */
+export const accesosOperadorSchema = z.object({
+  operadorIngresoHabilitado: z.boolean().optional(),
+  operadorRefrigerioHabilitado: z.boolean().optional(),
+  operadorSalidaHabilitado: z.boolean().optional(),
+  /** Minutos de gracia despues del cierre de la jornada. */
+  margenCierreMinutos: z.coerce.number().int().min(0).max(180).optional(),
+  /** Jornada fijada a mano; null o ausente significa deteccion automatica. */
+  jornadaForzadaId: z.coerce.number().int().positive().nullable().optional(),
+});
+
+export type AccesosOperadorInput = z.infer<typeof accesosOperadorSchema>;
+
+/** Modulos de la app del operador que el administrador puede habilitar. */
+export const modulosOperadorSchema = z.object({
+  ingreso: z.boolean(),
+  refrigerio: z.boolean(),
+  salida: z.boolean(),
+});
+
+export type ModulosOperador = z.infer<typeof modulosOperadorSchema>;
 
 export const jornadaLecturaSchema = z.object({
   id: z.number().int(),

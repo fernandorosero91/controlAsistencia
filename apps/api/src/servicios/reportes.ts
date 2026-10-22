@@ -348,6 +348,7 @@ async function reporteElegibilidad(
       exigirAmbasJornadas: config.exigirAmbasJornadas,
       horaFinSeminario: new Date(config.horaFinSeminario),
       toleranciaMinutos: config.toleranciaMinutos,
+      minimoPermanenciaHoras: config.minimoPermanenciaHoras,
       jornadas: listaJornadas.map((jornada) => ({ id: jornada.id, fin: jornada.fin })),
       asistencias: assists.map((asistencia) => ({
         jornadaId: asistencia.jornadaId,

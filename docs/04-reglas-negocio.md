@@ -35,6 +35,34 @@ Cada asistente tiene tres identificadores:
 
 ## 2. Registro de asistencia
 
+### 2.0 Jornada vigente: la decide el reloj, no el operador
+
+El operador **no elige la jornada**. La API calcula la **jornada vigente** con la hora del
+servidor (`America/Bogota`) a partir del horario de cada jornada:
+
+- Vigente = `inicio <= ahora <= fin`, mas un **margen de cierre** (20 minutos por defecto,
+  configurable) para alcanzar a registrar las salidas.
+- Fuera de ese rango **no hay jornada vigente** y la API responde `resultado: "no_permitido"`
+  con la hora de la proxima jornada. El administrador puede **fijar la jornada en curso** desde
+  Configuracion si el evento se corre o se adelanta.
+- Todo registro con un `jornada_id` distinto al vigente se rechaza, incluso si la peticion no
+  viene de la app (pestana vieja, llamada directa). **La unica excepcion** son los registros de
+  la cola offline, que viajan con `registradoEn` (la hora de captura) y se aceptan con esa hora.
+
+El refrigerio se deduce igual: se entrega el **tipo de refrigerio de la jornada vigente**, sin
+que el operador tenga que escogerlo.
+
+### 2.0.1 Accesos que controla el administrador
+
+En **Configuracion > Accesos del operador** hay tres interruptores: **Ingreso**, **Refrigerio** y
+**Salida**. Lo que este apagado:
+
+- No aparece en la app del operador.
+- La API responde `403 NO_AUTORIZADO` si alguien lo intenta por fuera de la app.
+
+Los cambios se aplican de inmediato (el contexto del operador se refresca cada 20 segundos y al
+volver a la app) y quedan registrados en la auditoria (`config.accesos_operador`).
+
 ### 2.1 Ingreso
 
 1. El operador elige el modo **Ingreso** y escribe o escanea el ID o el codigo.
@@ -42,19 +70,22 @@ Cada asistente tiene tres identificadores:
 3. Si **no existe**, responde `200` con `resultado: "no_encontrado"` y la interfaz ofrece la
    busqueda manual por nombre o apellido. **Nunca** un error 500.
 4. Si **esta inactivo**, responde `resultado: "no_permitido"`.
-5. Si la jornada **no tiene abierta la ventana de check-in** y el administrador no habilito
+5. Si la jornada **no es la vigente**, responde `resultado: "no_permitido"` indicando cual es la
+   jornada activa.
+6. Si la jornada **no tiene abierta la ventana de check-in** y el administrador no habilito
    "permitir registro fuera de ventana", responde `resultado: "fuera_de_ventana"` con el
    horario de la ventana.
-6. La escritura es atomica:
+7. La escritura es atomica:
 
    ```sql
    INSERT INTO asistencias (asistente_id, jornada_id, hora_ingreso, registrado_por, ...)
    VALUES (...) ON CONFLICT (asistente_id, jornada_id) DO NOTHING RETURNING id;
    ```
 
-7. Si se creo el registro: `resultado: "exito"`.
-8. Si no se creo porque ya existia: `resultado: "duplicado"` con la **hora del registro
-   original**, la **jornada** y **quien lo registro**.
+8. Si se creo el registro: `resultado: "exito"`.
+9. Si no se creo porque ya existia: `resultado: "duplicado"` con la **hora del registro
+   original**, la **jornada** y **quien lo registro**. Esto aplica **aunque el segundo intento lo
+   haga otro operador**: la base de datos garantiza un solo ingreso por persona y jornada.
 
 ### 2.2 Salida (cierre)
 
@@ -95,7 +126,7 @@ inmediato, sin migraciones ni scripts.
 
 ### 4.1 Reglas
 
-Un asistente es **elegible** si cumple las tres condiciones:
+Un asistente es **elegible** si cumple las cuatro condiciones:
 
 1. **Asistencia en todas las jornadas exigidas.**
    - Si `exigir_ambas_jornadas = true`: debe tener ingreso en **las dos** jornadas.
@@ -108,14 +139,25 @@ Un asistente es **elegible** si cumple las tres condiciones:
    hora_salida >= hora_fin_seminario - tolerancia_minutos
    ```
 
+4. **Permanencia minima en cada jornada exigida:**
+
+   ```
+   hora_salida - hora_ingreso >= minimo_permanencia_horas
+   ```
+
+   El valor es configurable en **Configuracion > Permanencia minima por jornada** (3 horas por
+   defecto). Con `0` la regla no se aplica. Al cambiarlo, la elegibilidad se recalcula en la
+   siguiente consulta, sin migraciones ni scripts.
+
 ### 4.2 Motivos de inelegibilidad
 
-| Motivo                      | Significado                                                   |
-| --------------------------- | ------------------------------------------------------------- |
-| `falta_asistencia_jornada`  | No tiene ingreso en una de las jornadas exigidas.             |
-| `sin_registro_salida`       | Tiene ingresos pero nunca registro su salida.                 |
-| `salida_antes_de_hora_fin`  | Registro la salida antes de la hora de fin mas la tolerancia. |
-| `sin_jornadas_configuradas` | El seminario no tiene jornadas (error de configuracion).      |
+| Motivo                      | Significado                                                    |
+| --------------------------- | -------------------------------------------------------------- |
+| `falta_asistencia_jornada`  | No tiene ingreso en una de las jornadas exigidas.              |
+| `sin_registro_salida`       | Tiene ingresos pero nunca registro su salida.                  |
+| `salida_antes_de_hora_fin`  | Registro la salida antes de la hora de fin mas la tolerancia.  |
+| `permanencia_insuficiente`  | Permanecio menos horas que el minimo en una jornada exigida.   |
+| `sin_jornadas_configuradas` | El seminario no tiene jornadas (error de configuracion).       |
 
 El panel muestra estos motivos junto al nombre del asistente, para que la coordinacion
 sepa exactamente que falta.

@@ -50,6 +50,7 @@ export async function evaluarElegibilidadAsistente(
     exigirAmbasJornadas: config.exigirAmbasJornadas,
     horaFinSeminario: new Date(config.horaFinSeminario),
     toleranciaMinutos: config.toleranciaMinutos,
+    minimoPermanenciaHoras: config.minimoPermanenciaHoras,
     jornadas: listaJornadas.map((jornada) => ({ id: jornada.id, fin: jornada.fin })),
     asistencias: listaAsistencias.map((asistencia) => ({
       jornadaId: asistencia.jornadaId,
@@ -118,6 +119,7 @@ export async function listarCertificados(filtros: {
       exigirAmbasJornadas: config.exigirAmbasJornadas,
       horaFinSeminario: new Date(config.horaFinSeminario),
       toleranciaMinutos: config.toleranciaMinutos,
+      minimoPermanenciaHoras: config.minimoPermanenciaHoras,
       jornadas: listaJornadas.map((jornada) => ({ id: jornada.id, fin: jornada.fin })),
       asistencias: assists.map((asistencia) => ({
         jornadaId: asistencia.jornadaId,
@@ -416,6 +418,7 @@ export async function listarAsistentesElegibles(): Promise<string[]> {
       exigirAmbasJornadas: config.exigirAmbasJornadas,
       horaFinSeminario: new Date(config.horaFinSeminario),
       toleranciaMinutos: config.toleranciaMinutos,
+      minimoPermanenciaHoras: config.minimoPermanenciaHoras,
       jornadas: listaJornadas.map((jornada) => ({ id: jornada.id, fin: jornada.fin })),
       asistencias: lista.map((asistencia) => ({
         jornadaId: asistencia.jornadaId,

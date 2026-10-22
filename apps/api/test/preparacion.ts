@@ -39,6 +39,12 @@ process.env.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'Pruebas2026';
 process.env.SEED_ASISTENTES = '0';
 process.env.CORS_ORIGINS = process.env.CORS_ORIGINS ?? 'http://localhost:5173';
 
+// Las suites inician sesion una vez por prueba y crean usuarios: el limite de
+// inicio de sesion (pensado para el evento) no debe frenar la propia suite. El
+// limite de escaneo se prueba aparte, en limites.test.ts.
+process.env.RATE_LIMIT_LOGIN_MAX = '1000';
+process.env.RATE_LIMIT_ADMIN_MAX = '1000';
+
 const urlPruebas = process.env.DATABASE_URL_TEST;
 if (urlPruebas) {
   process.env.DATABASE_URL = urlPruebas;

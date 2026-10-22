@@ -251,8 +251,10 @@ tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice 
 
 ## 7. Reglas de negocio criticas (contrato funcional)
 
-1. **Registro de asistencia por ID.** El operador digita o escanea el ID y elige la jornada. El
-   sistema busca al asistente y registra el ingreso con `INSERT ... ON CONFLICT DO NOTHING`.
+1. **Registro de asistencia por ID.** El operador digita o escanea el ID; **la jornada no la
+   elige**: la determina el servidor con el horario de las jornadas (manana y tarde) y el margen
+   posterior al cierre. La API rechaza cualquier registro con una jornada distinta a la vigente.
+   El sistema busca al asistente y registra el ingreso con `INSERT ... ON CONFLICT DO NOTHING`.
 2. **Alerta de registro duplicado.** Si el asistente ya tiene asistencia en esa jornada, el sistema
    **NO** crea otro registro y muestra una **alerta ambar prominente** con icono: "Asistencia ya
    registrada" + nombre, ID, hora del registro original y quien lo registro. **Nunca un error 500.**
@@ -265,8 +267,12 @@ tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice 
    - Tiene asistencia en las jornadas exigidas (ambas si `exigir_ambas_jornadas = true`).
    - Permanecio **hasta que finalizo el seminario**: tiene registro de **salida/cierre** con
      `hora_salida >= hora_fin_seminario - tolerancia`, segun la hora configurada por el administrador.
+   - **Permanecio el minimo de horas configurado en cada jornada exigida**
+     (`minimo_permanencia_horas`, 3 horas por defecto, ajustable por el administrador; con 0 la
+     regla no se aplica): `hora_salida - hora_ingreso >= minimo_permanencia_horas`.
    - La elegibilidad se **calcula en consulta/servicio**, **no se persiste** como hecho irreversible:
-     si el administrador cambia la hora de fin o la tolerancia, aplica de inmediato.
+     si el administrador cambia la hora de fin, la tolerancia o el minimo de permanencia, aplica de
+     inmediato.
 5. **Los certificados los emite solo el administrador.** Puede (a) generar el certificado de un
    asistente individual, (b) generar **en lote** los de todos los elegibles, (c) descargar el lote
    como ZIP o PDF combinado, (d) regenerar o revocar un certificado. El sistema **no permite emitir**
@@ -299,8 +305,10 @@ tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice 
 - Pantalla principal con **campo de ID grande y enfocado automaticamente**, y boton de **escaner con
   la camara** (`html5-qrcode` o `@zxing/browser`) como alternativa.
 - Busqueda de respaldo por nombre o apellido.
-- Tres modos claramente diferenciados con selector fijo: **Ingreso**, **Refrigerio**, **Salida/Cierre**,
-  indicando siempre la jornada activa.
+- Modos de trabajo: **Ingreso**, **Refrigerio** y **Salida/Cierre**. **La jornada y el refrigerio
+  los determina el sistema por el horario**; el operador no los elige. El administrador decide que
+  modos estan visibles (interruptores en Configuracion) y la API rechaza los que esten apagados.
+- Contador en vivo de los registros de la jornada en curso, actualizado cada 20 segundos.
 - Tras cada registro, el campo se limpia y se enfoca de nuevo (flujo continuo, minimo de toques).
 - Resultado inmediato: exito (verde), ya registrado (ambar), no encontrado/no permitido (rojo), con
   icono, nombre, rol y hora.
