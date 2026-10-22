@@ -1,16 +1,27 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import JSZip from 'jszip';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
+  REGLA_ELEGIBILIDAD_DOCX,
   type DatosTitularPlantilla,
   type GenerarDesdePlantillaInput,
+  type ListadoElegibilidad,
+  type LoteCertificados,
+  type MarcasElegibilidad,
   type PlantillaCertificado,
   type ResumenGeneracion,
 } from '@seminario/shared';
 import { cargarEntorno } from '../config/entorno.js';
 import { db } from '../db/cliente.js';
-import { asistentes, plantillasCertificado } from '../db/esquema.js';
+import {
+  asistencias,
+  asistentes,
+  jornadas,
+  lotesCertificadosDocx,
+  plantillasCertificado,
+} from '../db/esquema.js';
 import { errores } from '../plugins/errores.js';
 import { abrirPlantilla, generarDocx } from './plantillaDocx.js';
 
@@ -27,6 +38,10 @@ function nombreArchivoSeguro(valor: string): string {
 
 function directorioPlantillas(): string {
   return path.resolve(process.cwd(), cargarEntorno().PLANTILLAS_DIR);
+}
+
+function directorioGenerados(): string {
+  return path.resolve(process.cwd(), cargarEntorno().CERTIFICADOS_GENERADOS_DIR);
 }
 
 function aPlantillaPublica(fila: typeof plantillasCertificado.$inferSelect): PlantillaCertificado {
@@ -214,12 +229,127 @@ export interface CertificadoGenerado {
   contenido: Buffer;
 }
 
+/** Jornadas ordenadas (manana = menor `orden`, tarde = mayor `orden`). */
+async function jornadasOrdenadas() {
+  return db
+    .select({ id: jornadas.id, nombre: jornadas.nombre, orden: jornadas.orden })
+    .from(jornadas)
+    .orderBy(asc(jornadas.orden));
+}
+
+interface ConteosAsistencia {
+  jornadaId: number;
+  ingreso: boolean;
+  salida: boolean;
+}
+
+/**
+ * Cuenta, por asistente, si tiene ingreso y salida registrados en cada jornada.
+ * Se resuelve con una sola consulta agregada (sin N+1).
+ */
+async function conteosPorAsistente(
+  asistenteIds: string[],
+): Promise<Map<string, Map<number, ConteosAsistencia>>> {
+  const mapa = new Map<string, Map<number, ConteosAsistencia>>();
+  if (asistenteIds.length === 0) return mapa;
+
+  const filas = await db
+    .select({
+      asistenteId: asistencias.asistenteId,
+      jornadaId: asistencias.jornadaId,
+      ingreso: sql<boolean>`${asistencias.horaIngreso} IS NOT NULL`,
+      salida: sql<boolean>`${asistencias.horaSalida} IS NOT NULL`,
+    })
+    .from(asistencias)
+    .where(inArray(asistencias.asistenteId, asistenteIds));
+
+  for (const fila of filas) {
+    let porJornada = mapa.get(fila.asistenteId);
+    if (!porJornada) {
+      porJornada = new Map();
+      mapa.set(fila.asistenteId, porJornada);
+    }
+    porJornada.set(fila.jornadaId, {
+      jornadaId: fila.jornadaId,
+      ingreso: Boolean(fila.ingreso),
+      salida: Boolean(fila.salida),
+    });
+  }
+  return mapa;
+}
+
+function evaluarMarcas(
+  fila: typeof asistentes.$inferSelect,
+  conteos: Map<number, ConteosAsistencia> | undefined,
+  jornadasExigidas: { id: number; nombre: string }[],
+): MarcasElegibilidad {
+  const nombre = `${fila.nombres} ${fila.apellidos}`.replace(/\s+/g, ' ').trim().toUpperCase();
+  const marcas = jornadasExigidas.map((jornada) => {
+    const conteo = conteos?.get(jornada.id);
+    return { jornada, ingreso: conteo?.ingreso ?? false, salida: conteo?.salida ?? false };
+  });
+
+  const ingresoManana = marcas[0]?.ingreso ?? false;
+  const salidaManana = marcas[0]?.salida ?? false;
+  const ingresoTarde = marcas[1]?.ingreso ?? false;
+  const salidaTarde = marcas[1]?.salida ?? false;
+
+  const faltantes: string[] = [];
+  for (const marca of marcas) {
+    if (!marca.ingreso) faltantes.push(`ingreso ${marca.jornada.nombre}`);
+    if (!marca.salida) faltantes.push(`salida ${marca.jornada.nombre}`);
+  }
+
+  return {
+    asistenteId: fila.id,
+    nombre,
+    ingresoManana,
+    salidaManana,
+    ingresoTarde,
+    salidaTarde,
+    elegible: faltantes.length === 0,
+    motivo: faltantes.length === 0 ? null : `Falta: ${faltantes.join(', ')}`,
+  };
+}
+
+/**
+ * Lista la elegibilidad del padron (con filtro opcional por rol). Un asistente
+ * es elegible solo si tiene las 4 marcas: ingreso y salida en cada jornada.
+ */
+export async function listarElegibilidad(filtros: {
+  rol?: 'estudiante' | 'docente';
+}): Promise<ListadoElegibilidad> {
+  const jornadasExigidas = await jornadasOrdenadas();
+
+  const condiciones = [eq(asistentes.activo, true)];
+  if (filtros.rol) condiciones.push(eq(asistentes.rol, filtros.rol));
+
+  const filas = await db
+    .select()
+    .from(asistentes)
+    .where(and(...condiciones))
+    .orderBy(asc(asistentes.apellidos), asc(asistentes.nombres));
+
+  const conteos = await conteosPorAsistente(filas.map((fila) => fila.id));
+  const datos = filas.map((fila) => evaluarMarcas(fila, conteos.get(fila.id), jornadasExigidas));
+  const elegibles = datos.filter((dato) => dato.elegible).length;
+
+  return {
+    total: datos.length,
+    elegibles,
+    noElegibles: datos.length - elegibles,
+    jornadasExigidas: jornadasExigidas.map((jornada) => jornada.nombre),
+    regla: REGLA_ELEGIBILIDAD_DOCX,
+    datos,
+  };
+}
+
 /**
  * Genera los documentos .docx de los asistentes indicados con la plantilla dada.
  *
- * La fuente de datos es el padron de asistentes activos; `todos` selecciona el
- * padron completo (con filtro opcional por rol). Devuelve el archivo y el
- * contenido de cada certificado para que la ruta decida como entregarlos.
+ * Por defecto solo se certifica a quienes tienen las 4 marcas completas
+ * (ingreso y salida en cada jornada). El resumen incluye la evaluacion por
+ * asistente para saber quien quedo fuera y por que.
  */
 export async function generarCertificados(
   input: GenerarDesdePlantillaInput,
@@ -251,6 +381,18 @@ export async function generarCertificados(
     throw errores.conflicto('No hay asistentes que coincidan con la seleccion');
   }
 
+  const jornadasExigidas = await jornadasOrdenadas();
+  const conteos = await conteosPorAsistente(filas.map((fila) => fila.id));
+
+  const elegibilidad = filas.map((fila) =>
+    evaluarMarcas(fila, conteos.get(fila.id), jornadasExigidas),
+  );
+
+  const soloElegibles = input.soloElegibles !== false;
+  const aptos = soloElegibles
+    ? filas.filter((_, indice) => elegibilidad[indice]!.elegible)
+    : filas;
+
   const contenidoPlantilla = await readFile(plantillaFila.rutaArchivo);
   const plantillaAbierta = await abrirPlantilla(contenidoPlantilla);
   const prefijo = input.prefijoArchivo ? nombreArchivoSeguro(input.prefijoArchivo) : 'CERTIFICADO';
@@ -258,7 +400,7 @@ export async function generarCertificados(
   const generados: CertificadoGenerado[] = [];
   const erroresGeneracion: ResumenGeneracion['errores'] = [];
 
-  for (const fila of filas) {
+  for (const fila of aptos) {
     try {
       const datos = datosTitular(fila);
       const contenido = await generarDocx(plantillaAbierta, datos);
@@ -276,17 +418,140 @@ export async function generarCertificados(
     }
   }
 
+  // Quienes no tienen las 4 marcas se reportan como omitidos con el motivo.
+  const omitidosPorElegibilidad = soloElegibles
+    ? elegibilidad.filter((marca) => !marca.elegible)
+    : [];
+
   const resumen: ResumenGeneracion = {
     total: filas.length,
     generados: generados.length,
-    omitidos: erroresGeneracion.length,
+    omitidos: omitidosPorElegibilidad.length + erroresGeneracion.length,
     detalles: generados.map((item) => ({
       asistenteId: item.asistenteId,
       nombre: item.nombre,
       archivo: item.archivo,
     })),
     errores: erroresGeneracion,
+    elegibilidad,
   };
 
   return { generados, resumen };
+}
+
+function aLotePublico(fila: typeof lotesCertificadosDocx.$inferSelect): LoteCertificados {
+  return {
+    id: fila.id,
+    plantillaId: fila.plantillaId ?? '',
+    nombrePlantilla: fila.nombrePlantilla,
+    carpeta: fila.carpeta,
+    archivoZip: fila.archivoZip,
+    total: fila.total,
+    generados: fila.generados,
+    omitidos: fila.omitidos,
+    tamanoZip: fila.tamanoZip ?? 0,
+    generadoPor: fila.generadoPor,
+    createdAt: fila.createdAt.toISOString(),
+  };
+}
+
+export interface GenerarLoteInput extends GenerarDesdePlantillaInput {
+  generadoPor: string;
+}
+
+/**
+ * Genera los certificados y los persiste en disco dentro de la carpeta
+ * `certificadosGenerados`, empaquetando ademas un ZIP descargable. El lote queda
+ * registrado en la base para poder listarlo y descargarlo despues.
+ */
+export async function generarLotePersistido(
+  input: GenerarLoteInput,
+): Promise<{ lote: LoteCertificados; resumen: ResumenGeneracion }> {
+  const { generados, resumen } = await generarCertificados(input);
+  if (generados.length === 0) {
+    throw errores.conflicto(
+      'No hay asistentes elegibles: se requiere ingreso y salida en cada jornada.',
+    );
+  }
+
+  const marcaTiempo = new Date().toISOString().replace(/[:.]/g, '-');
+  const nombreCarpeta = `lote-${marcaTiempo}`;
+  const carpeta = path.join(directorioGenerados(), nombreCarpeta);
+  await mkdir(carpeta, { recursive: true });
+
+  const zip = new JSZip();
+  for (const certificado of generados) {
+    const ruta = path.join(carpeta, certificado.archivo);
+    await writeFile(ruta, certificado.contenido);
+    zip.file(certificado.archivo, certificado.contenido);
+  }
+  const contenidoZip = await zip.generateAsync({ type: 'nodebuffer' });
+  const archivoZip = path.join(carpeta, 'certificados.zip');
+  await writeFile(archivoZip, contenidoZip);
+
+  const plantilla = await db
+    .select({ nombre: plantillasCertificado.nombre })
+    .from(plantillasCertificado)
+    .where(eq(plantillasCertificado.id, input.plantillaId))
+    .limit(1);
+
+  const insertadas = await db
+    .insert(lotesCertificadosDocx)
+    .values({
+      plantillaId: input.plantillaId,
+      nombrePlantilla: plantilla[0]?.nombre ?? 'Plantilla',
+      carpeta,
+      archivoZip,
+      total: resumen.total,
+      generados: resumen.generados,
+      omitidos: resumen.omitidos,
+      tamanoZip: contenidoZip.length,
+      generadoPor: input.generadoPor,
+    })
+    .returning();
+
+  return { lote: aLotePublico(insertadas[0]!), resumen };
+}
+
+export async function listarLotes(): Promise<LoteCertificados[]> {
+  const filas = await db
+    .select()
+    .from(lotesCertificadosDocx)
+    .orderBy(sql`${lotesCertificadosDocx.createdAt} DESC`)
+    .limit(100);
+  return filas.map(aLotePublico);
+}
+
+export async function obtenerLote(id: string): Promise<LoteCertificados> {
+  const filas = await db
+    .select()
+    .from(lotesCertificadosDocx)
+    .where(eq(lotesCertificadosDocx.id, id))
+    .limit(1);
+  const fila = filas[0];
+  if (!fila) throw errores.noEncontrado('El lote de certificados no existe');
+  return aLotePublico(fila);
+}
+
+/** Lee el ZIP de un lote desde disco para entregarlo como descarga. */
+export async function leerZipLote(id: string): Promise<{ lote: LoteCertificados; contenido: Buffer }> {
+  const lote = await obtenerLote(id);
+  const contenido = await readFile(lote.archivoZip).catch(() => {
+    throw errores.noEncontrado('El archivo del lote no esta disponible en disco');
+  });
+  return { lote, contenido };
+}
+
+/** Elimina del disco la carpeta de un lote y su registro. */
+export async function eliminarLote(id: string): Promise<void> {
+  const lote = await obtenerLote(id);
+  await rm(lote.carpeta, { recursive: true, force: true }).catch(() => undefined);
+  await db.delete(lotesCertificadosDocx).where(eq(lotesCertificadosDocx.id, id));
+}
+
+/** Lista los archivos .docx de un lote leyendolos desde su carpeta. */
+export async function leerArchivosLote(id: string): Promise<string[]> {
+  const lote = await obtenerLote(id);
+  const entradas = await readdir(lote.carpeta).catch(() => []);
+  return entradas.filter((nombre) => nombre.toLowerCase().endsWith('.docx'));
 }

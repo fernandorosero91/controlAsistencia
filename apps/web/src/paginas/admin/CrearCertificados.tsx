@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  BadgeCheck,
+  AlertCircle,
+  CheckCircle2,
   Download,
+  FileArchive,
   FileText,
   Star,
   Trash2,
@@ -12,6 +14,9 @@ import {
 import {
   CAMPOS_PLANTILLA,
   DESCRIPCION_CAMPO_PLANTILLA,
+  type ListadoElegibilidad,
+  type LoteCertificados,
+  type MarcasElegibilidad,
   type PlantillaCertificado,
   type ResumenGeneracion,
 } from '@seminario/shared';
@@ -21,6 +26,16 @@ import { Aviso, EsqueletoTarjeta, EstadoVacio, Insignia, Modal, Tarjeta } from '
 
 interface RespuestaListado {
   datos: PlantillaCertificado[];
+  total: number;
+}
+
+interface RespuestaGeneracion {
+  lote: LoteCertificados;
+  resumen: ResumenGeneracion;
+}
+
+interface RespuestaLotes {
+  datos: LoteCertificados[];
   total: number;
 }
 
@@ -42,12 +57,27 @@ export function CrearCertificados() {
   const [resultado, setResultado] = useState<ResumenGeneracion | null>(null);
   const [generarCon, setGenerarCon] = useState<PlantillaCertificado | null>(null);
   const [rolSeleccion, setRolSeleccion] = useState<'' | 'estudiante' | 'docente'>('');
-  const [todos, setTodos] = useState(true);
   const [eliminar, setEliminar] = useState<PlantillaCertificado | null>(null);
+  const [eliminarLote, setEliminarLote] = useState<LoteCertificados | null>(null);
+  const [verElegibilidad, setVerElegibilidad] = useState(false);
 
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['plantillas-certificado'],
     queryFn: () => api.obtener<RespuestaListado>('/plantillas-certificado'),
+  });
+
+  const lotes = useQuery({
+    queryKey: ['plantillas-certificado', 'lotes'],
+    queryFn: () => api.obtener<RespuestaLotes>('/plantillas-certificado/lotes'),
+  });
+
+  const elegibilidad = useQuery({
+    queryKey: ['plantillas-certificado', 'elegibilidad', rolSeleccion],
+    queryFn: () =>
+      api.obtener<ListadoElegibilidad>(
+        `/plantillas-certificado/elegibilidad${rolSeleccion ? `?rol=${rolSeleccion}` : ''}`,
+      ),
+    enabled: verElegibilidad,
   });
 
   const subir = useMutation({
@@ -117,31 +147,28 @@ export function CrearCertificados() {
     },
   });
 
-  const descargarZip = useMutation({
-    mutationFn: async (plantilla: PlantillaCertificado) => {
-      const cuerpo = {
+  const generar = useMutation({
+    mutationFn: async (plantilla: PlantillaCertificado) =>
+      api.crear<RespuestaGeneracion>('/plantillas-certificado/generar', {
         plantillaId: plantilla.id,
-        todos,
+        todos: true,
         rol: rolSeleccion || undefined,
-        soloElegibles: false,
-      };
-      const archivo = await api.descargarPost('/plantillas-certificado/generar/descarga', cuerpo);
-      return archivo;
-    },
-    onSuccess: (archivo) => {
-      const url = URL.createObjectURL(archivo);
-      const enlace = document.createElement('a');
-      enlace.href = url;
-      enlace.download = 'certificados-plantilla.zip';
-      document.body.appendChild(enlace);
-      enlace.click();
-      document.body.removeChild(enlace);
-      URL.revokeObjectURL(url);
+        soloElegibles: true,
+      }),
+    onSuccess: ({ resumen }) => {
+      setResultado(resumen);
       setError(null);
-      setMensaje('El ZIP con los certificados se genero correctamente.');
+      setMensaje(
+        `Certificados generados: ${resumen.generados} de ${resumen.total}. ${
+          resumen.omitidos > 0
+            ? `${resumen.omitidos} omitidos por no tener las 4 marcas (ingreso y salida en cada jornada).`
+            : ''
+        }`,
+      );
+      void cliente.invalidateQueries({ queryKey: ['plantillas-certificado', 'lotes'] });
     },
     onError: (problema) => {
-      setMensaje(null);
+      setResultado(null);
       setError(
         problema instanceof ErrorPeticion
           ? problema.message
@@ -150,41 +177,59 @@ export function CrearCertificados() {
     },
   });
 
-  const generarResumen = useMutation({
-    mutationFn: async (plantilla: PlantillaCertificado) =>
-      api.crear<ResumenGeneracion>('/plantillas-certificado/generar', {
-        plantillaId: plantilla.id,
-        todos,
-        rol: rolSeleccion || undefined,
-        soloElegibles: false,
-      }),
-    onSuccess: (resumen) => {
-      setResultado(resumen);
-      setError(null);
+  const descargarLote = useMutation({
+    mutationFn: async (lote: LoteCertificados) =>
+      api.descarga(`/plantillas-certificado/lotes/${lote.id}/descarga`),
+    onSuccess: (archivo) => {
+      const url = URL.createObjectURL(archivo);
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = 'certificadosGenerados.zip';
+      document.body.appendChild(enlace);
+      enlace.click();
+      document.body.removeChild(enlace);
+      URL.revokeObjectURL(url);
     },
     onError: (problema) => {
-      setResultado(null);
       setError(
-        problema instanceof ErrorPeticion ? problema.message : 'No se pudieron generar los certificados',
+        problema instanceof ErrorPeticion ? problema.message : 'No se pudo descargar el ZIP',
+      );
+    },
+  });
+
+  const borrarLote = useMutation({
+    mutationFn: async (id: string) => api.eliminar(`/plantillas-certificado/lotes/${id}`),
+    onSuccess: () => {
+      void cliente.invalidateQueries({ queryKey: ['plantillas-certificado', 'lotes'] });
+      setEliminarLote(null);
+    },
+    onError: (problema) => {
+      setError(
+        problema instanceof ErrorPeticion ? problema.message : 'No se pudo eliminar el lote',
       );
     },
   });
 
   const plantillas = data?.datos ?? [];
+  const listadoLotes = lotes.data?.datos ?? [];
 
   return (
     <div className="space-y-4">
       {error ? <Aviso tono="error" titulo="No fue posible completar la accion">{error}</Aviso> : null}
       {mensaje ? <Aviso tono="exito">{mensaje}</Aviso> : null}
 
+      <Aviso tono="primario" titulo="Como se habilita un certificado">
+        Solo se genera el certificado de los asistentes con las <strong>4 marcas</strong>: ingreso y
+        salida de la <strong>manana</strong> y ingreso y salida de la <strong>tarde</strong>. Quien
+        no cumpla las 4 marcas queda omitido y se muestra el motivo.
+      </Aviso>
+
       <Tarjeta
         titulo="Crear certificados desde una plantilla .docx"
         descripcion="Suba una plantilla de Word con los campos entre dobles llaves y genere los certificados del padron"
       >
         <Aviso tono="primario" titulo="Como marcar los campos en la plantilla">
-          <p>
-            En el documento de Word escriba los datos del titular entre dobles llaves, por ejemplo:
-          </p>
+          <p>En el documento de Word escriba los datos del titular entre dobles llaves, por ejemplo:</p>
           <ul className="mt-2 grid gap-1 sm:grid-cols-2">
             {CAMPOS_PLANTILLA.map((campo) => (
               <li key={campo} className="flex items-start gap-2">
@@ -312,7 +357,7 @@ export function CrearCertificados() {
                     }}
                   >
                     <Users className="h-4 w-4" aria-hidden="true" />
-                    Generar
+                    Generar certificados
                   </button>
                   <button
                     type="button"
@@ -332,21 +377,95 @@ export function CrearCertificados() {
       {resultado ? (
         <Tarjeta titulo="Resultado de la generacion">
           <dl className="grid grid-cols-3 gap-3">
-            <Metrica titulo="Total" valor={resultado.total} />
+            <Metrica titulo="Total evaluados" valor={resultado.total} />
             <Metrica titulo="Generados" valor={resultado.generados} tono="exito" />
-            <Metrica titulo="Omitidos" valor={resultado.omitidos} tono={resultado.omitidos > 0 ? 'error' : 'neutro'} />
+            <Metrica
+              titulo="Omitidos"
+              valor={resultado.omitidos}
+              tono={resultado.omitidos > 0 ? 'error' : 'neutro'}
+            />
           </dl>
-          {resultado.errores.length > 0 ? (
-            <ul className="mt-3 space-y-1 text-xs text-error-700">
-              {resultado.errores.slice(0, 8).map((detalle) => (
-                <li key={detalle.asistenteId}>
-                  {detalle.asistenteId}: {detalle.mensaje}
-                </li>
-              ))}
-            </ul>
+          <div className="mt-3">
+            <button
+              type="button"
+              className="boton-secundario"
+              onClick={() => setVerElegibilidad((valor) => !valor)}
+            >
+              {verElegibilidad ? 'Ocultar' : 'Ver'} detalle de elegibilidad
+            </button>
+          </div>
+          {verElegibilidad ? (
+            <ListaElegibilidad
+              datos={resultado.elegibilidad}
+              cargando={elegibilidad.isPending && resultado.elegibilidad.length === 0}
+              oficial={elegibilidad.data}
+            />
           ) : null}
         </Tarjeta>
       ) : null}
+
+      <Tarjeta
+        titulo="Certificados generados"
+        descripcion="Lotes guardados en la carpeta certificadosGenerados. Descargue el ZIP del lote."
+        accion={
+          <button
+            type="button"
+            className="boton-secundario"
+            onClick={() => void lotes.refetch()}
+          >
+            Actualizar
+          </button>
+        }
+      >
+        {lotes.isPending ? (
+          <EsqueletoTarjeta lineas={3} />
+        ) : listadoLotes.length === 0 ? (
+          <EstadoVacio
+            titulo="Aun no hay certificados generados"
+            descripcion="Al generar un lote aparecera aqui con su boton de descarga."
+            icono={<FileArchive className="h-6 w-6" aria-hidden="true" />}
+          />
+        ) : (
+          <ul className="space-y-2">
+            {listadoLotes.map((lote) => (
+              <li
+                key={lote.id}
+                className="flex flex-col gap-3 rounded-2xl border border-neutro-200 bg-white p-3.5 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-neutro-900">
+                    <FileArchive className="h-4 w-4 shrink-0 text-primario-700" aria-hidden="true" />
+                    {lote.nombrePlantilla}
+                  </p>
+                  <p className="mt-0.5 text-xs text-neutro-600">
+                    {formatearFechaHora(lote.createdAt)} - {formatearNumero(lote.generados)} certificados
+                    {lote.omitidos > 0 ? ` - ${formatearNumero(lote.omitidos)} omitidos` : ''}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="boton-compacto bg-marca text-white shadow-marca"
+                    onClick={() => descargarLote.mutate(lote)}
+                    disabled={descargarLote.isPending}
+                  >
+                    <Download className="h-4 w-4" aria-hidden="true" />
+                    Descargar ZIP
+                  </button>
+                  <button
+                    type="button"
+                    className="boton-compacto text-error-600 hover:bg-error-100"
+                    onClick={() => setEliminarLote(lote)}
+                    aria-label={`Eliminar lote ${lote.id}`}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Tarjeta>
 
       <Modal
         abierto={generarCon !== null}
@@ -359,25 +478,14 @@ export function CrearCertificados() {
             </button>
             <button
               type="button"
-              className="boton-secundario"
-              onClick={() => {
-                if (generarCon) generarResumen.mutate(generarCon);
-              }}
-              disabled={generarResumen.isPending}
-            >
-              <BadgeCheck className="h-4 w-4" aria-hidden="true" />
-              {generarResumen.isPending ? 'Generando' : 'Previsualizar'}
-            </button>
-            <button
-              type="button"
               className="boton-primario"
               onClick={() => {
-                if (generarCon) descargarZip.mutate(generarCon);
+                if (generarCon) generar.mutate(generarCon);
               }}
-              disabled={descargarZip.isPending}
+              disabled={generar.isPending}
             >
-              <Download className="h-4 w-4" aria-hidden="true" />
-              {descargarZip.isPending ? 'Generando' : 'Descargar ZIP'}
+              <FileText className="h-4 w-4" aria-hidden="true" />
+              {generar.isPending ? 'Generando' : 'Generar certificados .docx'}
             </button>
           </div>
         }
@@ -394,27 +502,20 @@ export function CrearCertificados() {
               id="rol-generar"
               className="campo"
               value={rolSeleccion}
-              onChange={(evento) => setRolSeleccion(evento.target.value as '' | 'estudiante' | 'docente')}
+              onChange={(evento) =>
+                setRolSeleccion(evento.target.value as '' | 'estudiante' | 'docente')
+              }
             >
               <option value="">Todos los roles</option>
               <option value="estudiante">Solo estudiantes</option>
               <option value="docente">Solo docentes</option>
             </select>
           </div>
-          <label className="flex items-center gap-2 text-sm text-neutro-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={todos}
-              onChange={(evento) => setTodos(evento.target.checked)}
-            />
-            Generar para todo el padron activo
-          </label>
-          <p className="text-xs text-neutro-500">
-            Por ahora la seleccion individual de asistentes se define en un paso posterior. Si
-            desmarca esta opcion, se generaran igualmente todos los asistentes activos que
-            coincidan con el rol elegido.
-          </p>
+          <Aviso tono="aviso" titulo="Filtro de elegibilidad">
+            Solo se generara el certificado de los asistentes que tengan las 4 marcas: ingreso y
+            salida de la manana e ingreso y salida de la tarde. El lote se guardara en la carpeta
+            <span className="font-mono"> certificadosGenerados </span> y podra descargarlo como ZIP.
+          </Aviso>
         </div>
       </Modal>
 
@@ -445,6 +546,81 @@ export function CrearCertificados() {
           certificados ya generados no se ven afectados. La accion queda auditada.
         </p>
       </Modal>
+
+      <Modal
+        abierto={eliminarLote !== null}
+        titulo="Eliminar lote de certificados"
+        alCerrar={() => setEliminarLote(null)}
+        pie={
+          <div className="flex justify-end gap-2">
+            <button type="button" className="boton-secundario" onClick={() => setEliminarLote(null)}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="boton-peligro"
+              onClick={() => {
+                if (eliminarLote) borrarLote.mutate(eliminarLote.id);
+              }}
+              disabled={borrarLote.isPending}
+            >
+              Eliminar
+            </button>
+          </div>
+        }
+      >
+        <p className="text-sm text-neutro-700">
+          Se eliminaran los .docx y el ZIP de este lote de la carpeta
+          <span className="font-mono"> certificadosGenerados</span>. La accion queda auditada.
+        </p>
+      </Modal>
+    </div>
+  );
+}
+
+function ListaElegibilidad({
+  datos,
+  cargando,
+  oficial,
+}: {
+  datos: MarcasElegibilidad[];
+  cargando: boolean;
+  oficial?: ListadoElegibilidad;
+}) {
+  const filas = datos.length > 0 ? datos : oficial?.datos ?? [];
+  if (cargando && filas.length === 0) return <EsqueletoTarjeta lineas={4} />;
+  if (filas.length === 0) {
+    return <p className="mt-3 text-sm text-neutro-600">Sin datos de elegibilidad.</p>;
+  }
+  const excluidos = filas.filter((fila) => !fila.elegible);
+  return (
+    <div className="mt-3 space-y-2">
+      {oficial ? (
+        <p className="text-xs text-neutro-600">
+          {formatearNumero(oficial.elegibles)} elegibles de {formatearNumero(oficial.total)} -{' '}
+          {oficial.regla}
+        </p>
+      ) : null}
+      {excluidos.length === 0 ? (
+        <p className="flex items-center gap-2 text-sm text-exito-700">
+          <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+          Todos los asistentes evaluados cumplen las 4 marcas.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {excluidos.slice(0, 30).map((fila) => (
+            <li
+              key={fila.asistenteId}
+              className="flex items-start gap-2 rounded-xl bg-aviso-50 px-3 py-2 text-xs text-aviso-800"
+            >
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                <span className="font-semibold">{fila.nombre}</span> ({fila.asistenteId}): {fila.motivo}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

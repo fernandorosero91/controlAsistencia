@@ -10,15 +10,23 @@ import { registrarAuditoria } from '../servicios/auditoria.js';
 import {
   actualizarPlantilla,
   crearPlantilla,
+  eliminarLote,
   eliminarPlantilla,
   generarCertificados,
+  generarLotePersistido,
+  leerZipLote,
+  listarElegibilidad,
+  listarLotes,
   listarPlantillas,
+  obtenerLote,
   obtenerPlantilla,
 } from '../servicios/plantillasCertificado.js';
 import { errores } from '../plugins/errores.js';
-import { validarCuerpo, validarParametros } from '../lib/validacion.js';
+import { validarConsulta, validarCuerpo, validarParametros } from '../lib/validacion.js';
 
 const parametrosPlantilla = z.object({ id: z.string().uuid('La plantilla no es valida') });
+const parametrosLote = z.object({ id: z.string().uuid('El lote no es valido') });
+const filtrosElegibilidad = z.object({ rol: z.enum(['estudiante', 'docente']).optional() });
 
 export async function registrarRutasPlantillas(app: FastifyInstance): Promise<void> {
   app.get(
@@ -153,32 +161,134 @@ export async function registrarRutasPlantillas(app: FastifyInstance): Promise<vo
     },
   );
 
+  app.get(
+    '/plantillas-certificado/elegibilidad',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Plantillas de certificado'],
+        description:
+          'Elegibilidad del padron: solo es elegible quien tiene ingreso y salida en cada jornada (admin)',
+      },
+    },
+    async (request) => {
+      const filtros = validarConsulta(filtrosElegibilidad, request.query);
+      return listarElegibilidad(filtros);
+    },
+  );
+
   app.post(
     '/plantillas-certificado/generar',
     {
       onRequest: [app.autorizar(['admin'])],
       schema: {
         tags: ['Plantillas de certificado'],
-        description: 'Genera los certificados .docx de una seleccion y los entrega en ZIP (admin)',
+        description:
+          'Genera y persiste los certificados .docx elegibles en la carpeta certificadosGenerados (admin)',
       },
     },
     async (request, reply) => {
+      const admin = request.usuario!;
       const datos = validarCuerpo(generarDesdePlantillaSchema, request.body);
 
-      const { resumen } = await generarCertificados(datos);
+      const { lote, resumen } = await generarLotePersistido({ ...datos, generadoPor: admin.id });
 
       await registrarAuditoria(request, {
         accion: 'plantilla.generados',
-        entidad: 'plantillas_certificado',
-        entidadId: datos.plantillaId,
+        entidad: 'lotes_certificados_docx',
+        entidadId: lote.id,
         datosDespues: {
+          plantillaId: datos.plantillaId,
           total: resumen.total,
           generados: resumen.generados,
           omitidos: resumen.omitidos,
         },
       });
 
-      return reply.status(200).send(resumen);
+      return reply.status(201).send({ lote, resumen });
+    },
+  );
+
+  app.get(
+    '/plantillas-certificado/lotes',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Plantillas de certificado'],
+        description: 'Listado de lotes de certificados .docx generados (admin)',
+      },
+    },
+    async () => {
+      const datos = await listarLotes();
+      return { datos, total: datos.length };
+    },
+  );
+
+  app.get(
+    '/plantillas-certificado/lotes/:id',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Plantillas de certificado'],
+        description: 'Detalle de un lote de certificados .docx (admin)',
+      },
+    },
+    async (request) => {
+      const { id } = validarParametros(parametrosLote, request.params);
+      return obtenerLote(id);
+    },
+  );
+
+  app.get(
+    '/plantillas-certificado/lotes/:id/descarga',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Plantillas de certificado'],
+        description: 'Descarga el ZIP con los certificados .docx de un lote (admin)',
+      },
+    },
+    async (request, reply) => {
+      const { id } = validarParametros(parametrosLote, request.params);
+      const { lote, contenido } = await leerZipLote(id);
+
+      await registrarAuditoria(request, {
+        accion: 'plantilla.lote_descargado',
+        entidad: 'lotes_certificados_docx',
+        entidadId: lote.id,
+        datosDespues: { generados: lote.generados },
+      });
+
+      return reply
+        .header('Content-Type', 'application/zip')
+        .header(
+          'Content-Disposition',
+          `attachment; filename="certificados-generados-${lote.id}.zip"`,
+        )
+        .send(contenido);
+    },
+  );
+
+  app.delete(
+    '/plantillas-certificado/lotes/:id',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Plantillas de certificado'],
+        description: 'Elimina un lote de certificados y su carpeta en disco (admin)',
+      },
+    },
+    async (request) => {
+      const { id } = validarParametros(parametrosLote, request.params);
+      await eliminarLote(id);
+
+      await registrarAuditoria(request, {
+        accion: 'plantilla.lote_eliminado',
+        entidad: 'lotes_certificados_docx',
+        entidadId: id,
+      });
+
+      return { eliminado: true };
     },
   );
 
@@ -193,9 +303,11 @@ export async function registrarRutasPlantillas(app: FastifyInstance): Promise<vo
     },
     async (request, reply) => {
       const datos = validarCuerpo(generarDesdePlantillaSchema, request.body);
-      const { generados } = await generarCertificados(datos);
+      const { generados, resumen } = await generarCertificados(datos);
       if (generados.length === 0) {
-        throw errores.conflicto('No se genero ningun certificado');
+        throw errores.conflicto(
+          'No hay asistentes elegibles: se requiere ingreso y salida en cada jornada.',
+        );
       }
 
       const zip = new JSZip();
@@ -208,7 +320,12 @@ export async function registrarRutasPlantillas(app: FastifyInstance): Promise<vo
         accion: 'plantilla.generados',
         entidad: 'plantillas_certificado',
         entidadId: datos.plantillaId,
-        datosDespues: { total: generados.length, descarga: true },
+        datosDespues: {
+          total: resumen.total,
+          generados: resumen.generados,
+          omitidos: resumen.omitidos,
+          descarga: true,
+        },
       });
 
       return reply
@@ -241,10 +358,14 @@ export async function registrarRutasPlantillas(app: FastifyInstance): Promise<vo
         plantillaId: id,
         asistenteIds: [cuerpo.asistenteId],
         todos: false,
-        soloElegibles: false,
+        soloElegibles: true,
       });
       const generado = generados[0];
-      if (!generado) throw errores.noEncontrado('No se pudo generar el certificado del asistente');
+      if (!generado) {
+        throw errores.conflicto(
+          'El asistente no es elegible: se requiere ingreso y salida en cada jornada.',
+        );
+      }
 
       await registrarAuditoria(request, {
         accion: 'plantilla.generados',

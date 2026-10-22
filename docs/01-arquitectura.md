@@ -87,6 +87,7 @@ indice unico `asistencias_unico_asistente_jornada`.
 | `certificados`        | Certificados emitidos         | Unico por asistente y por codigo de verificacion.                                                  |
 | `certificados_lotes`  | Progreso de la emision masiva | Estado y contadores.                                                                               |
 | `plantillas_certificado` | Plantillas .docx del padron | Una sola predeterminada (indice unico parcial).                                                    |
+| `lotes_certificados_docx` | Lotes .docx generados en disco | Carpeta `certificadosGenerados`, conteos y ZIP descargable.                                        |
 | `usuarios_sistema`    | Administradores y operadores  | `argon2id`, rol y estado.                                                                          |
 | `refresh_tokens`      | Rotacion de sesiones          | Solo se guarda el hash SHA-256.                                                                    |
 | `auditoria`           | Acciones sensibles            | Usuario, accion, entidad, IP y datos antes/despues.                                                |

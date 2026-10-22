@@ -79,6 +79,16 @@ export const actualizarPlantillaSchema = z
 
 export type ActualizarPlantillaInput = z.infer<typeof actualizarPlantillaSchema>;
 
+/**
+ * Regla de elegibilidad del certificado .docx.
+ *
+ * Un asistente es elegible unicamente si registro su entrada y su salida en
+ * TODAS las jornadas del seminario (manana y tarde). Es decir, se exigen las
+ * 4 marcas: ingreso y salida de cada una de las 2 jornadas.
+ */
+export const REGLA_ELEGIBILIDAD_DOCX =
+  'Requiere ingreso y salida registrados en cada jornada (manana y tarde)';
+
 /** Seleccion de asistentes para generar certificados desde una plantilla. */
 export const generarDesdePlantillaSchema = z.object({
   plantillaId: z.string().uuid('La plantilla no es valida'),
@@ -86,13 +96,28 @@ export const generarDesdePlantillaSchema = z.object({
   asistenteIds: z.array(z.string().trim().min(1)).max(2000).optional(),
   todos: z.boolean().default(false),
   rol: z.enum(ROLES_ASISTENTE).optional(),
-  /** Exige que el asistente sea elegible para el certificado. */
-  soloElegibles: z.boolean().default(false),
+  /**
+   * Exige que el asistente tenga las 4 marcas (ingreso y salida en cada
+   * jornada). Por defecto activado: solo se certifica a quien asistio completo.
+   */
+  soloElegibles: z.boolean().default(true),
   /** Sobrescribe el nombre de archivo base (sin extension) de los .docx generados. */
   prefijoArchivo: z.string().trim().max(60).optional(),
 });
 
 export type GenerarDesdePlantillaInput = z.infer<typeof generarDesdePlantillaSchema>;
+
+/** Estado de las 4 marcas exigidas a un asistente para ser elegible. */
+export interface MarcasElegibilidad {
+  asistenteId: string;
+  nombre: string;
+  ingresoManana: boolean;
+  salidaManana: boolean;
+  ingresoTarde: boolean;
+  salidaTarde: boolean;
+  elegible: boolean;
+  motivo: string | null;
+}
 
 /** Resultado de una generacion individual o por lote. */
 export interface ResumenGeneracion {
@@ -101,4 +126,34 @@ export interface ResumenGeneracion {
   omitidos: number;
   detalles: { asistenteId: string; nombre: string; archivo: string }[];
   errores: { asistenteId: string; mensaje: string }[];
+  /** Marcas por asistente evaluado (permite ver quien quedo fuera y por que). */
+  elegibilidad: MarcasElegibilidad[];
+}
+
+/** Lote de certificados .docx generados y persistidos en disco. */
+export interface LoteCertificados {
+  id: string;
+  plantillaId: string;
+  nombrePlantilla: string;
+  carpeta: string;
+  archivoZip: string;
+  total: number;
+  generados: number;
+  omitidos: number;
+  tamanoZip: number;
+  generadoPor: string | null;
+  createdAt: string;
+}
+
+/**
+ * Listado de elegibilidad: para cada asistente del padron (con filtro opcional
+ * por rol) indica si tiene las 4 marcas requeridas.
+ */
+export interface ListadoElegibilidad {
+  total: number;
+  elegibles: number;
+  noElegibles: number;
+  jornadasExigidas: string[];
+  regla: string;
+  datos: MarcasElegibilidad[];
 }

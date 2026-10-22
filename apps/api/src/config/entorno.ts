@@ -84,6 +84,7 @@ const esquema = z.object({
   BASE_URL_PUBLICA: z.string().url().default('http://localhost:3000'),
   CERTIFICADOS_DIR: z.string().default('storage/certificados'),
   PLANTILLAS_DIR: z.string().default('storage/plantillas'),
+  CERTIFICADOS_GENERADOS_DIR: z.string().default('storage/certificadosGenerados'),
 
   SMTP_HOST: z.string().optional(),
   SMTP_PUERTO: z.coerce.number().int().min(1).max(65535).default(587),

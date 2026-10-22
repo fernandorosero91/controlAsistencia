@@ -311,6 +311,26 @@ export const plantillasCertificado = pgTable(
   ],
 );
 
+export const lotesCertificadosDocx = pgTable(
+  'lotes_certificados_docx',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    plantillaId: uuid('plantilla_id').references(() => plantillasCertificado.id, {
+      onDelete: 'set null',
+    }),
+    nombrePlantilla: text('nombre_plantilla').notNull(),
+    carpeta: text('carpeta').notNull(),
+    archivoZip: text('archivo_zip').notNull(),
+    total: integer('total').notNull().default(0),
+    generados: integer('generados').notNull().default(0),
+    omitidos: integer('omitidos').notNull().default(0),
+    tamanoZip: bigint('tamano_zip', { mode: 'number' }),
+    generadoPor: uuid('generado_por').references(() => usuariosSistema.id, { onDelete: 'set null' }),
+    createdAt: creadoEn,
+  },
+  (tabla) => [index('lotes_certificados_docx_created_idx').on(sql`${tabla.createdAt} DESC`)],
+);
+
 export const certificados = pgTable(
   'certificados',
   {
@@ -380,3 +400,4 @@ export type TipoRefrigerio = typeof tiposRefrigerio.$inferSelect;
 export type Certificado = typeof certificados.$inferSelect;
 export type LoteCertificados = typeof certificadosLotes.$inferSelect;
 export type PlantillaCertificado = typeof plantillasCertificado.$inferSelect;
+export type LoteCertificadosDocx = typeof lotesCertificadosDocx.$inferSelect;

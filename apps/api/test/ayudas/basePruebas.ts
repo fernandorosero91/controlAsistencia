@@ -30,6 +30,7 @@ export async function prepararBaseDePruebas(): Promise<void> {
 
   await db.execute(
     `TRUNCATE TABLE auditoria, idempotencia, certificados, certificados_lotes,
+       lotes_certificados_docx, plantillas_certificado,
        entregas_refrigerio, asistencias, asistentes, tipos_refrigerio, jornadas,
        refresh_tokens, usuarios_sistema, seminario_config RESTART IDENTITY CASCADE`,
   );

@@ -25,6 +25,8 @@ export type AccionAuditada =
   | 'plantilla.actualizada'
   | 'plantilla.eliminada'
   | 'plantilla.generados'
+  | 'plantilla.lote_descargado'
+  | 'plantilla.lote_eliminado'
   | 'usuario.creado'
   | 'usuario.actualizado'
   | 'mantenimiento.limpieza'

@@ -220,6 +220,22 @@ certificados: la API responde `403` y la interfaz no muestra esas acciones.
 
 No expone el ID institucional, el correo ni ningun dato de la lista de asistentes.
 
+### 5.7 Certificado en Word (.docx) por plantilla
+
+Flujo adicional al PDF, administrado por el panel **Crear certificados**:
+
+- **Regla de habilitacion:** solo se genera el certificado de los asistentes con las **4 marcas**:
+  ingreso y salida registrados en **cada** jornada (manana y tarde). Si faltara cualquiera de las
+  cuatro, el asistente se omite y el resumen indica el motivo (`Falta: ...`). No hay excepcion de
+  inclusion en este flujo: quien no cumple las 4 marcas no recibe el `.docx`.
+- La plantilla es un `.docx` con los campos `{{nombre}}`, `{{cedula}}`, `{{id}}`, `{{rol}}` y
+  `{{semestre}}`. El reemplazo respeta los runs en que Word divida el texto.
+- Los documentos se persisten en disco en la carpeta **`certificadosGenerados`** (una subcarpeta por
+  lote) junto con un **ZIP** del lote; el ZIP se descarga desde la interfaz.
+- El lote queda registrado en `lotes_certificados_docx` con sus conteos (total, generados, omitidos).
+- Cargar/actualizar/eliminar plantillas, generar lotes, descargar y eliminar lotes quedan auditados.
+- Todo el modulo exige rol `admin`.
+
 ---
 
 ## 6. Excepciones manuales del administrador
