@@ -119,8 +119,8 @@ export function Carnets() {
               <span>
                 El QR contiene el codigo de registro de 6 caracteres (por ejemplo{' '}
                 <code>K7M4D2</code>), que el operador puede digitar si el escaner falla. La
-                escarapela muestra ademas el nombre, el rol, el ID institucional y el codigo en
-                texto legible.
+                escarapela muestra el nombre, el rol y el ID institucional en grande; el codigo no
+                se imprime porque ya va dentro del QR.
               </span>
             </span>
           </Aviso>
@@ -130,7 +130,7 @@ export function Carnets() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Tarjeta
           titulo="Carta de QR"
-          descripcion="Escarapelas para entregar el codigo en papel"
+          descripcion="Escarapela con el QR, el nombre y el ID institucional"
           accion={
             <button
               type="button"
