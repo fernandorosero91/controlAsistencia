@@ -67,6 +67,27 @@ export async function registrarManejadorErrores(app: FastifyInstance): Promise<v
 
       const status = (error as { statusCode?: number }).statusCode ?? 500;
 
+      // Violacion de una restriccion de la base de datos (por ejemplo, una
+      // ventana de registro cuyo cierre no es posterior a su apertura). No es
+      // un fallo del servidor: es un dato invalido, y se responde 422 con un
+      // mensaje util en lugar de un 500 opaco.
+      const codigoPostgres = (error as { code?: string }).code;
+      if (status >= 500 && codigoPostgres) {
+        const mensaje =
+          codigoPostgres === '23514'
+            ? 'Los datos no cumplen las reglas del sistema. Revise las fechas y los horarios antes de guardar.'
+            : codigoPostgres === '23505'
+              ? 'Ya existe un registro con esos datos. Revise los valores e intente de nuevo.'
+              : codigoPostgres === '23502'
+                ? 'Faltan datos obligatorios para guardar el registro.'
+                : null;
+
+        if (mensaje) {
+          reply.status(422).send({ codigo: 'VALIDACION', mensaje });
+          return;
+        }
+      }
+
       if (status === 429) {
         const cuerpo = error as {
           codigo?: CodigoError;

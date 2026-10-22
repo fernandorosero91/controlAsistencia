@@ -624,12 +624,30 @@ function FormularioJornada({
     orden: inicial?.orden ?? 1,
   });
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <form
       className="space-y-3"
       onSubmit={async (evento) => {
         evento.preventDefault();
+        setError(null);
+
+        // Revision local: la base de datos tambien lo rechaza, pero alli el
+        // error llega como un 500 sin explicacion.
+        const aInstante = (valor: string) => new Date(valor).getTime();
+        if (!Number.isNaN(aInstante(datos.fin)) && aInstante(datos.fin) <= aInstante(datos.inicio)) {
+          setError('La hora de fin de la jornada debe ser posterior a la de inicio');
+          return;
+        }
+        if (
+          !Number.isNaN(aInstante(datos.ventanaCheckinFin)) &&
+          aInstante(datos.ventanaCheckinFin) <= aInstante(datos.ventanaCheckinInicio)
+        ) {
+          setError('El cierre del registro debe ser posterior a su apertura');
+          return;
+        }
+
         setGuardando(true);
         try {
           await alGuardar({
@@ -639,11 +657,23 @@ function FormularioJornada({
             ventanaCheckinInicio: new Date(datos.ventanaCheckinInicio).toISOString(),
             ventanaCheckinFin: new Date(datos.ventanaCheckinFin).toISOString(),
           });
+        } catch (problema) {
+          setError(
+            problema instanceof ErrorPeticion
+              ? problema.message
+              : 'No se pudo guardar la jornada. Intente de nuevo.',
+          );
         } finally {
           setGuardando(false);
         }
       }}
     >
+      {error ? (
+        <Aviso tono="error" titulo="No se pudo guardar la jornada">
+          {error}
+        </Aviso>
+      ) : null}
+
       <div>
         <label htmlFor="jornada-nombre" className="etiqueta-campo">
           Nombre
@@ -748,20 +778,34 @@ function FormularioRefrigerio({
   const [activo, setActivo] = useState(inicial?.activo ?? true);
   const [orden, setOrden] = useState(inicial?.orden ?? 1);
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <form
       className="space-y-3"
       onSubmit={async (evento) => {
         evento.preventDefault();
+        setError(null);
         setGuardando(true);
         try {
           await alGuardar({ nombre, jornadaId, activo, orden });
+        } catch (problema) {
+          setError(
+            problema instanceof ErrorPeticion
+              ? problema.message
+              : 'No se pudo guardar el refrigerio. Intente de nuevo.',
+          );
         } finally {
           setGuardando(false);
         }
       }}
     >
+      {error ? (
+        <Aviso tono="error" titulo="No se pudo guardar el refrigerio">
+          {error}
+        </Aviso>
+      ) : null}
+
       <div>
         <label htmlFor="refrigerio-nombre" className="etiqueta-campo">
           Nombre

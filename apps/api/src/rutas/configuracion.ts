@@ -6,6 +6,7 @@ import {
   jornadaSchema,
   seminarioConfigSchema,
   tipoRefrigerioSchema,
+  validarCoherenciaJornada,
 } from '@seminario/shared';
 import { db } from '../db/cliente.js';
 import { jornadas, tiposRefrigerio } from '../db/esquema.js';
@@ -80,6 +81,12 @@ export async function registrarRutasConfiguracion(app: FastifyInstance): Promise
     },
     async (request, reply) => {
       const datos = validarCuerpo(jornadaSchema, request.body);
+
+      const problema = validarCoherenciaJornada(datos);
+      if (problema) {
+        throw errores.validacion(problema, [{ campo: 'ventanaCheckinFin', mensaje: problema }]);
+      }
+
       const insertados = await db
         .insert(jornadas)
         .values({
@@ -125,6 +132,18 @@ export async function registrarRutasConfiguracion(app: FastifyInstance): Promise
 
       const actuales = await db.select().from(jornadas).where(eq(jornadas.id, id)).limit(1);
       if (!actuales[0]) throw errores.noEncontrado('La jornada no existe');
+
+      // La coherencia se revisa sobre los valores resultantes: puede venir solo
+      // un campo y el resto sigue siendo el que ya estaba guardado.
+      const problema = validarCoherenciaJornada({
+        inicio: datos.inicio ?? actuales[0].inicio,
+        fin: datos.fin ?? actuales[0].fin,
+        ventanaCheckinInicio: datos.ventanaCheckinInicio ?? actuales[0].ventanaCheckinInicio,
+        ventanaCheckinFin: datos.ventanaCheckinFin ?? actuales[0].ventanaCheckinFin,
+      });
+      if (problema) {
+        throw errores.validacion(problema, [{ campo: 'ventanaCheckinFin', mensaje: problema }]);
+      }
 
       const actualizados = await db
         .update(jornadas)

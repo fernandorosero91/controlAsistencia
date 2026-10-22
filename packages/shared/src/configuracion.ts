@@ -44,6 +44,28 @@ export const jornadaSchema = z.object({
 
 export type JornadaInput = z.infer<typeof jornadaSchema>;
 
+/**
+ * Revisa que los horarios de una jornada sean coherentes entre si.
+ *
+ * La base de datos tambien lo comprueba (restriccion `jornadas_ventana_valida`),
+ * pero alli el error llega como un 500 sin explicacion. Aqui se devuelve el
+ * mensaje que el administrador necesita para corregir el dato.
+ */
+export function validarCoherenciaJornada(datos: {
+  inicio: Date;
+  fin: Date;
+  ventanaCheckinInicio: Date;
+  ventanaCheckinFin: Date;
+}): string | null {
+  if (datos.fin.getTime() <= datos.inicio.getTime()) {
+    return 'La hora de fin de la jornada debe ser posterior a la de inicio';
+  }
+  if (datos.ventanaCheckinFin.getTime() <= datos.ventanaCheckinInicio.getTime()) {
+    return 'El cierre del registro debe ser posterior a su apertura';
+  }
+  return null;
+}
+
 export const jornadaPartialSchema = jornadaSchema
   .partial()
   .refine((datos) => Object.keys(datos).length > 0, { message: 'Debe enviar al menos un campo' });
