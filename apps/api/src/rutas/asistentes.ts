@@ -452,12 +452,42 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           });
           continue;
         }
+        let pdfEscarapela: Buffer | undefined;
+        try {
+          const pdfUint8 = await generarCartaQrPDF([
+            {
+              asistente: {
+                id: fila.id,
+                nombres: fila.nombres,
+                apellidos: fila.apellidos,
+                rol: fila.rol,
+                semestre: fila.semestre,
+              },
+              codigoRegistro: fila.codigoRegistro ?? fila.id,
+              idInstitucional: fila.id,
+              cedulaCiudadania: fila.cedulaCiudadania ?? null,
+              email: fila.email,
+              nombreSeminario: config.nombre,
+              facultad: config.facultad,
+              fecha: config.fecha,
+              lugar: config.lugar,
+            },
+          ]);
+          pdfEscarapela = Buffer.from(pdfUint8);
+        } catch (errorPdf) {
+          request.log.warn(
+            { error: errorPdf instanceof Error ? errorPdf.message : String(errorPdf) },
+            'No se pudo generar la escarapela en PDF para adjuntar al correo',
+          );
+        }
+
         const resultado = await enviarQrPorCorreo({
           destinatario: fila.email,
           nombre: `${fila.nombres} ${fila.apellidos}`,
           codigoRegistro: fila.codigoRegistro ?? fila.id,
           idInstitucional: fila.id,
           nombreSeminario: config.nombre,
+          pdfEscarapela,
         });
         resultados.push({ asistenteId: fila.id, ...resultado });
       }

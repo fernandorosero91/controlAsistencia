@@ -75,6 +75,7 @@ export interface MensajeQr {
   codigoRegistro: string;
   idInstitucional: string;
   nombreSeminario: string;
+  pdfEscarapela?: Buffer | Uint8Array;
 }
 
 export interface ResultadoEnvio {
@@ -82,17 +83,14 @@ export interface ResultadoEnvio {
   mensaje: string;
 }
 
-async function imagenQr(codigo: string): Promise<string> {
-  // La tiperia de qrcode declara la forma con callback; la forma con promesa
-  // devuelve directamente el data URL.
-  const resultado = await QRCode.toDataURL(codigo, {
+async function imagenQrBuffer(codigo: string): Promise<Buffer> {
+  const buffer = await QRCode.toBuffer(codigo, {
     type: 'png',
     errorCorrectionLevel: 'M',
-    // Zona de silencio de 4 modulos: facilita la lectura con el celular.
     margin: 4,
     width: 512,
-  } as never);
-  return resultado as unknown as string;
+  });
+  return buffer;
 }
 
 export async function enviarQrPorCorreo(mensaje: MensajeQr): Promise<ResultadoEnvio> {
@@ -106,12 +104,10 @@ export async function enviarQrPorCorreo(mensaje: MensajeQr): Promise<ResultadoEn
   }
 
   const entorno = cargarEntorno();
-  // Usa el remitente efectivo calculado al inicializar el transporte.
-  // Para Gmail (y similares) debe coincidir con la cuenta autenticada.
   const remitenteEfectivo =
     (transporteActivo as Transporter & { _remitenteEfectivo?: string })._remitenteEfectivo ??
     entorno.SMTP_REMITENTE;
-  const imagen = await imagenQr(mensaje.codigoRegistro);
+  const bufferQr = await imagenQrBuffer(mensaje.codigoRegistro);
 
   try {
     await transporteActivo.sendMail({
@@ -129,8 +125,8 @@ export async function enviarQrPorCorreo(mensaje: MensajeQr): Promise<ResultadoEn
         '',
         `ID institucional: ${mensaje.idInstitucional}`,
         '',
-        'Presenta este codigo (o el codigo QR) en la entrada. No necesitas imprimirlo:',
-        'tambien puedes dictarlo al operador.',
+        'Adjuntamos tu escarapela / carnet oficial en formato PDF para el ingreso.',
+        'Tambien puedes presentar el codigo QR de este mensaje o dictar tu codigo al operador.',
         '',
         'Este mensaje contiene informacion personal asociada a tu inscripcion.',
       ].join('\n'),
@@ -142,9 +138,12 @@ export async function enviarQrPorCorreo(mensaje: MensajeQr): Promise<ResultadoEn
           <p style="font-size: 32px; font-weight: 700; letter-spacing: 4px; color: #1d31d4; margin: 16px 0;">
             ${escapar(mensaje.codigoRegistro)}
           </p>
-          <p><img src="${imagen}" alt="Codigo QR de registro" width="220" height="220" /></p>
+          <p><img src="cid:codigo_qr" alt="Codigo QR de registro" width="220" height="220" style="display: block; border-radius: 8px;" /></p>
           <p style="color: #64748b; font-size: 13px;">
             ID institucional: ${escapar(mensaje.idInstitucional)}
+          </p>
+          <p style="background: #eef2ff; border-left: 4px solid #1d31d4; padding: 10px 14px; margin: 16px 0; font-size: 13px; color: #1e1b4b; border-radius: 4px;">
+            <strong>Escarapela adjunta:</strong> Hemos adjuntado tu carnet / escarapela en formato PDF listo para descargar o imprimir.
           </p>
           <p style="color: #64748b; font-size: 12px;">
             Este mensaje contiene informacion personal asociada a tu inscripcion.
@@ -152,6 +151,22 @@ export async function enviarQrPorCorreo(mensaje: MensajeQr): Promise<ResultadoEn
           </p>
         </div>
       `,
+      attachments: [
+        {
+          filename: `qr-${mensaje.codigoRegistro}.png`,
+          content: bufferQr,
+          cid: 'codigo_qr', // Content-ID referenciado en el src del img
+        },
+        ...(mensaje.pdfEscarapela
+          ? [
+              {
+                filename: `escarapela-${mensaje.idInstitucional}.pdf`,
+                content: Buffer.from(mensaje.pdfEscarapela),
+                contentType: 'application/pdf',
+              },
+            ]
+          : []),
+      ],
     });
     return { enviado: true, mensaje: 'Correo enviado correctamente' };
   } catch (error) {

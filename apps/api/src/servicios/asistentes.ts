@@ -169,18 +169,24 @@ export async function listarConCorreo(): Promise<
   {
     id: string;
     codigoRegistro: string | null;
+    cedulaCiudadania: string | null;
     email: string | null;
     nombres: string;
     apellidos: string;
+    rol: 'estudiante' | 'docente';
+    semestre: number | null;
   }[]
 > {
   return db
     .select({
       id: asistentes.id,
       codigoRegistro: asistentes.codigoRegistro,
+      cedulaCiudadania: asistentes.cedulaCiudadania,
       email: asistentes.email,
       nombres: asistentes.nombres,
       apellidos: asistentes.apellidos,
+      rol: asistentes.rol,
+      semestre: asistentes.semestre,
     })
     .from(asistentes)
     .where(and(eq(asistentes.activo, true), sql`${asistentes.email} IS NOT NULL`));
