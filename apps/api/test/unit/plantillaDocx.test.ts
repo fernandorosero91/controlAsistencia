@@ -1,6 +1,11 @@
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
-import { abrirPlantilla, detectarCampos, generarDocx } from '../../src/servicios/plantillaDocx.js';
+import {
+  abrirPlantilla,
+  detectarCampos,
+  detectarCamposControl,
+  generarDocx,
+} from '../../src/servicios/plantillaDocx.js';
 
 /**
  * Generacion de certificados en .docx a partir de una plantilla.
@@ -178,5 +183,116 @@ describe('generacion de certificados desde plantilla', () => {
 
     expect(headerXml).toContain('ANA MARIA PEREZ GOMEZ');
     expect(headerXml).not.toContain('{{nombre}}');
+  });
+});
+
+/** Construye un parrafo con un control de contenido (SDT) de Word. */
+function parrafoControl(alias: string, tag: string, texto: string): string {
+  return (
+    `<w:p ${NS}><w:sdt><w:sdtPr><w:alias w:val="${alias}"/><w:tag w:val="${tag}"/>` +
+    `<w:lock w:val="sdtLocked"/></w:sdtPr><w:sdtContent>` +
+    `<w:r><w:rPr><w:rStyle w:val="Estilo1"/></w:rPr></w:r>` +
+    `<w:r><w:rPr><w:rStyle w:val="Estilo1"/></w:rPr><w:t>${texto}</w:t></w:r>` +
+    `</w:sdtContent></w:sdt></w:p>`
+  );
+}
+
+/**
+ * Controles de contenido (SDT): el formato que usan las plantillas
+ * institucionales, que no escriben `{{campo}}`. El titulo del control (tag o
+ * alias) identifica el dato y el motor sustituye el texto interno.
+ */
+describe('plantillas con controles de contenido (SDT)', () => {
+  const DOCUMENTO_SDT =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<w:document ${NS}><w:body>` +
+    parrafoControl('Nombre del estudiante', 'Nombre del estudiante', 'nombre') +
+    parrafoControl('Documento de identidad', 'Documento de identidad', 'cedula') +
+    `</w:body></w:document>`;
+
+  it('detecta los campos a partir del tag del control', () => {
+    const campos = detectarCamposControl(DOCUMENTO_SDT);
+    expect(campos.sort()).toEqual(['cedula', 'nombre']);
+  });
+
+  it('detecta el campo por alias cuando no hay tag', () => {
+    const documento =
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<w:document ${NS}><w:body>` +
+      parrafoControl('Nombre del estudiante', '', 'nombre') +
+      `</w:body></w:document>`;
+    expect(detectarCamposControl(documento)).toEqual(['nombre']);
+  });
+
+  it('reemplaza el texto del control por los datos del titular', async () => {
+    const plantilla = await abrirPlantilla(await construirDocx(DOCUMENTO_SDT));
+    expect(plantilla.campos.sort()).toEqual(['cedula', 'nombre']);
+
+    const salida = await generarDocx(plantilla, DATOS);
+    const zip = await JSZip.loadAsync(salida);
+    const xml = await zip.file('word/document.xml')!.async('string');
+
+    expect(xml).toContain('ANA MARIA PEREZ GOMEZ');
+    expect(xml).toContain('1088123456');
+    expect(xml).not.toContain('>nombre<');
+    expect(xml).not.toContain('>cedula<');
+    // La estructura del control se conserva (el dato queda dentro del sdtContent).
+    expect(xml).toContain('<w:sdtContent>');
+  });
+
+  it('deja vacio el control cuyo dato no existe', async () => {
+    const documento =
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<w:document ${NS}><w:body>` +
+      parrafoControl('Nombre del estudiante', 'Nombre del estudiante', 'nombre') +
+      parrafoControl('Ciudad', 'Ciudad', 'Pasto') +
+      `</w:body></w:document>`;
+    const plantilla = await abrirPlantilla(await construirDocx(documento));
+    const salida = await generarDocx(plantilla, DATOS);
+    const zip = await JSZip.loadAsync(salida);
+    const xml = await zip.file('word/document.xml')!.async('string');
+
+    // El control conocido se llena; el desconocido (Ciudad) queda intacto.
+    expect(xml).toContain('ANA MARIA PEREZ GOMEZ');
+    expect(xml).toContain('Pasto');
+  });
+
+  it('reconoce los titulos de control sin importar tildes ni mayusculas', () => {
+    const documento =
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<w:document ${NS}><w:body>` +
+      parrafoControl('Número de Documento', 'Número de Documento', 'cedula') +
+      parrafoControl('NOMBRE DEL ESTUDIANTE', 'NOMBRE DEL ESTUDIANTE', 'nombre') +
+      `</w:body></w:document>`;
+    const campos = detectarCamposControl(documento);
+    expect(campos.sort()).toEqual(['cedula', 'nombre']);
+  });
+
+  it('combina {{campo}} y controles de contenido en la misma plantilla', async () => {
+    const documento =
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<w:document ${NS}><w:body>` +
+      parrafo('Rol: {{rol}}') +
+      parrafoControl('Nombre del estudiante', 'Nombre del estudiante', 'nombre') +
+      `</w:body></w:document>`;
+    const plantilla = await abrirPlantilla(await construirDocx(documento));
+    expect(plantilla.campos.sort()).toEqual(['nombre', 'rol']);
+
+    const salida = await generarDocx(plantilla, DATOS);
+    const zip = await JSZip.loadAsync(salida);
+    const xml = await zip.file('word/document.xml')!.async('string');
+
+    expect(xml).toContain('Rol: Estudiante');
+    expect(xml).toContain('ANA MARIA PEREZ GOMEZ');
+  });
+
+  it('escapa los caracteres especiales dentro de un control de contenido', async () => {
+    const plantilla = await abrirPlantilla(await construirDocx(DOCUMENTO_SDT));
+    const salida = await generarDocx(plantilla, { ...DATOS, nombre: 'ANA & CIA <S.A.>' });
+    const zip = await JSZip.loadAsync(salida);
+    const xml = await zip.file('word/document.xml')!.async('string');
+
+    expect(xml).toContain('ANA &amp; CIA &lt;S.A.&gt;');
+    expect(xml).not.toContain('ANA & CIA');
   });
 });

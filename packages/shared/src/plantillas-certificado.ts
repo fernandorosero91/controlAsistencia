@@ -25,6 +25,44 @@ export const CAMPOS_PLANTILLA = [
 ] as const;
 export type CampoPlantilla = (typeof CAMPOS_PLANTILLA)[number];
 
+/**
+ * Mapeo de los controles de contenido (Content Controls / SDT) de Word hacia los
+ * campos del modulo.
+ *
+ * Las plantillas institucionales no usan `{{campo}}`: usan controles de contenido
+ * cuyo `tag`/`alias` describe el dato (por ejemplo "Nombre del estudiante"). El
+ * motor reconoce esos titulos y los asocia al campo correspondiente. La clave se
+ * normaliza (minusculas, sin tildes, sin espacios repetidos) antes de comparar.
+ *
+ * Los controles que no aparecen aqui (ciudad, fechas, firmas, etc.) son datos del
+ * seminario o de las firmas: no son del titular y se dejan vacios al generar.
+ */
+export const ALIAS_CONTROL_PLANTILLA: Record<string, CampoPlantilla> = {
+  'nombre del estudiante': 'nombre',
+  'nombre del alumno': 'nombre',
+  nombre: 'nombre',
+  'documento de identidad': 'cedula',
+  documento: 'cedula',
+  cedula: 'cedula',
+  'numero de documento': 'cedula',
+  'identificacion': 'cedula',
+  id: 'id',
+  'id institucional': 'id',
+  rol: 'rol',
+  'rol del asistente': 'rol',
+  semestre: 'semestre',
+};
+
+/** Normaliza el titulo de un control de contenido para compararlo con los alias. */
+export function normalizarTituloControl(titulo: string): string {
+  return titulo
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
 /** Descripcion legible de cada campo, para mostrar en el panel. */
 export const DESCRIPCION_CAMPO_PLANTILLA: Record<CampoPlantilla, string> = {
   nombre: 'Nombre completo del asistente',
