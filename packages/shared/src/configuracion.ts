@@ -85,6 +85,7 @@ export const accesosOperadorSchema = z.object({
   operadorIngresoHabilitado: z.boolean().optional(),
   operadorRefrigerioHabilitado: z.boolean().optional(),
   operadorSalidaHabilitado: z.boolean().optional(),
+  operadorSouvenirHabilitado: z.boolean().optional(),
   /** Minutos de gracia despues del cierre de la jornada. */
   margenCierreMinutos: z.coerce.number().int().min(0).max(180).optional(),
   /** Jornada fijada a mano; null o ausente significa deteccion automatica. */
@@ -122,6 +123,25 @@ export const tipoRefrigerioSchema = z.object({
 });
 
 export type TipoRefrigerioInput = z.infer<typeof tipoRefrigerioSchema>;
+
+/** Souvenir o regalo que se entrega una vez por asistente (sin jornada). */
+export const tipoSouvenirSchema = z.object({
+  nombre: z.string().trim().min(2).max(60),
+  activo: z.boolean().default(true),
+  orden: z.coerce.number().int().min(0).max(50).default(0),
+});
+
+export type TipoSouvenirInput = z.infer<typeof tipoSouvenirSchema>;
+
+export const tipoSouvenirLecturaSchema = z.object({
+  id: z.number().int(),
+  nombre: z.string(),
+  activo: z.boolean(),
+  orden: z.number().int(),
+  entregados: z.number().int().optional(),
+});
+
+export type TipoSouvenirLectura = z.infer<typeof tipoSouvenirLecturaSchema>;
 
 export const tipoRefrigerioLecturaSchema = z.object({
   id: z.number().int(),

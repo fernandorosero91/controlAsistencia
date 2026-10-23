@@ -10,6 +10,7 @@ import {
   jornadas,
   seminarioConfig,
   tiposRefrigerio,
+  tiposSouvenir,
   usuariosSistema,
 } from '../../src/db/esquema.js';
 import { aplicarMigraciones } from '../../src/db/migrate.js';
@@ -31,6 +32,7 @@ export async function prepararBaseDePruebas(): Promise<void> {
   await db.execute(
     `TRUNCATE TABLE auditoria, idempotencia, certificados, certificados_lotes,
        lotes_certificados_docx, plantillas_certificado,
+       entregas_souvenir, tipos_souvenir,
        entregas_refrigerio, asistencias, asistentes, tipos_refrigerio, jornadas,
        refresh_tokens, usuarios_sistema, seminario_config RESTART IDENTITY CASCADE`,
   );
@@ -84,6 +86,12 @@ export async function prepararBaseDePruebas(): Promise<void> {
   await db.insert(tiposRefrigerio).values({
     nombre: 'Refrigerio de pruebas',
     jornadaId: jornadasCreadas[0]!.id,
+    activo: true,
+    orden: 1,
+  });
+
+  await db.insert(tiposSouvenir).values({
+    nombre: 'Souvenir de pruebas',
     activo: true,
     orden: 1,
   });

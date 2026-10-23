@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
   entregaRefrigerioSchema,
+  entregaSouvenirSchema,
   identificadorAsistenteSchema,
   normalizarId,
   type RespuestaRegistro,
@@ -11,8 +12,10 @@ import { db } from '../db/cliente.js';
 import {
   asistencias,
   entregasRefrigerio,
+  entregasSouvenir,
   jornadas,
   tiposRefrigerio,
+  tiposSouvenir,
   usuariosSistema,
 } from '../db/esquema.js';
 import { limiteEscaneo } from '../config/limites.js';
@@ -25,17 +28,18 @@ import {
   resolverJornadaPorHorario,
   type JornadaVigente,
 } from '../servicios/configuracion.js';
-import { entregarRefrigerio, registrarIngreso, registrarSalida } from '../servicios/registros.js';
+import { entregarRefrigerio, entregarSouvenir, registrarIngreso, registrarSalida } from '../servicios/registros.js';
 import { validarCuerpo, validarParametros } from '../lib/validacion.js';
 
 const parametrosAsistente = z.object({ asistenteId: z.string().min(1).max(32) });
 
-type ModuloOperador = 'ingreso' | 'refrigerio' | 'salida';
+type ModuloOperador = 'ingreso' | 'refrigerio' | 'salida' | 'souvenir';
 
 const NOMBRE_MODULO: Record<ModuloOperador, string> = {
   ingreso: 'el registro de ingreso',
   refrigerio: 'la entrega de refrigerios',
   salida: 'el registro de salida',
+  souvenir: 'la entrega de souvenirs',
 };
 
 /** Doce horas es el maximo razonable para un registro capturado sin conexion. */
@@ -53,7 +57,9 @@ async function validarAcceso(modulo: ModuloOperador): Promise<JornadaVigente> {
       ? config.operadorIngresoHabilitado
       : modulo === 'refrigerio'
         ? config.operadorRefrigerioHabilitado
-        : config.operadorSalidaHabilitado;
+        : modulo === 'souvenir'
+          ? config.operadorSouvenirHabilitado
+          : config.operadorSalidaHabilitado;
 
   if (!habilitado) {
     throw errores.noAutorizado(
@@ -315,6 +321,99 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
           nombre: tipo.nombre,
           jornadaId: tipo.jornadaId,
           entregado: entregas.some((entrega) => entrega.tipoRefrigerioId === tipo.id),
+        })),
+      };
+    },
+  );
+
+  app.post(
+    '/souvenirs/entregar',
+    {
+      onRequest: [app.autenticar],
+      config: { rateLimit: limiteEscaneo() },
+      schema: {
+        tags: ['Registros'],
+        description: 'Entrega el souvenir o regalo del seminario a un asistente',
+      },
+    },
+    async (request, reply) => {
+      const datos = validarCuerpo(entregaSouvenirSchema, request.body);
+      const usuario = request.usuario!;
+
+      // El souvenir es del evento, no de una jornada: solo se valida el modulo.
+      await validarAcceso('souvenir');
+      const capturadoEn = horaDiferida(datos.registradoEn);
+
+      const resultado = await ejecutarConIdempotencia(request, 'souvenirs/entregar', () =>
+        entregarSouvenir({
+          asistenteId: datos.asistenteId,
+          tipoSouvenirId: datos.tipoSouvenirId,
+          usuarioId: usuario.id,
+          usuarioNombre: usuario.nombre,
+          dispositivo: datos.dispositivo ?? null,
+          idempotencyKey:
+            typeof request.headers['idempotency-key'] === 'string'
+              ? request.headers['idempotency-key']
+              : null,
+          ahora: capturadoEn ?? undefined,
+        }),
+      );
+
+      if (resultado.cuerpo.resultado === 'exito') {
+        await registrarAuditoria(request, {
+          accion: 'souvenir.entregado',
+          entidad: 'entregas_souvenir',
+          entidadId: datos.asistenteId,
+          datosDespues: { tipoSouvenirId: datos.tipoSouvenirId },
+        });
+      }
+
+      return reply.code(resultado.codigoHttp).send(resultado.cuerpo);
+    },
+  );
+
+  app.get(
+    '/souvenirs/estado/:asistenteId',
+    {
+      onRequest: [app.autenticar],
+      schema: {
+        tags: ['Registros'],
+        description: 'Estado de entrega de souvenirs de un asistente',
+      },
+    },
+    async (request) => {
+      const { asistenteId } = validarParametros(parametrosAsistente, request.params);
+      const id = normalizarId(asistenteId);
+
+      const entregas = await db
+        .select({
+          id: entregasSouvenir.id,
+          tipoSouvenirId: entregasSouvenir.tipoSouvenirId,
+          nombre: tiposSouvenir.nombre,
+          entregadoAt: entregasSouvenir.entregadoAt,
+          entregadoPor: usuariosSistema.nombre,
+        })
+        .from(entregasSouvenir)
+        .innerJoin(tiposSouvenir, eq(tiposSouvenir.id, entregasSouvenir.tipoSouvenirId))
+        .leftJoin(usuariosSistema, eq(usuariosSistema.id, entregasSouvenir.entregadoPor))
+        .where(eq(entregasSouvenir.asistenteId, id));
+
+      const tipos = await db
+        .select()
+        .from(tiposSouvenir)
+        .where(eq(tiposSouvenir.activo, true))
+        .orderBy(tiposSouvenir.orden);
+
+      return {
+        entregas: entregas.map((entrega) => ({
+          ...entrega,
+          id: String(entrega.id),
+          entregadoAt: entrega.entregadoAt.toISOString(),
+        })),
+        tiposDisponibles: tipos.map((tipo) => ({
+          id: tipo.id,
+          nombre: tipo.nombre,
+          entregado: entregas.some((entrega) => entrega.tipoSouvenirId === tipo.id),
         })),
       };
     },

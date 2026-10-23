@@ -76,7 +76,7 @@ actualizar, generar, descargar o eliminar un lote o una plantilla queda en la au
 ### Que hacer
 
 1. Entre con el usuario que le entregaron. La sesion dura 15 minutos; si expira, entre de nuevo.
-2. Elija el modo: **Ingreso**, **Refrigerio** o **Salida**. El sistema le muestra siempre la
+2. Elija el modo: **Ingreso**, **Refrigerio**, **Salida** o **Souvenir**. El sistema le muestra siempre la
    jornada activa.
 3. **Escanee el QR** con el boton de camara, o **escriba** el codigo de 6 caracteres, o la
    cedula o el codigo estudiantil.
@@ -118,3 +118,17 @@ actualizar, generar, descargar o eliminar un lote o una plantilla queda en la au
 
 Aplicacion desarrollada por estudiantes de Ingenieria de Software de la Universidad Cooperativa
 de Colombia: **Elier Fernando Rosero Bravo** y **Edwar Alexander Benito Basante**.
+
+### Souvenirs y regalos
+
+El sistema tambien controla la entrega del souvenir o regalo del seminario, con una sola entrega
+por asistente.
+
+1. En **Configuracion > Souvenirs** cree el o los souvenirs (por ejemplo "Camiseta del seminario") y
+   dejelos activos.
+2. En **Configuracion > Accesos del operador** encienda el interruptor **Souvenir**.
+3. El operador elige el modo **Souvenir**, escanea el ID y registra. Solo se entrega a quien tenga
+   al menos una asistencia; el segundo intento muestra la alerta con la fecha y el operador que lo
+   entrego.
+4. Para saber quien lo recibio y quien no: **Reportes > Souvenirs entregados** y
+   **Souvenirs pendientes** (CSV, Excel o PDF).

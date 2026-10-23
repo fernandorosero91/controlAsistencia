@@ -576,6 +576,7 @@ export function Configuracion() {
         </Tarjeta>
       </div>
       <AccesosOperador jornadas={jornadas?.jornadas ?? []} />
+      <Souvenirs />
       <Mantenimiento />
       <Modal
         abierto={nuevaJornada || jornadaEnEdicion !== null}
@@ -638,6 +639,7 @@ interface DatosAccesos {
   operadorIngresoHabilitado: boolean;
   operadorRefrigerioHabilitado: boolean;
   operadorSalidaHabilitado: boolean;
+  operadorSouvenirHabilitado: boolean;
   margenCierreMinutos: number;
   jornadaForzadaId: number | null;
 }
@@ -645,7 +647,8 @@ interface DatosAccesos {
 type ClaveModulo =
   | 'operadorIngresoHabilitado'
   | 'operadorRefrigerioHabilitado'
-  | 'operadorSalidaHabilitado';
+  | 'operadorSalidaHabilitado'
+  | 'operadorSouvenirHabilitado';
 
 const MODULOS_OPERADOR: { clave: ClaveModulo; titulo: string; descripcion: string }[] = [
   {
@@ -662,6 +665,11 @@ const MODULOS_OPERADOR: { clave: ClaveModulo; titulo: string; descripcion: strin
     clave: 'operadorSalidaHabilitado',
     titulo: 'Salida',
     descripcion: 'Registrar la salida de la jornada',
+  },
+  {
+    clave: 'operadorSouvenirHabilitado',
+    titulo: 'Souvenir',
+    descripcion: 'Entregar el souvenir o regalo del seminario',
   },
 ];
 
@@ -706,6 +714,7 @@ function AccesosOperador({ jornadas }: { jornadas: Jornada[] }) {
       operadorIngresoHabilitado: config.operadorIngresoHabilitado,
       operadorRefrigerioHabilitado: config.operadorRefrigerioHabilitado,
       operadorSalidaHabilitado: config.operadorSalidaHabilitado,
+      operadorSouvenirHabilitado: config.operadorSouvenirHabilitado,
       margenCierreMinutos: config.margenCierreMinutos,
       jornadaForzadaId: config.jornadaForzadaId ?? null,
     };
@@ -1088,6 +1097,211 @@ function Mantenimiento() {
         </div>
       </Modal>
     </Tarjeta>
+  );
+}
+
+/**
+ * Souvenirs o regalos que se entregan por la asistencia. Se controlan igual que
+ * los refrigerios, pero sin jornada: uno por asistente.
+ */
+interface TipoSouvenir {
+  id: number;
+  nombre: string;
+  activo: boolean;
+  orden: number;
+}
+
+function Souvenirs() {
+  const cliente = useQueryClient();
+  const [nuevo, setNuevo] = useState(false);
+  const [enEdicion, setEnEdicion] = useState<TipoSouvenir | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data } = useQuery({
+    queryKey: ['souvenirs', 'tipos'],
+    queryFn: () => api.obtener<{ tipos: TipoSouvenir[] }>('/souvenirs/tipos'),
+  });
+
+  const guardar = useMutation({
+    mutationFn: (datos: { id?: number; nombre: string; activo: boolean; orden: number }) =>
+      datos.id
+        ? api.actualizar(`/souvenirs/tipos/${datos.id}`, datos)
+        : api.crear('/souvenirs/tipos', datos),
+    onSuccess: () => {
+      setError(null);
+      setNuevo(false);
+      setEnEdicion(null);
+      void cliente.invalidateQueries({ queryKey: ['souvenirs', 'tipos'] });
+      void cliente.invalidateQueries({ queryKey: ['operador', 'contexto'] });
+    },
+    onError: (problema) => {
+      setError(
+        problema instanceof ErrorPeticion
+          ? problema.message
+          : 'No se pudo guardar el souvenir. Intente de nuevo.',
+      );
+    },
+  });
+
+  return (
+    <Tarjeta
+      titulo="Souvenirs"
+      descripcion="Regalo por la asistencia: uno por asistente, sin doble entrega"
+      accion={
+        <button type="button" className="boton-secundario" onClick={() => setNuevo(true)}>
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Nuevo souvenir
+        </button>
+      }
+    >
+      {error ? (
+        <div className="mb-3">
+          <Aviso tono="error">{error}</Aviso>
+        </div>
+      ) : null}
+
+      <ul className="space-y-2">
+        {(data?.tipos ?? []).map((tipo) => (
+          <li
+            key={tipo.id}
+            className="flex items-center justify-between gap-2 rounded-lg border border-neutro-200 px-3 py-2.5"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-neutro-900">{tipo.nombre}</p>
+              <p className="truncate text-xs text-neutro-600">Orden {tipo.orden}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {tipo.activo ? (
+                <Insignia tono="exito">Activo</Insignia>
+              ) : (
+                <Insignia tono="neutro">Inactivo</Insignia>
+              )}
+              <button
+                type="button"
+                className="boton-compacto text-neutro-600 hover:bg-neutro-100"
+                onClick={() => setEnEdicion(tipo)}
+                aria-label={`Editar el souvenir ${tipo.nombre}`}
+                title="Editar souvenir"
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          </li>
+        ))}
+        {(data?.tipos.length ?? 0) === 0 ? (
+          <li className="text-sm text-neutro-600">No hay souvenirs configurados.</li>
+        ) : null}
+      </ul>
+
+      <p className="mt-3 text-xs text-neutro-500">
+        Para usarlo en la app del operador, active el interruptor <strong>Souvenir</strong> en
+        Accesos del operador. El reporte de entregas y pendientes esta en Reportes.
+      </p>
+
+      <Modal
+        abierto={nuevo || enEdicion !== null}
+        titulo={enEdicion ? 'Editar souvenir' : 'Nuevo souvenir'}
+        alCerrar={() => {
+          setNuevo(false);
+          setEnEdicion(null);
+          setError(null);
+        }}
+      >
+        <FormularioSouvenir
+          inicial={enEdicion ?? undefined}
+          etiqueta={enEdicion ? 'Guardar cambios' : 'Crear souvenir'}
+          alGuardar={async (datos) => guardar.mutateAsync(datos)}
+        />
+      </Modal>
+    </Tarjeta>
+  );
+}
+
+function FormularioSouvenir({
+  alGuardar,
+  inicial,
+  etiqueta,
+}: {
+  alGuardar: (datos: { id?: number; nombre: string; activo: boolean; orden: number }) => Promise<unknown>;
+  inicial?: TipoSouvenir;
+  etiqueta: string;
+}) {
+  const [nombre, setNombre] = useState(inicial?.nombre ?? '');
+  const [activo, setActivo] = useState(inicial?.activo ?? true);
+  const [orden, setOrden] = useState(inicial?.orden ?? 1);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={async (evento) => {
+        evento.preventDefault();
+        setError(null);
+        setGuardando(true);
+        try {
+          await alGuardar({ id: inicial?.id, nombre, activo, orden });
+        } catch (problema) {
+          setError(
+            problema instanceof ErrorPeticion
+              ? problema.message
+              : 'No se pudo guardar el souvenir. Intente de nuevo.',
+          );
+        } finally {
+          setGuardando(false);
+        }
+      }}
+    >
+      {error ? (
+        <Aviso tono="error" titulo="No se pudo guardar el souvenir">
+          {error}
+        </Aviso>
+      ) : null}
+
+      <div>
+        <label htmlFor="souvenir-nombre" className="etiqueta-campo">
+          Nombre
+        </label>
+        <input
+          id="souvenir-nombre"
+          className="campo"
+          value={nombre}
+          onChange={(evento) => setNombre(evento.target.value)}
+          placeholder="Camiseta del seminario"
+          required
+          minLength={2}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="souvenir-orden" className="etiqueta-campo">
+          Orden
+        </label>
+        <input
+          id="souvenir-orden"
+          type="number"
+          min={0}
+          max={50}
+          className="campo"
+          value={orden}
+          onChange={(evento) => setOrden(Number(evento.target.value))}
+        />
+      </div>
+
+      <label className="flex min-h-[48px] items-center justify-between gap-4 rounded-lg border border-neutro-200 px-3.5">
+        <span className="text-sm font-medium text-neutro-800">Activo</span>
+        <input
+          type="checkbox"
+          checked={activo}
+          onChange={(evento) => setActivo(evento.target.checked)}
+          className="h-5 w-5 accent-[#12505E]"
+        />
+      </label>
+
+      <button type="submit" className="boton-primario w-full" disabled={guardando}>
+        {guardando ? 'Guardando' : etiqueta}
+      </button>
+    </form>
   );
 }
 

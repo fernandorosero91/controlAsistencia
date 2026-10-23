@@ -26,6 +26,7 @@ export interface ConteosDatos {
   asistentes: number;
   asistencias: number;
   entregas: number;
+  souvenirs: number;
   certificados: number;
   lotes: number;
   lotesDocx: number;
@@ -44,6 +45,7 @@ async function contarDatos(): Promise<ConteosDatos> {
       (SELECT count(*)::int FROM asistentes) AS asistentes,
       (SELECT count(*)::int FROM asistencias) AS asistencias,
       (SELECT count(*)::int FROM entregas_refrigerio) AS entregas,
+      (SELECT count(*)::int FROM entregas_souvenir) AS souvenirs,
       (SELECT count(*)::int FROM certificados) AS certificados,
       (SELECT count(*)::int FROM certificados_lotes) AS lotes,
       (SELECT count(*)::int FROM lotes_certificados_docx) AS "lotesDocx",
@@ -56,6 +58,7 @@ async function contarDatos(): Promise<ConteosDatos> {
     asistentes: Number(fila.asistentes ?? 0),
     asistencias: Number(fila.asistencias ?? 0),
     entregas: Number(fila.entregas ?? 0),
+    souvenirs: Number(fila.souvenirs ?? 0),
     certificados: Number(fila.certificados ?? 0),
     lotes: Number(fila.lotes ?? 0),
     lotesDocx: Number(fila.lotesDocx ?? 0),
@@ -134,8 +137,9 @@ export async function registrarRutasMantenimiento(app: FastifyInstance): Promise
 
       await db.execute(
         sql.raw(
-          `TRUNCATE TABLE entregas_refrigerio, asistencias, certificados, certificados_lotes,
-             lotes_certificados_docx, idempotencia, auditoria, asistentes RESTART IDENTITY CASCADE`,
+          `TRUNCATE TABLE entregas_refrigerio, entregas_souvenir, asistencias, certificados,
+             certificados_lotes, lotes_certificados_docx, idempotencia, auditoria, asistentes
+             RESTART IDENTITY CASCADE`,
         ),
       );
 

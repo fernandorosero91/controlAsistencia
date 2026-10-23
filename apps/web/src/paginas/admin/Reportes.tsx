@@ -34,6 +34,16 @@ const REPORTES: DefinicionReporte[] = [
     descripcion: 'Asistentes con asistencia que todavia no recibieron el refrigerio',
   },
   {
+    id: 'souvenirs-entregados',
+    titulo: 'Souvenirs entregados',
+    descripcion: 'Detalle de cada entrega del souvenir o regalo, con fecha y responsable',
+  },
+  {
+    id: 'souvenirs-pendientes',
+    titulo: 'Souvenirs pendientes',
+    descripcion: 'Asistentes que todavia no recibieron el souvenir',
+  },
+  {
     id: 'elegibles',
     titulo: 'Elegibles a certificado',
     descripcion: 'Asistentes que cumplen los requisitos de asistencia y permanencia',

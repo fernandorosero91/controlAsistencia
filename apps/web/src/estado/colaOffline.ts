@@ -1,7 +1,7 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import { create } from 'zustand';
 
-export type TipoRegistroCola = 'ingreso' | 'salida' | 'refrigerio';
+export type TipoRegistroCola = 'ingreso' | 'salida' | 'refrigerio' | 'souvenir';
 export type EstadoCola = 'pendiente' | 'sincronizado' | 'conflicto' | 'error';
 
 export interface RegistroCola {
@@ -10,6 +10,7 @@ export interface RegistroCola {
   asistenteId: string;
   jornadaId: number;
   tipoRefrigerioId: number | null;
+  tipoSouvenirId: number | null;
   creadoEn: string;
   intentos: number;
   estado: EstadoCola;

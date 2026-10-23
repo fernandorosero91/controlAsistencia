@@ -14,6 +14,7 @@ export type AccionAuditada =
   | 'asistencia.salida'
   | 'asistencia.excepcion'
   | 'refrigerio.entregado'
+  | 'souvenir.entregado'
   | 'config.actualizada'
   | 'config.accesos_operador'
   | 'jornada.creada'

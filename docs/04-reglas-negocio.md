@@ -116,6 +116,19 @@ Un duplicado **nunca** es un error de servidor.
 - Un duplicado responde `resultado: "duplicado"` con la hora de la entrega previa y quien la
   realizo.
 
+### 3.1 Souvenirs y regalos
+
+- El souvenir **no pertenece a una jornada**: se entrega una vez por evento.
+- Solo se entrega a quien tenga **al menos una asistencia** registrada en el seminario.
+- La unicidad la impone `UNIQUE (asistente_id, tipo_souvenir_id)`, con la misma escritura atomica
+  (`ON CONFLICT DO NOTHING`).
+- Un duplicado responde `resultado: "duplicado"` con la fecha y el operador de la entrega previa,
+  aunque el segundo intento lo haga otro operador.
+- El modulo se activa en **Configuracion > Accesos del operador > Souvenir** y viene **apagado**;
+  mientras este apagado, la API responde `403`.
+- Para saber a quien se le entrego y a quien no: **Reportes > Souvenirs entregados** y
+  **Souvenirs pendientes**.
+
 ---
 
 ## 4. Elegibilidad para el certificado

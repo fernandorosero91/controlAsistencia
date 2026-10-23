@@ -26,6 +26,16 @@ export const entregaRefrigerioSchema = z.object({
 
 export type EntregaRefrigerioInput = z.infer<typeof entregaRefrigerioSchema>;
 
+/** Entrega de un souvenir o regalo. Sin jornada: es por evento. */
+export const entregaSouvenirSchema = z.object({
+  asistenteId: z.string().trim().min(1, 'El ID del asistente es obligatorio').max(32),
+  tipoSouvenirId: z.coerce.number().int().positive('El tipo de souvenir es obligatorio'),
+  dispositivo: z.string().trim().max(120).optional(),
+  registradoEn: z.coerce.date().optional(),
+});
+
+export type EntregaSouvenirInput = z.infer<typeof entregaSouvenirSchema>;
+
 export const asistenteResumenSchema = z.object({
   id: z.string(),
   codigoRegistro: z.string().nullable().optional(),
@@ -51,8 +61,10 @@ export type RegistroExistente = z.infer<typeof registroExistenteSchema>;
 
 export const entregaExistenteSchema = z.object({
   id: z.string(),
-  tipoRefrigerioId: z.number().int(),
-  tipoRefrigerioNombre: z.string().nullable(),
+  tipoRefrigerioId: z.number().int().optional(),
+  tipoRefrigerioNombre: z.string().nullable().optional(),
+  tipoSouvenirId: z.number().int().optional(),
+  tipoSouvenirNombre: z.string().nullable().optional(),
   entregadoAt: z.string(),
   entregadoPor: z.string().nullable(),
 });

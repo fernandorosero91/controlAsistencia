@@ -7,10 +7,11 @@ import {
   jornadaSchema,
   seminarioConfigSchema,
   tipoRefrigerioSchema,
+  tipoSouvenirSchema,
   validarCoherenciaJornada,
 } from '@seminario/shared';
 import { db } from '../db/cliente.js';
-import { asistencias, jornadas, tiposRefrigerio } from '../db/esquema.js';
+import { asistencias, jornadas, tiposRefrigerio, tiposSouvenir } from '../db/esquema.js';
 import { errores } from '../plugins/errores.js';
 import { registrarAuditoria } from '../servicios/auditoria.js';
 import {
@@ -25,6 +26,7 @@ import { validarCuerpo, validarParametros } from '../lib/validacion.js';
 
 const parametrosJornada = z.object({ id: z.coerce.number().int().positive() });
 const parametrosTipoRefrigerio = z.object({ id: z.coerce.number().int().positive() });
+const parametrosTipoSouvenir = z.object({ id: z.coerce.number().int().positive() });
 
 export async function registrarRutasConfiguracion(app: FastifyInstance): Promise<void> {
   app.get(
@@ -342,6 +344,76 @@ export async function registrarRutasConfiguracion(app: FastifyInstance): Promise
     },
   );
 
+  app.get(
+    '/souvenirs/tipos',
+    {
+      onRequest: [app.autorizar(['admin', 'operador'])],
+      schema: { tags: ['Configuracion'], description: 'Souvenirs o regalos del seminario' },
+    },
+    async () => {
+      const filas = await db
+        .select()
+        .from(tiposSouvenir)
+        .orderBy(asc(tiposSouvenir.orden), asc(tiposSouvenir.nombre));
+      return {
+        tipos: filas.map((fila) => ({
+          id: fila.id,
+          nombre: fila.nombre,
+          activo: fila.activo,
+          orden: fila.orden,
+        })),
+      };
+    },
+  );
+
+  app.post(
+    '/souvenirs/tipos',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: { tags: ['Configuracion'], description: 'Crea un souvenir o regalo' },
+    },
+    async (request, reply) => {
+      const datos = validarCuerpo(tipoSouvenirSchema, request.body);
+      const insertados = await db
+        .insert(tiposSouvenir)
+        .values({ nombre: datos.nombre, activo: datos.activo, orden: datos.orden })
+        .returning();
+
+      const fila = insertados[0]!;
+      return reply.status(201).send({
+        id: fila.id,
+        nombre: fila.nombre,
+        activo: fila.activo,
+        orden: fila.orden,
+      });
+    },
+  );
+
+  app.patch(
+    '/souvenirs/tipos/:id',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: { tags: ['Configuracion'], description: 'Actualiza un souvenir o regalo' },
+    },
+    async (request) => {
+      const { id } = validarParametros(parametrosTipoSouvenir, request.params);
+      const cuerpo = request.body as { nombre?: string; activo?: boolean; orden?: number };
+      const actualizados = await db
+        .update(tiposSouvenir)
+        .set({
+          ...(cuerpo.nombre !== undefined ? { nombre: cuerpo.nombre } : {}),
+          ...(cuerpo.activo !== undefined ? { activo: cuerpo.activo } : {}),
+          ...(cuerpo.orden !== undefined ? { orden: cuerpo.orden } : {}),
+        })
+        .where(eq(tiposSouvenir.id, id))
+        .returning();
+
+      if (!actualizados[0]) throw errores.noEncontrado('El souvenir no existe');
+      const fila = actualizados[0];
+      return { id: fila.id, nombre: fila.nombre, activo: fila.activo, orden: fila.orden };
+    },
+  );
+
   app.patch(
     '/config/operador',
     {
@@ -376,7 +448,7 @@ export async function registrarRutasConfiguracion(app: FastifyInstance): Promise
       },
     },
     async () => {
-      const [config, listaJornadas, tipos] = await Promise.all([
+      const [config, listaJornadas, tipos, tiposDeSouvenir] = await Promise.all([
         obtenerConfig(),
         listarJornadas(),
         db
@@ -384,6 +456,11 @@ export async function registrarRutasConfiguracion(app: FastifyInstance): Promise
           .from(tiposRefrigerio)
           .where(eq(tiposRefrigerio.activo, true))
           .orderBy(asc(tiposRefrigerio.orden)),
+        db
+          .select()
+          .from(tiposSouvenir)
+          .where(eq(tiposSouvenir.activo, true))
+          .orderBy(asc(tiposSouvenir.orden)),
       ]);
 
       // La jornada no la elige el operador: la decide el reloj del servidor.
@@ -426,10 +503,18 @@ export async function registrarRutasConfiguracion(app: FastifyInstance): Promise
           ? (refrigerios.find((refrigerio) => refrigerio.jornadaId === vigente.jornada!.id) ??
             null)
           : null,
+        souvenirs: tiposDeSouvenir.map((tipo) => ({
+          id: tipo.id,
+          nombre: tipo.nombre,
+        })),
+        souvenirActivo: tiposDeSouvenir[0]
+          ? { id: tiposDeSouvenir[0].id, nombre: tiposDeSouvenir[0].nombre }
+          : null,
         modulos: {
           ingreso: config.operadorIngresoHabilitado,
           refrigerio: config.operadorRefrigerioHabilitado,
           salida: config.operadorSalidaHabilitado,
+          souvenir: config.operadorSouvenirHabilitado,
         },
         registrosJornada,
         servidorHora: new Date().toISOString(),

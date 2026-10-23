@@ -85,7 +85,12 @@ describe(descripcion, () => {
 
     expect(datos.jornadaActiva).not.toBeNull();
     expect(datos.motivoJornada).toBe('activa');
-    expect(datos.modulos).toEqual({ ingreso: true, refrigerio: true, salida: true });
+    expect(datos.modulos).toEqual({
+      ingreso: true,
+      refrigerio: true,
+      salida: true,
+      souvenir: false,
+    });
     // El refrigerio sale de la jornada vigente, sin que el operador elija.
     expect(datos.refrigerioActivo?.jornadaId).toBe(datos.jornadaActiva.id);
   });

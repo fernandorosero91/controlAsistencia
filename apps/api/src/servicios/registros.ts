@@ -5,8 +5,10 @@ import {
   asistencias,
   asistentes,
   entregasRefrigerio,
+  entregasSouvenir,
   jornadas,
   tiposRefrigerio,
+  tiposSouvenir,
   usuariosSistema,
 } from '../db/esquema.js';
 import { obtenerConfig } from './configuracion.js';
@@ -469,6 +471,132 @@ export async function entregarRefrigerio(
           id: String(original.id),
           tipoRefrigerioId: original.tipoRefrigerioId,
           tipoRefrigerioNombre: original.tipoRefrigerioNombre,
+          entregadoAt: original.entregadoAt.toISOString(),
+          entregadoPor: original.entregadoPor ?? 'Operador no identificado',
+        }
+      : null,
+    requiereBusquedaManual: false,
+  };
+}
+
+/**
+ * Entrega un souvenir o regalo. Se controla una sola vez por asistente y tipo,
+ * sin importar la jornada: el souvenir es del evento. Solo se entrega a quien
+ * tenga al menos una asistencia registrada. La unicidad la garantiza el indice
+ * unico (asistente_id, tipo_souvenir_id).
+ */
+export async function entregarSouvenir(
+  parametros: {
+    asistenteId: string;
+    tipoSouvenirId: number;
+  } & ContextoOperador,
+): Promise<RespuestaRegistro> {
+  const ahora = parametros.ahora ?? new Date();
+  const asistente = await buscarAsistentePorIdentificador(parametros.asistenteId);
+
+  if (!asistente) {
+    return {
+      resultado: 'no_encontrado',
+      mensaje: 'ID no encontrado. Verifique el codigo o use la busqueda manual por nombre.',
+      asistente: null,
+      existente: null,
+      requiereBusquedaManual: true,
+    };
+  }
+
+  const tipos = await db
+    .select()
+    .from(tiposSouvenir)
+    .where(eq(tiposSouvenir.id, parametros.tipoSouvenirId))
+    .limit(1);
+  const tipo = tipos[0];
+
+  if (!tipo || !tipo.activo) {
+    return {
+      resultado: 'no_permitido',
+      mensaje: 'El souvenir no existe o no esta activo.',
+      asistente: aResumen(asistente),
+      existente: null,
+      requiereBusquedaManual: false,
+    };
+  }
+
+  const asistencia = await db
+    .select({ id: asistencias.id })
+    .from(asistencias)
+    .where(eq(asistencias.asistenteId, asistente.id))
+    .limit(1);
+
+  if (asistencia.length === 0) {
+    return {
+      resultado: 'no_permitido',
+      mensaje: 'El asistente no tiene ninguna asistencia registrada en el seminario.',
+      asistente: aResumen(asistente),
+      existente: null,
+      requiereBusquedaManual: false,
+    };
+  }
+
+  const insertada = await db
+    .insert(entregasSouvenir)
+    .values({
+      asistenteId: asistente.id,
+      tipoSouvenirId: tipo.id,
+      entregadoAt: ahora,
+      entregadoPor: parametros.usuarioId,
+      dispositivo: parametros.dispositivo ?? null,
+      idempotencyKey: parametros.idempotencyKey ?? null,
+    })
+    .onConflictDoNothing({
+      target: [entregasSouvenir.asistenteId, entregasSouvenir.tipoSouvenirId],
+    })
+    .returning({ id: entregasSouvenir.id });
+
+  if (insertada.length > 0) {
+    return {
+      resultado: 'exito',
+      mensaje: 'Souvenir entregado correctamente.',
+      asistente: aResumen(asistente),
+      existente: {
+        id: String(insertada[0]!.id),
+        tipoSouvenirId: tipo.id,
+        tipoSouvenirNombre: tipo.nombre,
+        entregadoAt: ahora.toISOString(),
+        entregadoPor: parametros.usuarioNombre,
+      },
+      requiereBusquedaManual: false,
+    };
+  }
+
+  const previa = await db
+    .select({
+      id: entregasSouvenir.id,
+      tipoSouvenirId: entregasSouvenir.tipoSouvenirId,
+      tipoSouvenirNombre: tiposSouvenir.nombre,
+      entregadoAt: entregasSouvenir.entregadoAt,
+      entregadoPor: usuariosSistema.nombre,
+    })
+    .from(entregasSouvenir)
+    .leftJoin(usuariosSistema, eq(usuariosSistema.id, entregasSouvenir.entregadoPor))
+    .innerJoin(tiposSouvenir, eq(tiposSouvenir.id, entregasSouvenir.tipoSouvenirId))
+    .where(
+      and(
+        eq(entregasSouvenir.asistenteId, asistente.id),
+        eq(entregasSouvenir.tipoSouvenirId, tipo.id),
+      ),
+    )
+    .limit(1);
+
+  const original = previa[0];
+  return {
+    resultado: 'duplicado',
+    mensaje: 'El souvenir ya fue entregado a este asistente.',
+    asistente: aResumen(asistente),
+    existente: original
+      ? {
+          id: String(original.id),
+          tipoSouvenirId: original.tipoSouvenirId,
+          tipoSouvenirNombre: original.tipoSouvenirNombre,
           entregadoAt: original.entregadoAt.toISOString(),
           entregadoPor: original.entregadoPor ?? 'Operador no identificado',
         }

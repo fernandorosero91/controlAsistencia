@@ -314,9 +314,10 @@ tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice 
 - Pantalla principal con **campo de ID grande y enfocado automaticamente**, y boton de **escaner con
   la camara** (`html5-qrcode` o `@zxing/browser`) como alternativa.
 - Busqueda de respaldo por nombre o apellido.
-- Modos de trabajo: **Ingreso**, **Refrigerio** y **Salida/Cierre**. **La jornada y el refrigerio
-  los determina el sistema por el horario**; el operador no los elige. El administrador decide que
-  modos estan visibles (interruptores en Configuracion) y la API rechaza los que esten apagados.
+- Modos de trabajo: **Ingreso**, **Refrigerio**, **Salida/Cierre** y **Souvenir**. **La jornada y el
+  refrigerio los determina el sistema por el horario**; el operador no los elige. El administrador
+  decide que modos estan visibles (interruptores en Configuracion) y la API rechaza los que esten
+  apagados.
 - Contador en vivo de los registros de la jornada en curso, actualizado cada 20 segundos.
 - Tras cada registro, el campo se limpia y se enfoca de nuevo (flujo continuo, minimo de toques).
 - Resultado inmediato: exito (verde), ya registrado (ambar), no encontrado/no permitido (rojo), con
@@ -454,6 +455,11 @@ GET    /asistencias/asistente/:asistenteId
 POST   /refrigerios/entregar
 GET    /refrigerios/estado/:asistenteId
 GET    /refrigerios/tipos
+POST   /souvenirs/entregar
+GET    /souvenirs/estado/:asistenteId
+GET    /souvenirs/tipos
+POST   /souvenirs/tipos
+PATCH  /souvenirs/tipos/:id
 GET    /dashboard/resumen     (ETag / If-None-Match)
 GET    /reportes/*            (?formato=csv|xlsx|pdf)
 GET    /config
@@ -574,3 +580,27 @@ La especificacion **OpenAPI se genera automaticamente** (Fastify Swagger) y se e
 - **R-05** Si el administrador modifica `hora_fin_seminario` despues de emitir certificados, los
   certificados ya emitidos **no se revocan solos** (la elegibilidad se recalcula, pero el documento
   emitido es un hecho historico auditable). Se documenta el procedimiento de re-emision/revocacion.
+
+---
+
+## 18. Souvenirs y regalos
+
+Ademas de la asistencia y los refrigerios, el sistema controla la **entrega del souvenir o regalo**
+del seminario, con el mismo criterio de una sola entrega por persona.
+
+- **Modelo:** `tipos_souvenir` (id, nombre, activo, orden) y `entregas_souvenir`
+  (asistente_id, tipo_souvenir_id, entregado_at, entregado_por, dispositivo, idempotency_key) con
+  **`UNIQUE (asistente_id, tipo_souvenir_id)`**. La entrega es del **evento**, no de una jornada:
+  no depende de la jornada vigente.
+- **Requisito:** el asistente debe tener **al menos una asistencia** registrada en el seminario.
+- **Sin doble entrega:** `INSERT ... ON CONFLICT DO NOTHING`; el segundo intento responde
+  `resultado: "duplicado"` con la fecha y el operador que lo entrego, **aunque sea otro operador**.
+- **Modulo configurable:** `seminario_config.operador_souvenir_habilitado` (apagado por defecto).
+  Se activa en **Configuracion > Accesos del operador > Souvenir**. Apagado, la app no muestra el
+  modo y la API responde `403`.
+- **Operador:** modo **Souvenir** en la misma pantalla, con el tipo preseleccionado si hay uno solo y
+  cola offline igual que los demas registros.
+- **Reportes:** `souvenirs-entregados` (detalle con fecha y responsable) y `souvenirs-pendientes`
+  (asistentes con asistencia que aun no lo recibieron), exportables en CSV, XLSX y PDF.
+- **API:** `POST /souvenirs/entregar`, `GET /souvenirs/estado/:asistenteId`,
+  `GET/POST /souvenirs/tipos`, `PATCH /souvenirs/tipos/:id`.

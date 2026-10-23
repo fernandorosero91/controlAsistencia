@@ -97,6 +97,8 @@ export const seminarioConfig = pgTable(
       .notNull()
       .default(true),
     operadorSalidaHabilitado: boolean('operador_salida_habilitado').notNull().default(true),
+    /** Modulo de souvenirs: apagado por defecto hasta que el administrador lo active. */
+    operadorSouvenirHabilitado: boolean('operador_souvenir_habilitado').notNull().default(false),
     /**
      * Minutos despues del cierre de una jornada en los que la jornada sigue
      * siendo la vigente, para alcanzar a registrar las salidas.
@@ -268,8 +270,49 @@ export const entregasRefrigerio = pgTable(
   ],
 );
 
-export const certificadosLotes = pgTable(
-  'certificados_lotes',
+export const tiposSouvenir = pgTable(
+  'tipos_souvenir',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    nombre: text('nombre').notNull(),
+    activo: boolean('activo').notNull().default(true),
+    orden: integer('orden').notNull().default(0),
+    createdAt: creadoEn,
+    updatedAt: actualizadoEn,
+  },
+  (tabla) => [uniqueIndex('tipos_souvenir_nombre_idx').on(sql`lower(${tabla.nombre})`)],
+);
+
+/**
+ * Entrega de un souvenir. No depende de la jornada: se entrega una vez por
+ * evento a quien tenga al menos una asistencia registrada.
+ */
+export const entregasSouvenir = pgTable(
+  'entregas_souvenir',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    asistenteId: text('asistente_id')
+      .notNull()
+      .references(() => asistentes.id, { onDelete: 'restrict' }),
+    tipoSouvenirId: integer('tipo_souvenir_id')
+      .notNull()
+      .references(() => tiposSouvenir.id, { onDelete: 'restrict' }),
+    entregadoAt: timestamp('entregado_at', { withTimezone: true }).notNull().defaultNow(),
+    entregadoPor: uuid('entregado_por').references(() => usuariosSistema.id, {
+      onDelete: 'set null',
+    }),
+    dispositivo: text('dispositivo'),
+    idempotencyKey: text('idempotency_key'),
+    createdAt: creadoEn,
+  },
+  (tabla) => [
+    uniqueIndex('entregas_souvenir_unica_idx').on(tabla.asistenteId, tabla.tipoSouvenirId),
+    index('entregas_souvenir_tipo_idx').on(tabla.tipoSouvenirId, tabla.entregadoAt),
+    index('entregas_souvenir_hora_idx').on(tabla.entregadoAt),
+  ],
+);
+
+export const certificadosLotes = pgTable('certificados_lotes',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     solicitadoPor: uuid('solicitado_por').references(() => usuariosSistema.id, {

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   ClipboardCheck,
+  Gift,
   Info,
   LayoutDashboard,
   LogOut,
@@ -59,7 +60,9 @@ interface ContextoOperador {
   proximaJornada: JornadaResumen | null;
   refrigerios: { id: number; nombre: string; jornadaId: number }[];
   refrigerioActivo: { id: number; nombre: string; jornadaId: number } | null;
-  modulos: { ingreso: boolean; refrigerio: boolean; salida: boolean };
+  souvenirs: { id: number; nombre: string }[];
+  souvenirActivo: { id: number; nombre: string } | null;
+  modulos: { ingreso: boolean; refrigerio: boolean; salida: boolean; souvenir: boolean };
   /** Registros de la jornada vigente, para mostrar el avance en vivo. */
   registrosJornada: number;
   servidorHora: string;
@@ -99,6 +102,12 @@ const MODOS: {
     descripcion: 'Registra la salida de la jornada',
     Icono: ClipboardCheck,
   },
+  {
+    id: 'souvenir',
+    etiqueta: 'Souvenir',
+    descripcion: 'Entrega el souvenir del seminario',
+    Icono: Gift,
+  },
 ];
 
 /** Hora de una marca de tiempo en formato corto, en hora de Bogota. */
@@ -119,6 +128,7 @@ export function Operador() {
 
   const [modo, setModo] = useState<ModoRegistro>('ingreso');
   const [tipoRefrigerioElegido, setTipoRefrigerioElegido] = useState<number | null>(null);
+  const [tipoSouvenirElegido, setTipoSouvenirElegido] = useState<number | null>(null);
   const [idTexto, setIdTexto] = useState('');
   const [codigoVerificado, setCodigoVerificado] = useState('');
   const [verificacion, setVerificacion] = useState<VerificacionAsistente | null>(null);
@@ -170,13 +180,23 @@ export function Operador() {
     ? tipoRefrigerioElegido
     : (contexto?.refrigerioActivo?.id ?? refrigeriosDeLaJornada[0]?.id ?? null);
 
+  const souvenirsDisponibles = contexto?.souvenirs ?? [];
+  const tipoSouvenirId = souvenirsDisponibles.some(
+    (souvenir) => souvenir.id === tipoSouvenirElegido,
+  )
+    ? tipoSouvenirElegido
+    : (contexto?.souvenirActivo?.id ?? souvenirsDisponibles[0]?.id ?? null);
+
   const modulosDisponibles = useMemo(
     () => MODOS.filter((opcion) => contexto?.modulos[opcion.id] ?? false),
     [contexto],
   );
 
-  const sinJornada = !jornadaId;
+  // El ingreso y la salida necesitan jornada vigente; el souvenir es del evento.
+  const requiereJornada = modo === 'ingreso' || modo === 'salida';
+  const sinJornada = requiereJornada && !jornadaId;
   const sinRefrigerio = modo === 'refrigerio' && !tipoRefrigerioId;
+  const sinSouvenir = modo === 'souvenir' && !tipoSouvenirId;
 
   // Si el administrador apaga el modulo que estaba en uso, se pasa al primero
   // que siga habilitado.
@@ -207,19 +227,23 @@ export function Operador() {
   const enviar = useCallback(
     async (id: string, clave: string) => {
       const modoCola: TipoRegistroCola =
-        modo === 'ingreso' ? 'ingreso' : modo === 'salida' ? 'salida' : 'refrigerio';
+        modo === 'ingreso' || modo === 'salida' || modo === 'souvenir' ? modo : 'refrigerio';
 
       const cuerpo =
         modo === 'refrigerio'
           ? { asistenteId: id, tipoRefrigerioId, dispositivo: 'navegador' }
-          : { asistenteId: id, jornadaId, dispositivo: 'navegador' };
+          : modo === 'souvenir'
+            ? { asistenteId: id, tipoSouvenirId, dispositivo: 'navegador' }
+            : { asistenteId: id, jornadaId, dispositivo: 'navegador' };
 
       const ruta =
         modo === 'ingreso'
           ? '/asistencias/ingreso'
           : modo === 'salida'
             ? '/asistencias/salida'
-            : '/refrigerios/entregar';
+            : modo === 'souvenir'
+              ? '/souvenirs/entregar'
+              : '/refrigerios/entregar';
 
       const registroCola: RegistroCola = {
         id: clave,
@@ -227,6 +251,7 @@ export function Operador() {
         asistenteId: id,
         jornadaId: jornadaId ?? 0,
         tipoRefrigerioId: modo === 'refrigerio' ? tipoRefrigerioId : null,
+        tipoSouvenirId: modo === 'souvenir' ? tipoSouvenirId : null,
         creadoEn: new Date().toISOString(),
         intentos: 0,
         estado: 'pendiente',
@@ -281,8 +306,7 @@ export function Operador() {
               : 'error',
         );
         // El contador de la jornada se actualiza al instante.
-        void cliente.invalidateQueries({ queryKey: ['operador', 'contexto'] });
-      } catch (error) {
+        void cliente.invalidateQueries({ queryKey: ['operador', 'contexto'] });      } catch (error) {
         if (error instanceof ErrorRed) {
           await agregarALaCola(registroCola);
           await refrescarCola();
@@ -317,7 +341,7 @@ export function Operador() {
         setEnviando(false);
       }
     },
-    [cliente, enLinea, enfocarCampo, jornadaId, modo, refrescarCola, registrarEnHistorial, tipoRefrigerioId],
+    [cliente, enLinea, enfocarCampo, jornadaId, modo, refrescarCola, registrarEnHistorial, tipoRefrigerioId, tipoSouvenirId],
   );
 
   /**
@@ -365,7 +389,17 @@ export function Operador() {
         });
         return;
       }
-      if (modo !== 'refrigerio' && !jornadaId) {
+      if (modo === 'souvenir' && !tipoSouvenirId) {
+        setResultado({
+          resultado: 'no_permitido',
+          mensaje: 'No hay un souvenir activo configurado.',
+          asistente: null,
+          existente: null,
+          requiereBusquedaManual: false,
+        });
+        return;
+      }
+      if (requiereJornada && !jornadaId) {
         setResultado({
           resultado: 'no_permitido',
           mensaje:
@@ -378,7 +412,18 @@ export function Operador() {
       }
       void enviar(id, nuevoClaveIdempotencia());
     },
-    [codigoVerificado, enviando, enviar, idTexto, jornadaId, modo, tipoRefrigerioId, verificar],
+    [
+      codigoVerificado,
+      enviando,
+      enviar,
+      idTexto,
+      jornadaId,
+      modo,
+      requiereJornada,
+      tipoRefrigerioId,
+      tipoSouvenirId,
+      verificar,
+    ],
   );
 
   const detectarEscaneo = useCallback(
@@ -410,18 +455,27 @@ export function Operador() {
                 // jornada siga vigente: el registro se tomo cuando lo estaba.
                 registradoEn: registro.creadoEn,
               }
-            : {
-                asistenteId: registro.asistenteId,
-                jornadaId: registro.jornadaId,
-                dispositivo: 'navegador',
-                registradoEn: registro.creadoEn,
-              };
+            : registro.tipo === 'souvenir'
+              ? {
+                  asistenteId: registro.asistenteId,
+                  tipoSouvenirId: registro.tipoSouvenirId,
+                  dispositivo: 'navegador',
+                  registradoEn: registro.creadoEn,
+                }
+              : {
+                  asistenteId: registro.asistenteId,
+                  jornadaId: registro.jornadaId,
+                  dispositivo: 'navegador',
+                  registradoEn: registro.creadoEn,
+                };
         const ruta =
           registro.tipo === 'ingreso'
             ? '/asistencias/ingreso'
             : registro.tipo === 'salida'
               ? '/asistencias/salida'
-              : '/refrigerios/entregar';
+              : registro.tipo === 'souvenir'
+                ? '/souvenirs/entregar'
+                : '/refrigerios/entregar';
 
         try {
           const respuesta = await api.enviar<RespuestaRegistro>(ruta, cuerpo, {
@@ -583,7 +637,9 @@ export function Operador() {
               ? 'grid-cols-1'
               : modulosDisponibles.length === 2
                 ? 'grid-cols-2'
-                : 'grid-cols-3',
+                : modulosDisponibles.length === 3
+                  ? 'grid-cols-3'
+                  : 'grid-cols-2',
           )}
           role="tablist"
           aria-label="Modo de registro"
@@ -622,6 +678,7 @@ export function Operador() {
       )}
 
       {contexto &&
+      requiereJornada &&
       (contexto.motivoJornada === 'fuera_de_horario' || contexto.motivoJornada === 'sin_jornadas') ? (
         <Aviso tono="aviso" titulo="No hay jornada activa">
           {contexto.proximaJornada
@@ -655,6 +712,32 @@ export function Operador() {
       {modo === 'refrigerio' && refrigeriosDeLaJornada.length === 0 ? (
         <Aviso tono="aviso" titulo="Sin refrigerio para esta jornada">
           El administrador no ha configurado un refrigerio para la jornada en curso.
+        </Aviso>
+      ) : null}
+
+      {modo === 'souvenir' && souvenirsDisponibles.length > 1 ? (
+        <div className="flex gap-2 overflow-x-auto sin-barra-espacial pb-1">
+          {souvenirsDisponibles.map((souvenir) => (
+            <button
+              key={souvenir.id}
+              type="button"
+              onClick={() => setTipoSouvenirElegido(souvenir.id)}
+              className={clsx(
+                'min-h-[44px] shrink-0 rounded-2xl px-4 py-2 text-sm font-semibold transition-colors',
+                tipoSouvenirId === souvenir.id
+                  ? 'bg-marca text-white shadow-marca'
+                  : 'bg-white text-neutro-700 shadow-tarjeta',
+              )}
+            >
+              {souvenir.nombre}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {modo === 'souvenir' && souvenirsDisponibles.length === 0 ? (
+        <Aviso tono="aviso" titulo="Sin souvenir configurado">
+          El administrador no ha creado un souvenir activo.
         </Aviso>
       ) : null}
 
@@ -717,6 +800,7 @@ export function Operador() {
             disabled={
               enviando ||
               sinJornada ||
+              sinSouvenir ||
               modulosDisponibles.length === 0 ||
               idTexto.trim().length === 0 ||
               codigoVerificado !== idTexto.replace(/\s+/g, '').trim().toUpperCase() ||
@@ -729,9 +813,11 @@ export function Operador() {
                 ? 'Sin jornada activa'
                 : sinRefrigerio
                   ? 'Sin refrigerio configurado'
-                  : verificacion?.encontrado && verificacion.asistente
-                    ? `Registrar a ${verificacion.asistente.nombres} ${verificacion.asistente.apellidos}`
-                    : 'Verifique primero el nombre'}
+                  : sinSouvenir
+                    ? 'Sin souvenir configurado'
+                    : verificacion?.encontrado && verificacion.asistente
+                      ? `Registrar a ${verificacion.asistente.nombres} ${verificacion.asistente.apellidos}`
+                      : 'Verifique primero el nombre'}
           </button>
           <button
             type="button"

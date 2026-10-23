@@ -87,8 +87,8 @@ En **Configuracion**, confirme:
 
 En **Configuracion > Accesos del operador**:
 
-- **Ingreso**, **Refrigerio** y **Salida**: deje encendido solo lo que corresponda a cada
-  momento. Lo que se apague desaparece de la app del operador y la API lo rechaza.
+- **Ingreso**, **Refrigerio**, **Salida** y **Souvenir**: deje encendido solo lo que corresponda a
+  cada momento. Lo que se apague desaparece de la app del operador y la API lo rechaza.
 - **Jornada en curso**: en *Automatica (segun el horario)*. Solo fijela si el evento se corre o
   se adelanta.
 - **Minutos de margen despues del cierre**: 20 por defecto; es el tiempo extra para registrar
@@ -121,13 +121,14 @@ En **Configuracion > Accesos del operador**:
 | Registro de asistencia (jornada 1) | 2        | Tablets o celulares, un enlace por fila |
 | Refrigerio                         | 2        | Mesón con el listado de refrigerios     |
 | Registro de asistencia (jornada 2) | 2        | Igual que la jornada 1                  |
+| Souvenir o regalo                  | 1        | Mesa de entrega con la app del operador |
 | Cierre y salidas                   | 2        | tablets                                 |
 
 Cada operador inicia sesion con **su propia cuenta**. Las credenciales se entregan en mano.
 
 ### 2.2 Flujo del operador
 
-1. Elige el modo habilitado: **Ingreso**, **Refrigerio** o **Salida**.
+1. Elige el modo habilitado: **Ingreso**, **Refrigerio**, **Salida** o **Souvenir**.
 2. El participante entrega la escarapela o dicta su codigo.
 3. El operador escribe o escanea. La app **verifica y muestra el nombre**: se compara con la
    escarapela y con el rostro. Si no coincide, **no se registra**.

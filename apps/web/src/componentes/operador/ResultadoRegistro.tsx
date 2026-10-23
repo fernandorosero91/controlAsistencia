@@ -76,11 +76,16 @@ export function ResultadoRegistro({ resultado, alCerrar }: Props) {
     entregadoPor?: string | null;
     jornadaNombre?: string | null;
     tipoRefrigerioNombre?: string | null;
+    tipoSouvenirNombre?: string | null;
   } | null;
 
   const hora = existente?.horaIngreso ?? existente?.entregadoAt ?? existente?.horaSalida ?? null;
   const responsable = existente?.registradoPor ?? existente?.entregadoPor ?? null;
-  const contexto = existente?.tipoRefrigerioNombre ?? existente?.jornadaNombre ?? null;
+  const contexto =
+    existente?.tipoSouvenirNombre ??
+    existente?.tipoRefrigerioNombre ??
+    existente?.jornadaNombre ??
+    null;
 
   return (
     <div
@@ -109,7 +114,11 @@ export function ResultadoRegistro({ resultado, alCerrar }: Props) {
             {resultado.resultado === 'exito'
               ? 'Registro exitoso'
               : resultado.resultado === 'duplicado'
-                ? 'Asistencia ya registrada'
+                ? existente?.tipoSouvenirNombre
+                  ? 'Souvenir ya entregado'
+                  : existente?.tipoRefrigerioNombre
+                    ? 'Refrigerio ya entregado'
+                    : 'Asistencia ya registrada'
                 : resultado.resultado === 'no_encontrado'
                   ? 'ID no encontrado'
                   : resultado.resultado === 'fuera_de_ventana'

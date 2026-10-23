@@ -30,6 +30,8 @@ export interface ConfigSeminario {
   operadorIngresoHabilitado: boolean;
   operadorRefrigerioHabilitado: boolean;
   operadorSalidaHabilitado: boolean;
+  /** Modulo de souvenirs: se activa desde Configuracion. */
+  operadorSouvenirHabilitado: boolean;
   /**
    * Minutos despues del cierre de la jornada en los que la jornada sigue
    * vigente, para alcanzar a registrar las salidas.
@@ -90,6 +92,7 @@ export async function obtenerConfig(): Promise<ConfigSeminario> {
     operadorIngresoHabilitado: fila.operadorIngresoHabilitado,
     operadorRefrigerioHabilitado: fila.operadorRefrigerioHabilitado,
     operadorSalidaHabilitado: fila.operadorSalidaHabilitado,
+    operadorSouvenirHabilitado: fila.operadorSouvenirHabilitado,
     margenCierreMinutos: fila.margenCierreMinutos,
     jornadaForzadaId: fila.jornadaForzadaId,
   };
@@ -274,6 +277,9 @@ export async function guardarAccesosOperador(
       : {}),
     ...(datos.operadorSalidaHabilitado !== undefined
       ? { operadorSalidaHabilitado: datos.operadorSalidaHabilitado }
+      : {}),
+    ...(datos.operadorSouvenirHabilitado !== undefined
+      ? { operadorSouvenirHabilitado: datos.operadorSouvenirHabilitado }
       : {}),
     ...(datos.margenCierreMinutos !== undefined
       ? { margenCierreMinutos: datos.margenCierreMinutos }

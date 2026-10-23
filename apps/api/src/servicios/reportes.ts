@@ -13,8 +13,10 @@ import {
   auditoria,
   certificados,
   entregasRefrigerio,
+  entregasSouvenir,
   jornadas,
   tiposRefrigerio,
+  tiposSouvenir,
   usuariosSistema,
 } from '../db/esquema.js';
 import { obtenerConfig } from './configuracion.js';
@@ -24,6 +26,8 @@ export type TipoReporte =
   | 'asistencia-parcial'
   | 'refrigerios-entregados'
   | 'refrigerios-pendientes'
+  | 'souvenirs-entregados'
+  | 'souvenirs-pendientes'
   | 'elegibles'
   | 'no-elegibles'
   | 'certificados-emitidos'
@@ -53,6 +57,10 @@ export async function generarReporte(
       return reporteRefrigerios(filtros, true);
     case 'refrigerios-pendientes':
       return reporteRefrigerios(filtros, false);
+    case 'souvenirs-entregados':
+      return reporteSouvenirs(filtros, true);
+    case 'souvenirs-pendientes':
+      return reporteSouvenirs(filtros, false);
     case 'elegibles':
       return reporteElegibilidad(filtros, true);
     case 'no-elegibles':
@@ -298,6 +306,85 @@ async function reporteRefrigerios(
       'Seminario',
     ],
     filas,
+  };
+}
+
+async function reporteSouvenirs(
+  filtros: FiltrosReporte,
+  entregados: boolean,
+): Promise<ResultadoReporte> {
+  if (entregados) {
+    const filas = await db
+      .select({
+        id: asistentes.id,
+        nombres: asistentes.nombres,
+        apellidos: asistentes.apellidos,
+        rol: asistentes.rol,
+        souvenir: tiposSouvenir.nombre,
+        entregadoAt: entregasSouvenir.entregadoAt,
+        entregadoPor: usuariosSistema.nombre,
+      })
+      .from(entregasSouvenir)
+      .innerJoin(asistentes, eq(asistentes.id, entregasSouvenir.asistenteId))
+      .innerJoin(tiposSouvenir, eq(tiposSouvenir.id, entregasSouvenir.tipoSouvenirId))
+      .leftJoin(usuariosSistema, eq(usuariosSistema.id, entregasSouvenir.entregadoPor))
+      .where(filtros.rol ? eq(asistentes.rol, filtros.rol) : undefined)
+      .orderBy(asc(asistentes.apellidos), asc(asistentes.nombres));
+
+    return {
+      titulo: 'Souvenirs entregados',
+      columnas: [
+        'ID institucional',
+        'Nombres',
+        'Apellidos',
+        'Rol',
+        'Souvenir',
+        'Fecha y hora',
+        'Entregado por',
+      ],
+      filas: filas.map((fila) => [
+        fila.id,
+        fila.nombres,
+        fila.apellidos,
+        fila.rol,
+        fila.souvenir,
+        fecha(fila.entregadoAt),
+        fila.entregadoPor ?? '',
+      ]),
+    };
+  }
+
+  // Pendientes: asistentes activos con al menos una asistencia y sin ninguna
+  // entrega de souvenir registrada.
+  const condiciones = [
+    eq(asistentes.activo, true),
+    sql`EXISTS (SELECT 1 FROM asistencias a WHERE a.asistente_id = ${asistentes.id})`,
+    sql`NOT EXISTS (SELECT 1 FROM entregas_souvenir e WHERE e.asistente_id = ${asistentes.id})`,
+  ];
+  if (filtros.rol) condiciones.push(eq(asistentes.rol, filtros.rol));
+
+  const pendientes = await db
+    .select({
+      id: asistentes.id,
+      nombres: asistentes.nombres,
+      apellidos: asistentes.apellidos,
+      rol: asistentes.rol,
+      semestre: asistentes.semestre,
+    })
+    .from(asistentes)
+    .where(and(...condiciones))
+    .orderBy(asc(asistentes.apellidos), asc(asistentes.nombres));
+
+  return {
+    titulo: 'Souvenirs pendientes (asistieron y no lo han recibido)',
+    columnas: ['ID institucional', 'Nombres', 'Apellidos', 'Rol', 'Semestre'],
+    filas: pendientes.map((fila) => [
+      fila.id,
+      fila.nombres,
+      fila.apellidos,
+      fila.rol,
+      fila.semestre === null ? '' : String(fila.semestre),
+    ]),
   };
 }
 

@@ -12,7 +12,7 @@ export type RolSistema = (typeof ROLES_SISTEMA)[number];
 export const ESTADOS_CERTIFICADO = ['elegible', 'no_elegible', 'emitido', 'revocado'] as const;
 export type EstadoCertificado = (typeof ESTADOS_CERTIFICADO)[number];
 
-export const MODOS_REGISTRO = ['ingreso', 'refrigerio', 'salida'] as const;
+export const MODOS_REGISTRO = ['ingreso', 'refrigerio', 'salida', 'souvenir'] as const;
 export type ModoRegistro = (typeof MODOS_REGISTRO)[number];
 
 export const RESULTADOS_REGISTRO = [
