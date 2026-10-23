@@ -202,6 +202,12 @@ export async function registrarRutasPlantillas(app: FastifyInstance): Promise<vo
           total: resumen.total,
           generados: resumen.generados,
           omitidos: resumen.omitidos,
+          ...(datos.soloElegibles
+            ? {}
+            : {
+                excepcion: true,
+                motivoExcepcion: datos.motivoExcepcion,
+              }),
         },
       });
 

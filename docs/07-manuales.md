@@ -54,7 +54,10 @@ el **cierre del seminario**. Quien no cumpla queda omitido y se muestra el motiv
 4. Pulse **Generar certificados**, elija el rol de los asistentes (todos, estudiantes o docentes) y
    confirme. Solo entran los elegibles (las 4 marcas); el resumen indica cuantos se generaron y
    cuantos quedaron omitidos y por que.
-5. Los `.docx` se guardan en la carpeta **`certificadosGenerados`** (una subcarpeta por lote) junto
+5. **Caso especial:** si necesita el certificado de alguien que no cumplio el horario, marque
+   **"Emitir tambien a quienes no cumplen las condiciones"** y escriba el motivo (minimo 10
+   caracteres). Queda registrado en la auditoria.
+6. Los `.docx` se guardan en la carpeta **`certificadosGenerados`** (una subcarpeta por lote) junto
    con un ZIP. En la seccion **Certificados generados**, el boton **Descargar ZIP** baja el lote.
 
 Los errores por fila (por ejemplo, un asistente sin cedula) se listan sin detener el lote. Cargar,

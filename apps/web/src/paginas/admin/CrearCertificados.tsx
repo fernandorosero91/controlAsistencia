@@ -57,6 +57,8 @@ export function CrearCertificados() {
   const [resultado, setResultado] = useState<ResumenGeneracion | null>(null);
   const [generarCon, setGenerarCon] = useState<PlantillaCertificado | null>(null);
   const [rolSeleccion, setRolSeleccion] = useState<'' | 'estudiante' | 'docente'>('');
+  const [excepcion, setExcepcion] = useState(false);
+  const [motivoExcepcion, setMotivoExcepcion] = useState('');
   const [eliminar, setEliminar] = useState<PlantillaCertificado | null>(null);
   const [eliminarLote, setEliminarLote] = useState<LoteCertificados | null>(null);
   const [verElegibilidad, setVerElegibilidad] = useState(false);
@@ -153,7 +155,8 @@ export function CrearCertificados() {
         plantillaId: plantilla.id,
         todos: true,
         rol: rolSeleccion || undefined,
-        soloElegibles: true,
+        soloElegibles: !excepcion,
+        motivoExcepcion: excepcion ? motivoExcepcion.trim() : undefined,
       }),
     onSuccess: ({ resumen }) => {
       setResultado(resumen);
@@ -163,8 +166,11 @@ export function CrearCertificados() {
           resumen.omitidos > 0
             ? `${resumen.omitidos} omitidos por no tener las 4 marcas (ingreso y salida en cada jornada).`
             : ''
-        }`,
+        }${excepcion ? ' Se aplico la excepcion del administrador y quedo registrada en la auditoria.' : ''}`,
       );
+      setGenerarCon(null);
+      setExcepcion(false);
+      setMotivoExcepcion('');
       void cliente.invalidateQueries({ queryKey: ['plantillas-certificado', 'lotes'] });
     },
     onError: (problema) => {
@@ -355,6 +361,8 @@ export function CrearCertificados() {
                     onClick={() => {
                       setGenerarCon(plantilla);
                       setResultado(null);
+                      setExcepcion(false);
+                      setMotivoExcepcion('');
                     }}
                   >
                     <Users className="h-4 w-4" aria-hidden="true" />
@@ -483,7 +491,7 @@ export function CrearCertificados() {
               onClick={() => {
                 if (generarCon) generar.mutate(generarCon);
               }}
-              disabled={generar.isPending}
+              disabled={generar.isPending || (excepcion && motivoExcepcion.trim().length < 10)}
             >
               <FileText className="h-4 w-4" aria-hidden="true" />
               {generar.isPending ? 'Generando' : 'Generar certificados .docx'}
@@ -513,10 +521,49 @@ export function CrearCertificados() {
             </select>
           </div>
           <Aviso tono="aviso" titulo="Filtro de elegibilidad">
-            Solo se generara el certificado de los asistentes que tengan las 4 marcas: ingreso y
-            salida de la manana e ingreso y salida de la tarde. El lote se guardara en la carpeta
+            Solo se genera el certificado de los asistentes que tengan las 4 marcas: ingreso y
+            salida de la manana e ingreso y salida de la tarde, con la permanencia minima. El lote
+            se guardara en la carpeta
             <span className="font-mono"> certificadosGenerados </span> y podra descargarlo como ZIP.
           </Aviso>
+
+          <div className="rounded-lg border border-neutro-200 p-3">
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={excepcion}
+                onChange={(evento) => setExcepcion(evento.target.checked)}
+                className="mt-0.5 h-5 w-5 shrink-0 accent-[#12505E]"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-neutro-800">
+                  Emitir tambien a quienes no cumplen las condiciones
+                </span>
+                <span className="block text-xs text-neutro-500">
+                  Excepcion del administrador para casos especiales. Queda registrada en la
+                  auditoria con el motivo.
+                </span>
+              </span>
+            </label>
+
+            {excepcion ? (
+              <div className="mt-3">
+                <label htmlFor="motivo-excepcion" className="etiqueta-campo">
+                  Motivo de la excepcion
+                </label>
+                <textarea
+                  id="motivo-excepcion"
+                  className="campo min-h-[72px]"
+                  value={motivoExcepcion}
+                  onChange={(evento) => setMotivoExcepcion(evento.target.value)}
+                  placeholder="Por ejemplo: el asistente colaboro en la organizacion del evento y no alcanzo a registrar su salida."
+                />
+                <p className="mt-1 text-xs text-neutro-500">
+                  Minimo 10 caracteres. Se guarda junto al lote en la auditoria.
+                </p>
+              </div>
+            ) : null}
+          </div>
         </div>
       </Modal>
 

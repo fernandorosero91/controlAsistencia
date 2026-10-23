@@ -64,6 +64,9 @@ export function Configuracion() {
   const [nuevaJornada, setNuevaJornada] = useState(false);
   const [nuevoRefrigerio, setNuevoRefrigerio] = useState(false);
   const [jornadaEnEdicion, setJornadaEnEdicion] = useState<Jornada | null>(null);
+  const [jornadaAEliminar, setJornadaAEliminar] = useState<Jornada | null>(null);
+  const [forzarEliminar, setForzarEliminar] = useState(false);
+  const [errorJornada, setErrorJornada] = useState<string | null>(null);
   const [refrigerioEnEdicion, setRefrigerioEnEdicion] = useState<TipoRefrigerio | null>(null);
   const [firmas, setFirmas] = useState<Firmante[]>([]);
 
@@ -145,8 +148,7 @@ export function Configuracion() {
   }, [config, reset]);
 
   const guardar = useMutation({
-    mutationFn: async (datos: DatosConfig) =>
-      api.reemplazar('/config', {
+    mutationFn: async (datos: DatosConfig) =>      api.reemplazar('/config', {
         ...datos,
         fecha: new Date(`${datos.fecha}T12:00:00`).toISOString(),
         horaFinSeminario: new Date(datos.horaFinSeminario).toISOString(),
@@ -171,6 +173,29 @@ export function Configuracion() {
           ? problema.message
           : 'No se pudo guardar la configuracion',
       );
+    },
+  });
+
+  const eliminarJornada = useMutation({
+    mutationFn: async (datos: { id: number; forzar: boolean }) =>
+      api.eliminar(`/jornadas/${datos.id}${datos.forzar ? '?forzar=true' : ''}`),
+    onSuccess: () => {
+      setErrorJornada(null);
+      setJornadaAEliminar(null);
+      setForzarEliminar(false);
+      setExito('La jornada se elimino.');
+      void cliente.invalidateQueries({ queryKey: ['jornadas'] });
+      void cliente.invalidateQueries({ queryKey: ['config'] });
+      void cliente.invalidateQueries({ queryKey: ['operador', 'contexto'] });
+    },
+    onError: (problema) => {
+      setExito(null);
+      setErrorJornada(
+        problema instanceof ErrorPeticion
+          ? problema.message
+          : 'No se pudo eliminar la jornada. Intente de nuevo.',
+      );
+      void cliente.invalidateQueries({ queryKey: ['jornadas'] });
     },
   });
 
@@ -503,6 +528,19 @@ export function Configuracion() {
                     >
                       <Pencil className="h-4 w-4" aria-hidden="true" />
                     </button>
+                    <button
+                      type="button"
+                      className="boton-compacto text-error-600 hover:bg-error-100"
+                      onClick={() => {
+                        setJornadaAEliminar(jornada);
+                        setForzarEliminar(false);
+                        setErrorJornada(null);
+                      }}
+                      aria-label={`Eliminar la jornada ${jornada.nombre}`}
+                      title="Eliminar jornada"
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </button>
                   </div>
                 </div>
                 <p className="mt-1 flex items-center gap-1.5 text-xs text-neutro-600">
@@ -601,6 +639,73 @@ export function Configuracion() {
             void cliente.invalidateQueries({ queryKey: ['operador', 'contexto'] });
           }}
         />
+      </Modal>
+      <Modal
+        abierto={jornadaAEliminar !== null}
+        titulo="Eliminar jornada"
+        alCerrar={() => {
+          if (eliminarJornada.isPending) return;
+          setJornadaAEliminar(null);
+          setErrorJornada(null);
+        }}
+      >
+        <Aviso
+          tono="error"
+          titulo={`Se eliminara la jornada "${jornadaAEliminar?.nombre ?? ''}"`}
+        >
+          Esta accion no se puede deshacer. Si la jornada tiene asistencias o refrigerios ligados,
+          se deben borrar tambien.
+        </Aviso>
+
+        <label className="mt-4 flex items-start gap-3 rounded-lg border border-neutro-200 p-3">
+          <input
+            type="checkbox"
+            checked={forzarEliminar}
+            onChange={(evento) => setForzarEliminar(evento.target.checked)}
+            className="mt-0.5 h-5 w-5 shrink-0 accent-[#12505E]"
+          />
+          <span>
+            <span className="block text-sm font-semibold text-neutro-800">
+              Eliminar tambien sus asistencias y sus tipos de refrigerio
+            </span>
+            <span className="block text-xs text-neutro-500">
+              Marque esta casilla solo si la jornada ya tiene registros que desea borrar. Queda
+              auditado.
+            </span>
+          </span>
+        </label>
+
+        {errorJornada ? (
+          <div className="mt-3">
+            <Aviso tono="error">{errorJornada}</Aviso>
+          </div>
+        ) : null}
+
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            className="boton-secundario"
+            onClick={() => {
+              setJornadaAEliminar(null);
+              setErrorJornada(null);
+            }}
+            disabled={eliminarJornada.isPending}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="boton-peligro"
+            onClick={() => {
+              if (!jornadaAEliminar) return;
+              eliminarJornada.mutate({ id: jornadaAEliminar.id, forzar: forzarEliminar });
+            }}
+            disabled={eliminarJornada.isPending}
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            {eliminarJornada.isPending ? 'Eliminando' : 'Eliminar jornada'}
+          </button>
+        </div>
       </Modal>
       <Modal
         abierto={nuevoRefrigerio || refrigerioEnEdicion !== null}

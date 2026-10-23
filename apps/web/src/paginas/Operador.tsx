@@ -542,7 +542,14 @@ export function Operador() {
             {contexto?.config.nombre ?? 'Control de asistencia'}
           </h1>
           <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-neutro-600">
-            {contexto?.jornadaActiva ? (
+            {modo === 'souvenir' ? (
+              <>
+                <span className="font-semibold text-neutro-800">
+                  {contexto?.souvenirActivo?.nombre ?? 'Souvenir del seminario'}
+                </span>
+                <span className="text-neutro-500">Una entrega por asistente</span>
+              </>
+            ) : contexto?.jornadaActiva ? (
               <>
                 <span className="font-semibold text-neutro-800">
                   Jornada: {contexto.jornadaActiva.nombre}
@@ -559,7 +566,7 @@ export function Operador() {
               'Sin jornada activa'
             )}
           </p>
-          {contexto?.jornadaActiva ? (
+          {contexto?.jornadaActiva && modo !== 'souvenir' ? (
             <p className="mt-1 flex items-center gap-1.5 text-xs text-neutro-500">
               <Users className="h-3.5 w-3.5" aria-hidden="true" />
               {contexto.registrosJornada} registros en esta jornada

@@ -13,7 +13,7 @@ import {
   prepararBaseDePruebas,
 } from '../ayudas/basePruebas.js';
 import { db } from '../../src/db/cliente.js';
-import { asistencias, jornadas } from '../../src/db/esquema.js';
+import { asistencias, auditoria, jornadas } from '../../src/db/esquema.js';
 
 /**
  * Elegibilidad y generacion de certificados .docx, de punta a punta.
@@ -175,6 +175,30 @@ describe(descripcion, () => {
 
     const generacion = await generar({});
     expect(generacion.statusCode).toBe(409);
+  });
+
+  it('la excepcion del administrador exige un motivo y queda auditada', async () => {
+    // Alguien con solo la manana: no cumple las 4 marcas.
+    await registrarJornada(ID_ASISTENTE, idManana, true);
+
+    const sinMotivo = await generar({ soloElegibles: false });
+    expect(sinMotivo.statusCode).toBe(422);
+
+    const conMotivo = await generar({
+      soloElegibles: false,
+      motivoExcepcion: 'Colaboro en la organizacion del evento y no alcanzo a marcar salida.',
+    });
+    expect([201, 409]).toContain(conMotivo.statusCode);
+    if (conMotivo.statusCode === 201) {
+      expect(conMotivo.json().resumen.generados).toBeGreaterThan(0);
+
+      const filas = await db
+        .select()
+        .from(auditoria)
+        .where(eq(auditoria.accion, 'plantilla.generados'))
+        .limit(1);
+      expect(JSON.stringify(filas[0]?.datosDespues)).toContain('excepcion');
+    }
   });
 
   it('no es elegible quien solo tiene marcas de una jornada', async () => {

@@ -241,9 +241,13 @@ No expone el ID institucional, el correo ni ningun dato de la lista de asistente
 Flujo adicional al PDF, administrado por el panel **Crear certificados**:
 
 - **Regla de habilitacion:** solo se genera el certificado de los asistentes con las **4 marcas**:
-  ingreso y salida registrados en **cada** jornada (manana y tarde). Si faltara cualquiera de las
-  cuatro, el asistente se omite y el resumen indica el motivo (`Falta: ...`). No hay excepcion de
-  inclusion en este flujo: quien no cumple las 4 marcas no recibe el `.docx`.
+  ingreso y salida registrados en **cada** jornada (manana y tarde), la **permanencia minima** y el
+  **cierre del seminario**. Si faltara alguna condicion, el asistente se omite y el resumen indica el
+  motivo (`Falta: ...`).
+- **Excepcion del administrador:** en el dialogo de generacion hay una casilla para *emitir tambien
+  a quienes no cumplen las condiciones* en un caso especial. Exige un **motivo de al menos 10
+  caracteres**, que queda en la auditoria (`plantilla.generados` con `excepcion: true` y el motivo).
+  Sin motivo, la API responde `422`.
 - La plantilla es un `.docx` con los campos `{{nombre}}`, `{{cedula}}`, `{{id}}`, `{{rol}}` y
   `{{semestre}}`. El reemplazo respeta los runs en que Word divida el texto.
 - Los documentos se persisten en disco en la carpeta **`certificadosGenerados`** (una subcarpeta por

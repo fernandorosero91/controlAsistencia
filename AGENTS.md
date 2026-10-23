@@ -599,7 +599,8 @@ del seminario, con el mismo criterio de una sola entrega por persona.
   Se activa en **Configuracion > Accesos del operador > Souvenir**. Apagado, la app no muestra el
   modo y la API responde `403`.
 - **Operador:** modo **Souvenir** en la misma pantalla, con el tipo preseleccionado si hay uno solo y
-  cola offline igual que los demas registros.
+  cola offline igual que los demas registros. **En este modo la app no muestra la jornada**: el
+  souvenir es unico por seminario.
 - **Reportes:** `souvenirs-entregados` (detalle con fecha y responsable) y `souvenirs-pendientes`
   (asistentes con asistencia que aun no lo recibieron), exportables en CSV, XLSX y PDF.
 - **API:** `POST /souvenirs/entregar`, `GET /souvenirs/estado/:asistenteId`,

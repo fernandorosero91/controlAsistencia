@@ -128,20 +128,31 @@ export const REGLA_ELEGIBILIDAD_DOCX =
   'Requiere ingreso y salida en cada jornada, permanencia minima y cierre del seminario';
 
 /** Seleccion de asistentes para generar certificados desde una plantilla. */
-export const generarDesdePlantillaSchema = z.object({
-  plantillaId: z.string().uuid('La plantilla no es valida'),
-  /** IDs institucionales del padron. Si va vacio y `todos` es true, se usa el padron completo. */
-  asistenteIds: z.array(z.string().trim().min(1)).max(2000).optional(),
-  todos: z.boolean().default(false),
-  rol: z.enum(ROLES_ASISTENTE).optional(),
-  /**
-   * Exige que el asistente tenga las 4 marcas (ingreso y salida en cada
-   * jornada). Por defecto activado: solo se certifica a quien asistio completo.
-   */
-  soloElegibles: z.boolean().default(true),
-  /** Sobrescribe el nombre de archivo base (sin extension) de los .docx generados. */
-  prefijoArchivo: z.string().trim().max(60).optional(),
-});
+export const generarDesdePlantillaSchema = z
+  .object({
+    plantillaId: z.string().uuid('La plantilla no es valida'),
+    /** IDs institucionales del padron. Si va vacio y `todos` es true, se usa el padron completo. */
+    asistenteIds: z.array(z.string().trim().min(1)).max(2000).optional(),
+    todos: z.boolean().default(false),
+    rol: z.enum(ROLES_ASISTENTE).optional(),
+    /**
+     * Exige que el asistente tenga las 4 marcas (ingreso y salida en cada
+     * jornada). Por defecto activado: solo se certifica a quien asistio completo.
+     */
+    soloElegibles: z.boolean().default(true),
+    /**
+     * Excepcion del administrador: permite generar el certificado de quien no
+     * cumplio el horario. Es obligatorio explicar el motivo y queda auditado.
+     */
+    motivoExcepcion: z.string().trim().max(500).optional(),
+    /** Sobrescribe el nombre de archivo base (sin extension) de los .docx generados. */
+    prefijoArchivo: z.string().trim().max(60).optional(),
+  })
+  .refine((datos) => datos.soloElegibles || (datos.motivoExcepcion ?? '').length >= 10, {
+    message:
+      'Para emitir a quien no cumple las condiciones escriba el motivo de la excepcion (minimo 10 caracteres)',
+    path: ['motivoExcepcion'],
+  });
 
 export type GenerarDesdePlantillaInput = z.infer<typeof generarDesdePlantillaSchema>;
 
