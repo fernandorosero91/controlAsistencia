@@ -219,14 +219,15 @@ export function CrearCertificados() {
       {mensaje ? <Aviso tono="exito">{mensaje}</Aviso> : null}
 
       <Aviso tono="primario" titulo="Como se habilita un certificado">
-        Solo se genera el certificado de los asistentes con las <strong>4 marcas</strong>: ingreso y
-        salida de la <strong>manana</strong> y ingreso y salida de la <strong>tarde</strong>. Quien
-        no cumpla las 4 marcas queda omitido y se muestra el motivo.
+        El certificado oficial de la Universidad se genera en <strong>Word</strong>. Solo se genera
+        el de los asistentes con las <strong>4 marcas</strong> (ingreso y salida de la manana y de
+        la tarde), que hayan permanecido el <strong>minimo de horas</strong> en cada jornada y
+        esten hasta el cierre del seminario. Quien no cumpla queda omitido y se muestra el motivo.
       </Aviso>
 
       <Tarjeta
-        titulo="Crear certificados desde una plantilla .docx"
-        descripcion="Suba una plantilla de Word con los campos entre dobles llaves y genere los certificados del padron"
+        titulo="Certificados oficiales en Word"
+        descripcion="Formato .docx de la Universidad: suba la plantilla y genere los certificados del padron"
       >
         <Aviso tono="primario" titulo="Como marcar los campos en la plantilla">
           <p>En el documento de Word escriba los datos del titular entre dobles llaves, por ejemplo:</p>

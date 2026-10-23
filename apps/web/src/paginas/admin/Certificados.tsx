@@ -145,8 +145,15 @@ export function Certificados() {
 
   return (
     <div className="space-y-4">
+      <Aviso tono="primario" titulo="El certificado oficial se genera en Word">
+        Este modulo emite la <strong>copia verificable en PDF</strong>, con codigo y QR de
+        verificacion publica. El documento oficial de la Universidad se descarga en{' '}
+        <strong>Certificados (Word)</strong>. Ambos usan la misma regla: 4 marcas (ingreso y salida
+        en cada jornada), permanencia minima y cierre del seminario.
+      </Aviso>
+
       <Tarjeta
-        titulo="Modulo de certificados"
+        titulo="Certificados PDF (copia verificable)"
         descripcion="Emision individual y masiva. Solo el administrador puede emitir y descargar"
         accion={
           <div className="flex flex-wrap gap-2">
