@@ -125,6 +125,41 @@ PostgreSQL real:
 
 ---
 
+## 7.4 Capacidad del dia del evento (500 asistentes, 7 operadores)
+
+Se midio el flujo real del operador contra la API local: por cada asistente, **verificar el nombre**
+(antes de registrar) y **registrar el ingreso**, repartido entre 7 sesiones de operador.
+
+| Metrica                                | Resultado |
+| -------------------------------------- | --------- |
+| Asistentes procesados                  | 500       |
+| Peticiones                             | 1.000     |
+| Duracion                               | 4,9 s     |
+| Ritmo                                  | ~102 asistentes/s |
+| p50 / p95 / p99 (verificar + ingreso)  | 63 / **95** / 147 ms |
+| Errores y 429                          | **0**     |
+
+Carga real esperada: 500 asistentes x (ingreso + refrigerio + salida) x 2 jornadas + souvenir =
+**3.500 registros** en el dia, mas una verificacion previa por registro (7.000 peticiones). Si los
+500 ingresos de una jornada se concentran en 15 minutos son ~33 registros por minuto; en la prueba se
+sostuvieron 102 por segundo, mas de **180 veces** ese ritmo.
+
+Limites por ruta y holgura con 7 operadores:
+
+| Ruta                              | Limite (por usuario) | Capacidad 7 operadores | Necesidad en el pico |
+| --------------------------------- | -------------------- | ---------------------- | -------------------- |
+| Verificar / ingreso / salida / refrigerio / souvenir | 150 por minuto | 1.050 por minuto | ~35 por minuto |
+| Panel y consultas autenticadas    | 600 por minuto       | 4.200 por minuto       | ~100 por minuto (10 paneles cada 5 s) |
+| Inicio de sesion (IP + correo)    | 10 por minuto        | 10 por cuenta          | 1 por operador       |
+| Verificacion publica de certificado | 120 por minuto por IP | 120 por IP           | consultas puntuales  |
+
+El limite es **por usuario autenticado**, no por IP: se verifico que dos operadores en la misma red
+tienen cupos independientes, de modo que la red compartida de la sede no es un cuello de botella.
+Con 7 operadores, un pico de 500 ingresos y el uso simultaneo del panel, la API queda por debajo del
+10 % de su capacidad medida.
+
+---
+
 ## 8. Conclusiones
 
 1. **El p95 de las escrituras es de 29 ms**, diez veces por debajo del criterio de 300 ms.

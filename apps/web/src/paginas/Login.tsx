@@ -15,6 +15,7 @@ type DatosLogin = LoginInput;
 export function Login() {
   const navegar = useNavigate();
   const establecerSesion = useSesion((estado) => estado.establecerSesion);
+  const motivoSalida = useSesion((estado) => estado.motivoSalida);
   const [error, setError] = useState<string | null>(null);
 
   const { data: evento } = useQuery({
@@ -83,6 +84,13 @@ export function Login() {
         </div>
 
         <form onSubmit={enviar} className="superficie space-y-4 p-5" noValidate>
+          {motivoSalida === 'expirada' ? (
+            <Aviso tono="aviso" titulo="Su sesion expiro">
+              Por seguridad, la sesion se cierra despues de un tiempo sin uso. Ingrese de nuevo para
+              continuar.
+            </Aviso>
+          ) : null}
+
           {error ? (
             <Aviso tono="error" titulo="No se pudo iniciar sesion">
               {error}

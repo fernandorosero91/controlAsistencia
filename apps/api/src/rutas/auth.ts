@@ -140,6 +140,7 @@ export async function registrarRutasAuth(app: FastifyInstance): Promise<void> {
     async (request, reply) => {
       const cookie = request.cookies[nombreCookieRefresh()];
       if (!cookie) {
+        request.log.warn({ motivo: 'sin_cookie' }, 'Renovacion rechazada: no llego la cookie');
         throw errores.noAutenticado('No hay sesion activa');
       }
 
@@ -163,10 +164,18 @@ export async function registrarRutasAuth(app: FastifyInstance): Promise<void> {
       if (!registro) {
         // El token no existe o ya se uso en otra renovacion. No se borra la
         // cookie: otra pestana puede haberla actualizado ya con la rotacion.
+        request.log.warn(
+          { motivo: 'token_desconocido' },
+          'Renovacion rechazada: el refresh token no existe o ya se uso',
+        );
         throw errores.noAutenticado('La sesion expiro, inicie sesion nuevamente');
       }
 
       if (registro.expiraAt.getTime() < Date.now()) {
+        request.log.warn(
+          { motivo: 'token_expirado', expiraAt: registro.expiraAt.toISOString() },
+          'Renovacion rechazada: el refresh token vencio',
+        );
         limpiarCookieRefresh(reply);
         throw errores.noAutenticado('La sesion expiro, inicie sesion nuevamente');
       }
@@ -179,6 +188,10 @@ export async function registrarRutasAuth(app: FastifyInstance): Promise<void> {
       const usuario = usuarios[0];
 
       if (!usuario || !usuario.activo) {
+        request.log.warn(
+          { motivo: 'usuario_inactivo', usuarioId: registro.usuarioId },
+          'Renovacion rechazada: el usuario no existe o esta inactivo',
+        );
         limpiarCookieRefresh(reply);
         throw errores.noAutenticado('La sesion ya no es valida');
       }

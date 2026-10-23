@@ -61,7 +61,7 @@ const esquema = z.object({
 
   JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
   JWT_ACCESS_TTL_SEGUNDOS: z.coerce.number().int().min(60).max(86400).default(900),
-  JWT_REFRESH_TTL_SEGUNDOS: z.coerce.number().int().min(300).max(2592000).default(604800),
+  JWT_REFRESH_TTL_SEGUNDOS: z.coerce.number().int().min(300).max(2592000).default(2592000),
   COOKIE_SECURE: z.enum(['true', 'false']).optional(),
   COOKIE_DOMAIN: z.string().optional(),
 
@@ -71,7 +71,7 @@ const esquema = z.object({
   RATE_LIMIT_LOGIN_VENTANA_SEGUNDOS: z.coerce.number().int().min(1).default(60),
   // Escaneo del operador: por usuario autenticado. 80 por minuto alcanza para
   // unas cuarenta registraciones por minuto y protege la base de datos.
-  RATE_LIMIT_ESCANEO_MAX: z.coerce.number().int().min(1).max(100000).default(80),
+  RATE_LIMIT_ESCANEO_MAX: z.coerce.number().int().min(1).max(100000).default(150),
   RATE_LIMIT_ESCANEO_VENTANA_SEGUNDOS: z.coerce.number().int().min(1).default(60),
   RATE_LIMIT_VERIFICACION_MAX: z.coerce.number().int().min(1).max(1000).default(20),
   RATE_LIMIT_VERIFICACION_VENTANA_SEGUNDOS: z.coerce.number().int().min(1).default(60),

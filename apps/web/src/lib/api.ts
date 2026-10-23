@@ -217,7 +217,7 @@ async function ejecutar<T>(ruta: string, opciones: OpcionesPeticion): Promise<T>
         // reintentar sin volver a iniciar sesion.
         if (resultado === 'expirado') {
           cancelarRenovacion();
-          useSesion.getState().cerrarSesion();
+          useSesion.getState().cerrarSesion('expirada');
         }
       }
 

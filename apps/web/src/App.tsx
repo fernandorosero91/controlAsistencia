@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useSesion } from './estado/sesion';
+import { useSesion, tokenPorVencer } from './estado/sesion';
 import { registrarEstadoConexion, useColaOffline } from './estado/colaOffline';
-import { renovarToken } from './lib/api';
+import { renovarToken, renovarTokenDetallado } from './lib/api';
 import { PantallaCarga } from './componentes/comunes';
 import { Login } from './paginas/Login';
 import { Operador } from './paginas/Operador';
@@ -53,6 +53,23 @@ export function App() {
   }, [marcarInicializada]);
 
   useEffect(() => registrarEstadoConexion(), []);
+
+  // Al volver a la app (el telefono estuvo en segundo plano o con la pantalla
+  // apagada, y el temporizador de renovacion se pausa), se renueva el token si
+  // esta por vencer. Evita la cascada de 401 al retomar el registro.
+  useEffect(() => {
+    const alVolver = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!tokenPorVencer()) return;
+      void renovarTokenDetallado();
+    };
+    document.addEventListener('visibilitychange', alVolver);
+    window.addEventListener('focus', alVolver);
+    return () => {
+      document.removeEventListener('visibilitychange', alVolver);
+      window.removeEventListener('focus', alVolver);
+    };
+  }, []);
 
   useEffect(() => {
     void refrescarCola();
