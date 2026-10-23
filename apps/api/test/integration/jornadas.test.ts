@@ -1,12 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import {
   CLAVE_ADMIN,
   CORREO_ADMIN,
+  ID_ASISTENTE,
   crearAplicacionDePruebas,
   hayBaseDePruebas,
   prepararBaseDePruebas,
 } from '../ayudas/basePruebas.js';
+import { db } from '../../src/db/cliente.js';
+import { asistencias, tiposRefrigerio } from '../../src/db/esquema.js';
 
 const descripcion = hayBaseDePruebas()
   ? 'coherencia de los horarios de una jornada'
@@ -148,5 +152,129 @@ describe(descripcion, () => {
       headers: cabeceras(),
       payload: { nombre: jornada.nombre },
     });
+  });
+
+  it('elimina una jornada sin datos ligados', async () => {
+    const lista = await jornadas();
+    const base = lista[0]!;
+    const creada = await app.inject({
+      method: 'POST',
+      url: '/jornadas',
+      headers: cabeceras(),
+      payload: {
+        nombre: 'Jornada temporal',
+        inicio: base.inicio,
+        fin: base.fin,
+        ventanaCheckinInicio: base.ventanaCheckinInicio,
+        ventanaCheckinFin: base.ventanaCheckinFin,
+        orden: 9,
+      },
+    });
+    expect(creada.statusCode).toBe(201);
+    const id = creada.json().id as number;
+
+    const borrada = await app.inject({
+      method: 'DELETE',
+      url: `/jornadas/${id}`,
+      headers: cabeceras(),
+    });
+    expect(borrada.statusCode).toBe(200);
+    expect(borrada.json().eliminada).toBe(true);
+
+    const restantes = await jornadas();
+    expect(restantes.some((j) => j.id === id)).toBe(false);
+  });
+
+  it('rechaza eliminar una jornada con asistencias salvo que se fuerce', async () => {
+    const lista = await jornadas();
+    const base = lista[0]!;
+
+    // Se liga una asistencia a la ultima jornada creada para el escenario.
+    const creada = await app.inject({
+      method: 'POST',
+      url: '/jornadas',
+      headers: cabeceras(),
+      payload: {
+        nombre: 'Jornada con asistencias',
+        inicio: base.inicio,
+        fin: base.fin,
+        ventanaCheckinInicio: base.ventanaCheckinInicio,
+        ventanaCheckinFin: base.ventanaCheckinFin,
+        orden: 8,
+      },
+    });
+    const id = creada.json().id as number;
+
+    await db.insert(asistencias).values({
+      asistenteId: ID_ASISTENTE,
+      jornadaId: id,
+      horaIngreso: new Date(Date.now() - 60 * 60 * 1000),
+    });
+
+    const sinForzar = await app.inject({
+      method: 'DELETE',
+      url: `/jornadas/${id}`,
+      headers: cabeceras(),
+    });
+    expect(sinForzar.statusCode).toBe(409);
+
+    const forzada = await app.inject({
+      method: 'DELETE',
+      url: `/jornadas/${id}?forzar=true`,
+      headers: cabeceras(),
+    });
+    expect(forzada.statusCode).toBe(200);
+    expect(forzada.json().asistenciasEliminadas).toBe(1);
+
+    const restantes = await jornadas();
+    expect(restantes.some((j) => j.id === id)).toBe(false);
+  });
+
+  it('responde 404 al eliminar una jornada inexistente', async () => {
+    const respuesta = await app.inject({
+      method: 'DELETE',
+      url: '/jornadas/999999',
+      headers: cabeceras(),
+    });
+    expect(respuesta.statusCode).toBe(404);
+  });
+
+  it('cascada forzada elimina tambien los tipos de refrigerio ligados', async () => {
+    const lista = await jornadas();
+    const base = lista[0]!;
+    const creada = await app.inject({
+      method: 'POST',
+      url: '/jornadas',
+      headers: cabeceras(),
+      payload: {
+        nombre: 'Jornada con refrigerios',
+        inicio: base.inicio,
+        fin: base.fin,
+        ventanaCheckinInicio: base.ventanaCheckinInicio,
+        ventanaCheckinFin: base.ventanaCheckinFin,
+        orden: 7,
+      },
+    });
+    const id = creada.json().id as number;
+
+    await db.insert(tiposRefrigerio).values({
+      nombre: 'Refrigerio ligado',
+      jornadaId: id,
+      activo: true,
+      orden: 1,
+    });
+
+    const forzada = await app.inject({
+      method: 'DELETE',
+      url: `/jornadas/${id}?forzar=true`,
+      headers: cabeceras(),
+    });
+    expect(forzada.statusCode).toBe(200);
+
+    const refrigeriosRestantes = await db
+      .select()
+      .from(tiposRefrigerio)
+      .where(eq(tiposRefrigerio.jornadaId, id));
+    expect(refrigeriosRestantes).toHaveLength(0);
   });
 });

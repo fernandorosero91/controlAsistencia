@@ -18,6 +18,7 @@ export type AccionAuditada =
   | 'config.accesos_operador'
   | 'jornada.creada'
   | 'jornada.actualizada'
+  | 'jornada.eliminada'
   | 'certificado.emitido'
   | 'certificado.revocado'
   | 'certificado.lote'

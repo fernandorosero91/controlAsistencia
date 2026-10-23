@@ -1,6 +1,8 @@
 import JSZip from 'jszip';
 import {
+  ALIAS_CONTROL_PLANTILLA,
   CAMPOS_PLANTILLA,
+  normalizarTituloControl,
   type CampoPlantilla,
   type DatosTitularPlantilla,
 } from '@seminario/shared';
@@ -86,6 +88,75 @@ export function detectarCampos(xml: string): CampoPlantilla[] {
   return [...encontrados];
 }
 
+/**
+ * Detecta que campos del modulo aparecen como controles de contenido (SDT) de
+ * Word. El `tag` (o el `alias` si no hay tag) de cada control se normaliza y se
+ * busca en el mapeo de alias. Es el formato que usan las plantillas
+ * institucionales, que no escriben `{{campo}}`.
+ */
+export function detectarCamposControl(xml: string): CampoPlantilla[] {
+  const encontrados = new Set<CampoPlantilla>();
+  const patron = /<w:sdt(?:\s[^>]*)?>([\s\S]*?)<\/w:sdt>/g;
+  let coincidencia: RegExpExecArray | null;
+  while ((coincidencia = patron.exec(xml)) !== null) {
+    const titulo = tituloDeControl(coincidencia[1] ?? '');
+    if (!titulo) continue;
+    const campo = ALIAS_CONTROL_PLANTILLA[normalizarTituloControl(titulo)];
+    if (campo) encontrados.add(campo);
+  }
+  return [...encontrados];
+}
+
+/** Extrae el tag (o el alias) del bloque <w:sdtPr> de un control de contenido. */
+function tituloDeControl(cuerpoSdt: string): string | null {
+  const sdtPr = /<w:sdtPr(?:\s[^>]*)?>([\s\S]*?)<\/w:sdtPr>/.exec(cuerpoSdt);
+  if (!sdtPr) return null;
+  const tag = /<w:tag\s+w:val="([^"]*)"/.exec(sdtPr[1] ?? '');
+  if (tag?.[1]) return tag[1];
+  const alias = /<w:alias\s+w:val="([^"]*)"/.exec(sdtPr[1] ?? '');
+  return alias?.[1] ?? null;
+}
+
+/**
+ * Reemplaza el texto del `<w:sdtContent>` de cada control de contenido conocido.
+ *
+ * Se conserva la estructura del control (propiedades, estilos) y solo se sustituye
+ * el texto: el primer `<w:t>` recibe el valor y los demas se vacian, de modo que
+ * un valor con varias palabras no quede fragmentado. Si el campo no tiene valor,
+ * el control queda vacio.
+ */
+function reemplazarControles(xml: string, valores: Record<CampoPlantilla, string>): string {
+  const patron = /(<w:sdt(?:\s[^>]*)?>)([\s\S]*?)(<\/w:sdt>)/g;
+  return xml.replace(patron, (bloque, apertura: string, cuerpo: string, cierre: string) => {
+    const titulo = tituloDeControl(cuerpo);
+    if (!titulo) return bloque;
+    const campo = ALIAS_CONTROL_PLANTILLA[normalizarTituloControl(titulo)];
+    if (!campo) return bloque;
+
+    const valor = escaparXml(valores[campo] ?? '');
+    const cuerpoNuevo = cuerpo.replace(
+      /<w:sdtContent(?:\s[^>]*)?>([\s\S]*?)<\/w:sdtContent>/,
+      (contenidoCompleto, interno: string) => {
+        let primero = true;
+        const internoNuevo = interno.replace(
+          /(<w:t(?:\s[^>]*)?>)([\s\S]*?)(<\/w:t>)/g,
+          (_m, ini: string, _texto: string, fin: string) => {
+            const nuevo = primero ? valor : '';
+            primero = false;
+            return `${ini}${nuevo}${fin}`;
+          },
+        );
+        // Si el control no tenia ningun <w:t>, se crea uno con el valor.
+        if (primero) {
+          return `<w:sdtContent>${interno}<w:r><w:t>${valor}</w:t></w:r></w:sdtContent>`;
+        }
+        return contenidoCompleto.replace(interno, internoNuevo);
+      },
+    );
+    return `${apertura}${cuerpoNuevo}${cierre}`;
+  });
+}
+
 /** Reemplaza los `{{campo}}` de un XML por los valores del titular. */
 function reemplazarCampos(xml: string, datos: DatosTitularPlantilla): string {
   const valores: Record<CampoPlantilla, string> = {
@@ -95,11 +166,13 @@ function reemplazarCampos(xml: string, datos: DatosTitularPlantilla): string {
     rol: datos.rol,
     semestre: datos.semestre,
   };
-  return xml.replace(/\{\{\s*(\w+)\s*\}\}/g, (original, campo: string) => {
+  const conLlaves = xml.replace(/\{\{\s*(\w+)\s*\}\}/g, (original, campo: string) => {
     const clave = campo.toLowerCase() as CampoPlantilla;
     if (!(CAMPOS_PLANTILLA as readonly string[]).includes(clave)) return original;
     return escaparXml(valores[clave] ?? '');
   });
+  // Ademas de `{{campo}}`, se reemplazan los controles de contenido de Word.
+  return reemplazarControles(conLlaves, valores);
 }
 
 export interface PlantillaCargada {
@@ -135,6 +208,7 @@ export async function abrirPlantilla(contenido: Buffer | Uint8Array): Promise<Pl
     const aplanado = aplanarRuns(contenidoXml);
     xml.set(nombre, aplanado);
     for (const campo of detectarCampos(aplanado)) campos.add(campo);
+    for (const campo of detectarCamposControl(aplanado)) campos.add(campo);
   }
 
   return { zip, xml, campos: [...campos] };

@@ -189,6 +189,70 @@ export async function registrarRutasConfiguracion(app: FastifyInstance): Promise
     },
   );
 
+  app.delete(
+    '/jornadas/:id',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Configuracion'],
+        description:
+          'Elimina una jornada. Con ?forzar=true borra tambien sus asistencias y refrigerios ligados',
+      },
+    },
+    async (request) => {
+      const { id } = validarParametros(parametrosJornada, request.params);
+      const forzar = (request.query as { forzar?: string })?.forzar === 'true';
+
+      const actual = await db.select().from(jornadas).where(eq(jornadas.id, id)).limit(1);
+      if (!actual[0]) throw errores.noEncontrado('La jornada no existe');
+
+      const [asistenciasLigadas] = await db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(asistencias)
+        .where(eq(asistencias.jornadaId, id));
+      const [refrigeriosLigados] = await db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(tiposRefrigerio)
+        .where(eq(tiposRefrigerio.jornadaId, id));
+
+      const totalAsistencias = asistenciasLigadas?.total ?? 0;
+      const totalRefrigerios = refrigeriosLigados?.total ?? 0;
+
+      if ((totalAsistencias > 0 || totalRefrigerios > 0) && !forzar) {
+        throw errores.conflicto(
+          `La jornada tiene datos ligados (${totalAsistencias} asistencias, ${totalRefrigerios} tipos de refrigerio). ` +
+            'Confirme con ?forzar=true para eliminar tambien esos registros.',
+        );
+      }
+
+      await db.transaction(async (tx) => {
+        if (forzar) {
+          // Las FK son RESTRICT: se borran primero las dependencias.
+          await tx.delete(asistencias).where(eq(asistencias.jornadaId, id));
+          await tx.delete(tiposRefrigerio).where(eq(tiposRefrigerio.jornadaId, id));
+        }
+        await tx.delete(jornadas).where(eq(jornadas.id, id));
+      });
+
+      await invalidarCacheConfiguracion();
+      await registrarAuditoria(request, {
+        accion: 'jornada.eliminada',
+        entidad: 'jornadas',
+        entidadId: String(id),
+        datosAntes: {
+          nombre: actual[0].nombre,
+          inicio: actual[0].inicio.toISOString(),
+          fin: actual[0].fin.toISOString(),
+          asistenciasEliminadas: forzar ? totalAsistencias : 0,
+          refrigeriosEliminados: forzar ? totalRefrigerios : 0,
+          forzado: forzar,
+        },
+      });
+
+      return { eliminada: true, asistenciasEliminadas: forzar ? totalAsistencias : 0 };
+    },
+  );
+
   app.get(
     '/refrigerios/tipos',
     {
