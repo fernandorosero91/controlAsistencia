@@ -14,10 +14,11 @@ import { validarCuerpo } from '../lib/validacion.js';
 /**
  * Limpieza de los datos operativos para volver a probar el sistema.
  *
- * Se conservan las cuentas, la configuracion del seminario, las jornadas y los
- * tipos de refrigerio: son la estructura minima para que el sistema siga
- * funcionando. Se borran el padron, las asistencias, las entregas, los
- * certificados, los lotes, la idempotencia y la auditoria.
+ * Se conservan las cuentas, la configuracion del seminario, las jornadas, los
+ * tipos de refrigerio y las plantillas de certificado: son la estructura minima
+ * para que el sistema siga funcionando. Se borran el padron, las asistencias,
+ * las entregas, los certificados, los lotes (PDF y DOCX), la idempotencia y la
+ * auditoria.
  */
 export const FRASE_CONFIRMACION = 'BORRAR TODOS LOS DATOS';
 
@@ -27,6 +28,7 @@ export interface ConteosDatos {
   entregas: number;
   certificados: number;
   lotes: number;
+  lotesDocx: number;
   auditoria: number;
   idempotencia: number;
 }
@@ -44,6 +46,7 @@ async function contarDatos(): Promise<ConteosDatos> {
       (SELECT count(*)::int FROM entregas_refrigerio) AS entregas,
       (SELECT count(*)::int FROM certificados) AS certificados,
       (SELECT count(*)::int FROM certificados_lotes) AS lotes,
+      (SELECT count(*)::int FROM lotes_certificados_docx) AS "lotesDocx",
       (SELECT count(*)::int FROM auditoria) AS auditoria,
       (SELECT count(*)::int FROM idempotencia) AS idempotencia
   `)) as unknown as { rows: Record<string, number>[] };
@@ -55,6 +58,7 @@ async function contarDatos(): Promise<ConteosDatos> {
     entregas: Number(fila.entregas ?? 0),
     certificados: Number(fila.certificados ?? 0),
     lotes: Number(fila.lotes ?? 0),
+    lotesDocx: Number(fila.lotesDocx ?? 0),
     auditoria: Number(fila.auditoria ?? 0),
     idempotencia: Number(fila.idempotencia ?? 0),
   };
@@ -131,7 +135,7 @@ export async function registrarRutasMantenimiento(app: FastifyInstance): Promise
       await db.execute(
         sql.raw(
           `TRUNCATE TABLE entregas_refrigerio, asistencias, certificados, certificados_lotes,
-             idempotencia, auditoria, asistentes RESTART IDENTITY CASCADE`,
+             lotes_certificados_docx, idempotencia, auditoria, asistentes RESTART IDENTITY CASCADE`,
         ),
       );
 

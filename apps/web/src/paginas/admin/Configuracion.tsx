@@ -962,9 +962,10 @@ function Mantenimiento() {
       </div>
 
       <p className="mt-3 text-sm text-neutro-600">
-        Borra el padron, las asistencias, los refrigerios entregados, los certificados, la
-        auditoria y los registros de idempotencia. <strong>Se conservan</strong> la configuracion
-        del seminario, las jornadas, los refrigerios configurados y las cuentas de usuario.
+        Borra el padron, las asistencias, los refrigerios entregados, los certificados, los lotes
+        de certificados (PDF y Word), la auditoria y los registros de idempotencia.{' '}
+        <strong>Se conservan</strong> la configuracion del seminario, las jornadas, los
+        refrigerios configurados, las plantillas de certificado y las cuentas de usuario.
       </p>
 
       <div className="mt-4">
