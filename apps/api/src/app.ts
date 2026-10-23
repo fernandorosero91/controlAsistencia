@@ -24,6 +24,7 @@ import { registrarRutasCertificados } from './rutas/certificados.js';
 import { registrarRutasPlantillas } from './rutas/plantillasCertificado.js';
 import { registrarRutasUsuarios } from './rutas/usuarios.js';
 import { registrarRutasMantenimiento } from './rutas/mantenimiento.js';
+import { cerrarColaCorreos } from './servicios/colaCorreos.js';
 import { registrarRutasPublico } from './rutas/publico.js';
 import type { HookAutorizacion } from './tipos.js';
 import './tipos.js';
@@ -177,6 +178,7 @@ export async function construirAplicacion(): Promise<FastifyInstance> {
   await registrarRutasPublico(app);
 
   app.addHook('onClose', async () => {
+    await cerrarColaCorreos();
     await cerrarPool();
   });
 

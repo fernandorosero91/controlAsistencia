@@ -24,6 +24,11 @@ import {
   type DatosCrearAsistente,
 } from '../servicios/asistentes.js';
 import { correoConfigurado, enviarQrPorCorreo } from '../servicios/correo.js';
+import {
+  encolarCorreosCredencial,
+  estadoLoteCorreos,
+  type DestinoCorreoQr,
+} from '../servicios/colaCorreos.js';
 import { generarCartaQrPDF, generarCarnetsPDF, generarEscarapelaPDF } from '../servicios/pdf.js';
 import {
   construirVistaPrevia,
@@ -412,7 +417,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         description: 'Envia por correo el codigo de registro y el QR a uno o varios asistentes',
       },
     },
-    async (request) => {
+    async (request, reply) => {
       const cuerpo = request.body as { asistenteId?: string; todos?: boolean };
       const config = await obtenerConfig();
 
@@ -442,6 +447,56 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         );
       }
 
+      // Destinos con los datos que necesita el correo. La escarapela se genera
+      // en el trabajador de la cola, no aqui.
+      const destinos: DestinoCorreoQr[] = destinatarios
+        .filter((fila): fila is typeof fila & { email: string } => Boolean(fila.email))
+        .map((fila) => ({
+          asistenteId: fila.id,
+          destinatario: fila.email,
+          nombres: fila.nombres,
+          apellidos: fila.apellidos,
+          rol: fila.rol,
+          codigoRegistro: fila.codigoRegistro ?? fila.id,
+          idInstitucional: fila.id,
+          cedulaCiudadania: fila.cedulaCiudadania ?? null,
+          email: fila.email,
+          nombreSeminario: config.nombre,
+          facultad: config.facultad,
+          fecha: config.fecha,
+          lugar: config.lugar,
+          contacto: config.contacto,
+        }));
+
+      const sinDestinatario = destinatarios.length - destinos.length;
+
+      // Camino rapido: se encola y la peticion responde de inmediato. El
+      // trabajador envia con concurrencia y ritmo limitados.
+      const loteId = await encolarCorreosCredencial(destinos);
+      if (loteId) {
+        await registrarAuditoria(request, {
+          accion: 'asistente.importado',
+          entidad: 'asistentes',
+          datosDespues: {
+            operacion: 'envio_qr',
+            modo: 'cola',
+            loteId,
+            destinatarios: destinos.length,
+            sinCorreo: sinDestinatario,
+          },
+        });
+
+        return reply.status(202).send({
+          enCola: true,
+          loteId,
+          correoConfigurado: true,
+          total: destinos.length,
+          sinCorreo: sinDestinatario,
+        });
+      }
+
+      // Sin cola disponible (sin SMTP o sin Redis): envio directo, con el mismo
+      // resultado detallado de siempre.
       const resultados: { asistenteId: string; enviado: boolean; mensaje: string }[] = [];
       for (const fila of destinatarios) {
         if (!fila.email) {
@@ -488,6 +543,10 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           idInstitucional: fila.id,
           nombreSeminario: config.nombre,
           pdfEscarapela,
+          facultad: config.facultad,
+          fecha: config.fecha,
+          lugar: config.lugar,
+          contacto: config.contacto,
         });
         resultados.push({ asistenteId: fila.id, ...resultado });
       }
@@ -504,11 +563,38 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
 
       return {
         correoConfigurado: correoConfigurado(),
+        enCola: false,
         total: resultados.length,
         enviados: resultados.filter((r) => r.enviado).length,
         fallidos: resultados.filter((r) => !r.enviado).length,
         resultados,
       };
+    },
+  );
+
+  app.get(
+    '/asistentes/enviar-qr/lote/:loteId',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Asistentes'],
+        description: 'Avance del envio de credenciales por correo',
+      },
+    },
+    async (request) => {
+      const { loteId } = request.params as { loteId: string };
+      if (!/^[0-9a-f-]{36}$/i.test(loteId)) {
+        throw errores.validacion('El identificador del lote no es valido');
+      }
+
+      const estado = await estadoLoteCorreos(loteId);
+      if (!estado) {
+        throw errores.noEncontrado(
+          'No se encontro el lote de envio. Puede haber expirado o la cola estar deshabilitada.',
+        );
+      }
+
+      return estado;
     },
   );
 

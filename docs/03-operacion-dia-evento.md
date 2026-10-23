@@ -53,10 +53,20 @@ El sistema asigna a cada asistente un **codigo de registro** de 6 caracteres (po
 | Correo | **Carnets y QR > Enviar codigo y QR por correo**            | Si hay SMTP configurado   |
 | Papel  | **Carnets y QR > Descargar carta de QR** (PDF, escarapelas) | Alternativa o complemento |
 
-El correo incluye el codigo, la imagen del QR y la indicacion de que se puede dictar, y adjunta la
-**escarapela en PDF del tamano de la tarjeta** (280 x 400 pt, no una hoja A4), lista para imprimir
-o mostrar en el celular. La carta en PDF de cuatro por hoja sirve para los asistentes sin correo o
-para entregarla en la puerta.
+El correo es institucional: encabezado con el nombre del evento, saludo formal, el codigo en grande,
+el QR, el ID institucional y un bloque **"Su credencial controla la asistencia"** con las
+instrucciones: presentar el codigo o el QR en el ingreso de cada jornada, **llevar la escarapela
+adjunta** (es obligatoria para entrar y para el refrigerio y el souvenir) y registrar la salida al
+final. Adjunta la **escarapela en PDF del tamano de la tarjeta** (280 x 400 pt, no una hoja A4).
+
+**Los envios se encolan** (BullMQ sobre el Redis del sistema): la peticion responde de inmediato y
+los correos salen de a pocos, con reintentos, mientras el panel muestra el avance
+(*Enviando credenciales: X de Y*). Los valores por defecto son 2 envios simultaneos, 5 por segundo y
+3 intentos; se ajustan con `CORREOS_CONCURRENCIA`, `CORREOS_POR_SEGUNDO` y `CORREOS_INTENTOS`.
+Si el servidor no tiene SMTP o Redis, el envio se hace en linea y el panel muestra el detalle.
+
+La carta en PDF de cuatro por hoja sirve para los asistentes sin correo o para entregarla en la
+puerta.
 
 ### 1.4 Imprimir los carnets
 

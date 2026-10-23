@@ -76,6 +76,11 @@ export interface MensajeQr {
   idInstitucional: string;
   nombreSeminario: string;
   pdfEscarapela?: Buffer | Uint8Array;
+  /** Datos del evento que se muestran en el pie del correo. */
+  lugar?: string | null;
+  fecha?: string | null;
+  contacto?: string | null;
+  facultad?: string | null;
 }
 
 export interface ResultadoEnvio {
@@ -93,6 +98,154 @@ async function imagenQrBuffer(codigo: string): Promise<Buffer> {
   return buffer;
 }
 
+
+/**
+ * Arma el asunto, la version de texto y la version HTML del correo con la
+ * credencial. Se separa del envio para poder verificarlo en las pruebas.
+ */
+export function componerCorreo(mensaje: MensajeQr): {
+  asunto: string;
+  texto: string;
+  html: string;
+} {
+  return {
+    asunto: `Credencial de asistencia - ${mensaje.nombreSeminario}`,
+    texto: [
+        `Estimado(a) ${mensaje.nombre}:`,
+        '',
+        `Su inscripcion al ${mensaje.nombreSeminario} quedo registrada. Este mensaje contiene su credencial de asistencia, con la que se controla el ingreso al seminario.`,
+        '',
+        `Codigo de registro: ${mensaje.codigoRegistro}`,
+        `ID institucional: ${mensaje.idInstitucional}`,
+        '',
+        'SU CREDENCIAL CONTROLA LA ASISTENCIA',
+        '1. En el ingreso de cada jornada presente este codigo o el codigo QR: con el se registra su asistencia.',
+        '2. Lleve la escarapela adjunta (impresa o en el celular). Es obligatoria para entrar y para recibir el refrigerio y el souvenir.',
+        '3. Registre la salida al terminar cada jornada. Sin ese registro no se emite el certificado de asistencia.',
+        '',
+        'El codigo es personal e intransferible.',
+        '',
+        [mensaje.lugar, mensaje.fecha].filter(Boolean).join(' - '),
+        mensaje.contacto ? `Informacion: ${mensaje.contacto}` : null,
+        'Universidad Cooperativa de Colombia',
+        '',
+        'Este mensaje contiene informacion personal asociada a su inscripcion. Si no solicito esta informacion, comuniquese con la coordinacion del seminario.',
+      ]
+        .filter((linea): linea is string => linea !== null)
+        .join('\n'),
+    html: `
+        <div style="margin:0;padding:0;background:#EFEFEF;font-family:Montserrat,Arial,Helvetica,sans-serif;color:#141a1f;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            <tr>
+              <td align="center" style="padding:24px 12px;">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-collapse:collapse;">
+                  <tr>
+                    <td style="background:#132740;padding:28px 32px;">
+                      <p style="margin:0;color:#00ACC9;font-size:11px;letter-spacing:2px;text-transform:uppercase;">
+                        Universidad Cooperativa de Colombia
+                      </p>
+                      <h1 style="margin:8px 0 0;color:#ffffff;font-size:21px;line-height:1.3;font-weight:700;">
+                        ${escapar(mensaje.nombreSeminario)}
+                      </h1>
+                      ${pieEvento(
+                        mensaje.lugar ?? null,
+                        mensaje.fecha ?? null,
+                      )}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="height:4px;background:#00ACC9;font-size:0;line-height:0;">&nbsp;</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:28px 32px 8px;">
+                      <p style="margin:0 0 12px;font-size:15px;">
+                        Estimado(a) <strong>${escapar(mensaje.nombre)}</strong>:
+                      </p>
+                      <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#3d3d3d;">
+                        Su inscripcion al <strong>${escapar(mensaje.nombreSeminario)}</strong> quedo
+                        registrada. Este mensaje contiene su <strong>credencial de asistencia</strong>,
+                        con la que se controla el ingreso al seminario.
+                      </p>
+
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                        <tr>
+                          <td align="center" style="border:1px solid #d8dee1;background:#f8f9f9;padding:20px;">
+                            <p style="margin:0;color:#5F5E5E;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;">
+                              Codigo de registro
+                            </p>
+                            <p style="margin:8px 0 0;color:#132740;font-size:34px;letter-spacing:8px;font-weight:700;font-family:'Courier New',monospace;">
+                              ${escapar(mensaje.codigoRegistro)}
+                            </p>
+                            <p style="margin:10px 0 0;color:#5F5E5E;font-size:12px;">
+                              ID institucional: ${escapar(mensaje.idInstitucional)}
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                        <tr>
+                          <td align="center" style="padding:20px 0 4px;">
+                            <img src="cid:codigo_qr" alt="Codigo QR de registro" width="200" height="200" style="display:block;border:1px solid #d8dee1;padding:8px;background:#ffffff;" />
+                            <p style="margin:8px 0 0;color:#5F5E5E;font-size:11px;">
+                              Presente este codigo o el QR en el ingreso
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background:#ECFCFE;border-left:4px solid #00ACC9;">
+                        <tr>
+                          <td style="padding:16px 18px;">
+                            <p style="margin:0 0 10px;color:#132740;font-size:14px;font-weight:700;">
+                              Su credencial controla la asistencia
+                            </p>
+                            <p style="margin:0 0 8px;color:#3d3d3d;font-size:13px;line-height:1.55;">
+                              <strong>1. En el ingreso de cada jornada</strong> presente este codigo o el
+                              codigo QR: con el se registra su asistencia.
+                            </p>
+                            <p style="margin:0 0 8px;color:#3d3d3d;font-size:13px;line-height:1.55;">
+                              <strong>2. Lleve la escarapela adjunta</strong> (impresa o en el celular).
+                              Es <strong>obligatoria para entrar</strong> y para recibir el refrigerio y el
+                              souvenir.
+                            </p>
+                            <p style="margin:0;color:#3d3d3d;font-size:13px;line-height:1.55;">
+                              <strong>3. Registre la salida</strong> al terminar cada jornada. Sin ese
+                              registro no se emite el certificado de asistencia.
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <p style="margin:16px 0 0;color:#5F5E5E;font-size:12px;line-height:1.6;">
+                        El codigo es personal e intransferible. Si no solicito esta informacion,
+                        comuniquese con la coordinacion del seminario.
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px 32px 24px;">
+                      <p style="margin:0;color:#5F5E5E;font-size:12px;line-height:1.6;">
+                        ${escapar(mensaje.contacto ? `Informacion: ${mensaje.contacto}` : 'Informacion: coordinacion del seminario')}
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="background:#132740;padding:16px 32px;">
+                      <p style="margin:0;color:#ffffff;font-size:11px;">
+                        Universidad Cooperativa de Colombia${mensaje.facultad ? ` - ${escapar(mensaje.facultad)}` : ''}
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </div>
+      `,
+  };
+}
+
 export async function enviarQrPorCorreo(mensaje: MensajeQr): Promise<ResultadoEnvio> {
   const transporteActivo = obtenerTransporte();
   if (!transporteActivo) {
@@ -108,6 +261,7 @@ export async function enviarQrPorCorreo(mensaje: MensajeQr): Promise<ResultadoEn
     (transporteActivo as Transporter & { _remitenteEfectivo?: string })._remitenteEfectivo ??
     entorno.SMTP_REMITENTE;
   const bufferQr = await imagenQrBuffer(mensaje.codigoRegistro);
+  const correo = componerCorreo(mensaje);
 
   try {
     await transporteActivo.sendMail({
@@ -116,41 +270,9 @@ export async function enviarQrPorCorreo(mensaje: MensajeQr): Promise<ResultadoEn
         address: remitenteEfectivo,
       },
       to: mensaje.destinatario,
-      subject: `Tu codigo de registro para ${mensaje.nombreSeminario}`,
-      text: [
-        `Hola ${mensaje.nombre},`,
-        '',
-        `Tu codigo de registro para el seminario "${mensaje.nombreSeminario}" es:`,
-        `    ${mensaje.codigoRegistro}`,
-        '',
-        `ID institucional: ${mensaje.idInstitucional}`,
-        '',
-        'Adjuntamos tu escarapela / carnet oficial en formato PDF para el ingreso.',
-        'Tambien puedes presentar el codigo QR de este mensaje o dictar tu codigo al operador.',
-        '',
-        'Este mensaje contiene informacion personal asociada a tu inscripcion.',
-      ].join('\n'),
-      html: `
-        <div style="font-family: Montserrat, Arial, sans-serif; color: #141a1f; max-width: 520px;">
-          <h1 style="font-size: 20px; color: #1d31d4;">${escapar(mensaje.nombreSeminario)}</h1>
-          <p>Hola ${escapar(mensaje.nombre)},</p>
-          <p>Tu codigo de registro es:</p>
-          <p style="font-size: 32px; font-weight: 700; letter-spacing: 4px; color: #1d31d4; margin: 16px 0;">
-            ${escapar(mensaje.codigoRegistro)}
-          </p>
-          <p><img src="cid:codigo_qr" alt="Codigo QR de registro" width="220" height="220" style="display: block; border-radius: 8px;" /></p>
-          <p style="color: #64748b; font-size: 13px;">
-            ID institucional: ${escapar(mensaje.idInstitucional)}
-          </p>
-          <p style="background: #eef2ff; border-left: 4px solid #1d31d4; padding: 10px 14px; margin: 16px 0; font-size: 13px; color: #1e1b4b; border-radius: 4px;">
-            <strong>Escarapela adjunta:</strong> Hemos adjuntado tu carnet / escarapela en formato PDF listo para descargar o imprimir.
-          </p>
-          <p style="color: #64748b; font-size: 12px;">
-            Este mensaje contiene informacion personal asociada a tu inscripcion.
-            Si no solicitaste esta informacion, contacta a la coordinacion del seminario.
-          </p>
-        </div>
-      `,
+      subject: correo.asunto,
+      text: correo.texto,
+      html: correo.html,
       attachments: [
         {
           filename: `qr-${mensaje.codigoRegistro}.png`,
@@ -190,4 +312,11 @@ function escapar(valor: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/** Pie del encabezado con el lugar y la fecha del evento. */
+function pieEvento(lugar: string | null, fecha: string | null): string {
+  const partes = [lugar, fecha].filter((valor): valor is string => Boolean(valor));
+  if (partes.length === 0) return '';
+  return `<p style="margin:8px 0 0;color:#9ec7d1;font-size:12px;">${escapar(partes.join(' - '))}</p>`;
 }

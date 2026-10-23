@@ -9,6 +9,7 @@ export function Carnets() {
   const [rol, setRol] = useState<'' | 'estudiante' | 'docente'>('');
   const [descargando, setDescargando] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loteId, setLoteId] = useState<string | null>(null);
   const [resultadoEnvio, setResultadoEnvio] = useState<{
     total: number;
     enviados: number;
@@ -26,29 +27,55 @@ export function Carnets() {
   const enviarQr = useMutation({
     mutationFn: async () =>
       api.crear<{
+        enCola: boolean;
+        loteId?: string;
         total: number;
-        enviados: number;
-        fallidos: number;
+        enviados?: number;
+        fallidos?: number;
+        sinCorreo?: number;
         correoConfigurado: boolean;
-        resultados: { asistenteId: string; enviado: boolean; mensaje: string }[];
+        resultados?: { asistenteId: string; enviado: boolean; mensaje: string }[];
       }>('/asistentes/enviar-qr', { todos: true }),
     onSuccess: (resultado) => {
+      setError(null);
+      if (resultado.enCola && resultado.loteId) {
+        setLoteId(resultado.loteId);
+        setResultadoEnvio(null);
+        return;
+      }
+      setLoteId(null);
       setResultadoEnvio({
         total: resultado.total,
-        enviados: resultado.enviados,
-        fallidos: resultado.fallidos,
+        enviados: resultado.enviados ?? 0,
+        fallidos: resultado.fallidos ?? 0,
         resultados: resultado.resultados,
       });
-      setError(null);
     },
     onError: (problema) => {
       setResultadoEnvio(null);
+      setLoteId(null);
       setError(
         problema instanceof ErrorPeticion
           ? problema.message
           : 'No se pudo enviar el correo con los codigos de registro',
       );
     },
+  });
+
+  // Avance del lote encolado: se consulta cada 2 segundos hasta completarse.
+  const avance = useQuery({
+    queryKey: ['asistentes', 'envio-qr', loteId],
+    queryFn: () =>
+      api.obtener<{
+        total: number;
+        enviados: number;
+        fallidos: number;
+        pendientes: number;
+        estado: 'en_proceso' | 'completado';
+      }>(`/asistentes/enviar-qr/lote/${loteId}`),
+    enabled: Boolean(loteId),
+    refetchInterval: (consulta) =>
+      consulta.state.data?.estado === 'completado' ? false : 2000,
   });
 
   const descargar = async (ruta: string, nombre: string, etiqueta: string) => {
@@ -168,15 +195,66 @@ export function Carnets() {
               disabled={enviarQr.isPending}
             >
               <Send className="h-4 w-4" aria-hidden="true" />
-              {enviarQr.isPending ? 'Enviando' : 'Enviar a todos'}
+              {enviarQr.isPending ? 'Encolando' : 'Enviar a todos'}
             </button>
           }
         >
           <p className="flex items-start gap-2 text-sm text-neutro-600">
             <Mail className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            El correo incluye el codigo de 6 caracteres, la imagen del QR, las instrucciones y la
-            escarapela adjunta en PDF al tamano de la tarjeta. La operacion queda auditada.
+            El correo incluye el codigo, el QR, las instrucciones de uso y la escarapela adjunta en
+            PDF al tamano de la tarjeta. Los envios se encolan: se procesan de a pocos, con
+            reintentos si el servidor de correo falla, y la operacion queda auditada.
           </p>
+
+          {loteId ? (
+            <div className="mt-4 space-y-2">
+              {avance.data ? (
+                <>
+                  <Aviso
+                    tono={
+                      avance.data.estado === 'completado'
+                        ? avance.data.fallidos === 0
+                          ? 'exito'
+                          : 'aviso'
+                        : 'primario'
+                    }
+                    titulo={
+                      avance.data.estado === 'completado'
+                        ? 'Envio terminado'
+                        : 'Enviando credenciales'
+                    }
+                  >
+                    {formatearNumero(avance.data.enviados)} enviados de{' '}
+                    {formatearNumero(avance.data.total)}.{' '}
+                    {avance.data.fallidos > 0
+                      ? `${formatearNumero(avance.data.fallidos)} con error (revisar el registro de la API).`
+                      : ''}
+                    {avance.data.estado === 'en_proceso'
+                      ? ` Quedan ${formatearNumero(avance.data.pendientes)} en cola.`
+                      : ''}
+                  </Aviso>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-neutro-200">
+                    <div
+                      className="h-full bg-marca transition-all"
+                      style={{
+                        width: `${
+                          avance.data.total > 0
+                            ? Math.round(
+                                ((avance.data.enviados + avance.data.fallidos) /
+                                  avance.data.total) *
+                                  100,
+                              )
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-neutro-600">Preparando el envio...</p>
+              )}
+            </div>
+          ) : null}
 
           {resultadoEnvio ? (
             <div className="mt-4 space-y-2">

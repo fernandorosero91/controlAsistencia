@@ -145,7 +145,7 @@ export interface DatosCartaQr {
   email: string | null;
   nombreSeminario: string;
   facultad: string | null;
-  fecha: string;
+  fecha: string | null;
   lugar: string | null;
 }
 

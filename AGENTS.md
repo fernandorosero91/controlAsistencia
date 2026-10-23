@@ -84,11 +84,14 @@ estado de sesion, configuracion del seminario cacheada y la cola offline de regi
 
 Un solo set, tamaño por defecto 20, trazo 2 (stroke-width), consistente en toda la app.
 
-### 4.5 Cola de generacion masiva: BullMQ sobre Redis
+### 4.5 Cola de generacion masiva y de correos: BullMQ sobre Redis
 
 Justificacion: se requiere **progreso consultable**, **reintentos por elemento sin detener el lote** y
 reintentos ante fallo individual. BullMQ da esas tres cosas de forma nativa y sobrevive reinicios.
-El progreso vive en Redis y se refleja en BD (`certificados_lotes`) para poder consultarlo.
+El progreso vive en Redis y se refleja en BD (`certificados_lotes`) para poder consultarlo. La misma
+infraestructura se usa para el **envio de credenciales por correo**: un trabajo por destinatario, con
+concurrencia y ritmo limitados (`CORREOS_*`) para no saturar el servidor SMTP, y el avance se lee de
+un hash en Redis. No se agrega RabbitMQ: la cola persistente y los reintentos ya estan cubiertos.
 
 ---
 
@@ -447,7 +450,8 @@ POST   /asistentes/importar/previa        (validacion fila a fila, sin escribir)
 POST   /asistentes/importar/confirmar     (aplica las filas validas)
 GET    /asistentes/carnets                (PDF de escarapelas con QR)
 GET    /asistentes/carta-qr               (PDF con el codigo y el QR para entregar)
-POST   /asistentes/enviar-qr              (envia codigo y QR por correo)
+POST   /asistentes/enviar-qr              (encola el envio de la credencial por correo)
+GET    /asistentes/enviar-qr/lote/:loteId (avance del envio)
 POST   /asistencias/ingreso
 POST   /asistencias/salida
 POST   /asistencias/excepcion             (ingreso o salida manual, admin, con motivo)
