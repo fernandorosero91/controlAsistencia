@@ -265,7 +265,10 @@ tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice 
    visible con hora y operador de la entrega previa.
 4. **Elegibilidad de certificado.** Un asistente es elegible unicamente si:
    - Tiene asistencia en las jornadas exigidas (ambas si `exigir_ambas_jornadas = true`).
-   - Permanecio **hasta que finalizo el seminario**: tiene registro de **salida/cierre** con
+   - Registro de **ingreso y salida en cada jornada exigida** (las **4 marcas**: ingreso y salida de
+     la manana y de la tarde). Es la regla oficial de la Universidad y la aplican por igual el
+     certificado en Word y la copia verificable en PDF.
+   - Permanecio **hasta que finalizo el seminario**: alguna salida con
      `hora_salida >= hora_fin_seminario - tolerancia`, segun la hora configurada por el administrador.
    - **Permanecio el minimo de horas configurado en cada jornada exigida**
      (`minimo_permanencia_horas`, 3 horas por defecto, ajustable por el administrador; con 0 la
@@ -273,6 +276,8 @@ tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice 
    - La elegibilidad se **calcula en consulta/servicio**, **no se persiste** como hecho irreversible:
      si el administrador cambia la hora de fin, la tolerancia o el minimo de permanencia, aplica de
      inmediato.
+   - El **formato oficial del certificado es Word (.docx)** desde la plantilla institucional; el PDF
+     con codigo y QR es la copia verificable.
 5. **Los certificados los emite solo el administrador.** Puede (a) generar el certificado de un
    asistente individual, (b) generar **en lote** los de todos los elegibles, (c) descargar el lote
    como ZIP o PDF combinado, (d) regenerar o revocar un certificado. El sistema **no permite emitir**

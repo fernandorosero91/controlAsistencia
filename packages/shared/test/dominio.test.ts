@@ -235,6 +235,28 @@ describe('evaluacion de elegibilidad para el certificado', () => {
     expect(resultado.jornadasExigidas).toEqual([2]);
   });
 
+  it('rechaza a quien falta la salida en una de las jornadas exigidas', () => {
+    const resultado = evaluarElegibilidad({
+      ...base,
+      asistencias: [
+        {
+          jornadaId: 1,
+          horaIngreso: new Date('2026-11-20T12:00:00.000Z'),
+          horaSalida: null,
+        },
+        {
+          jornadaId: 2,
+          horaIngreso: new Date('2026-11-20T18:00:00.000Z'),
+          horaSalida: new Date('2026-11-20T22:50:00.000Z'),
+        },
+      ],
+    });
+
+    // Las 4 marcas: no basta con salir en la jornada de cierre.
+    expect(resultado.elegible).toBe(false);
+    expect(resultado.motivos).toContain('sin_registro_salida');
+  });
+
   it('reporta la falta de jornadas configuradas', () => {
     const resultado = evaluarElegibilidad({ ...base, jornadas: [], asistencias: [] });
     expect(resultado.elegible).toBe(false);

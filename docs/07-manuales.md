@@ -36,12 +36,15 @@ Dos manuales de una pagina: uno para el administrador y otro para el operador.
 
 ### Certificados en Word (.docx)
 
-El modulo **Crear certificados** genera documentos de Word a partir de una plantilla propia, de
-forma adicional a los certificados PDF del flujo de emision.
+El modulo **Certificados (Word)** genera el documento oficial de la Universidad a partir de la
+plantilla institucional. El modulo **Certificados PDF** produce la copia verificable con codigo y
+QR de consulta publica.
 
-**Regla de habilitacion:** solo se genera el certificado de los asistentes con las **4 marcas**:
-ingreso y salida de la **manana** e ingreso y salida de la **tarde**. Quien no cumpla las 4 marcas
-queda omitido y se muestra el motivo (por ejemplo, "Falta: salida Tarde").
+**Regla de habilitacion (igual para Word y PDF):** solo se genera el certificado de los asistentes
+con las **4 marcas** (ingreso y salida de la **manana** e ingreso y salida de la **tarde**), que
+hayan cumplido la **permanencia minima por jornada** (3 horas por defecto) y que hayan estado hasta
+el **cierre del seminario**. Quien no cumpla queda omitido y se muestra el motivo (por ejemplo,
+"Falta: salida Tarde" o "La permanencia en una de las jornadas exigidas fue menor al minimo").
 
 1. **Prepare la plantilla** en Word y marque los datos del titular entre dobles llaves. Campos
    disponibles: `{{nombre}}`, `{{cedula}}`, `{{id}}`, `{{rol}}` y `{{semestre}}`.

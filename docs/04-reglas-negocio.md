@@ -126,14 +126,15 @@ inmediato, sin migraciones ni scripts.
 
 ### 4.1 Reglas
 
-Un asistente es **elegible** si cumple las cuatro condiciones:
+Un asistente es **elegible** si cumple las condiciones siguientes:
 
 1. **Asistencia en todas las jornadas exigidas.**
    - Si `exigir_ambas_jornadas = true`: debe tener ingreso en **las dos** jornadas.
    - Si `exigir_ambas_jornadas = false`: basta con la asistencia en la **jornada de cierre**
      (la de `fin` mas tardio).
-2. **Registro de salida** en una de las jornadas exigidas.
-3. **Permanencia hasta el final:** la salida debe cumplir
+2. **Ingreso y salida en cada jornada exigida** (las **4 marcas**: ingreso y salida de la manana y
+   de la tarde). Es la regla oficial y la aplican igual el certificado en Word y la copia PDF.
+3. **Permanencia hasta el final:** alguna salida debe cumplir
 
    ```
    hora_salida >= hora_fin_seminario - tolerancia_minutos
@@ -154,7 +155,7 @@ Un asistente es **elegible** si cumple las cuatro condiciones:
 | Motivo                      | Significado                                                    |
 | --------------------------- | -------------------------------------------------------------- |
 | `falta_asistencia_jornada`  | No tiene ingreso en una de las jornadas exigidas.              |
-| `sin_registro_salida`       | Tiene ingresos pero nunca registro su salida.                  |
+| `sin_registro_salida`       | Le falta la salida en alguna jornada exigida.                  |
 | `salida_antes_de_hora_fin`  | Registro la salida antes de la hora de fin mas la tolerancia.  |
 | `permanencia_insuficiente`  | Permanecio menos horas que el minimo en una jornada exigida.   |
 | `sin_jornadas_configuradas` | El seminario no tiene jornadas (error de configuracion).       |
@@ -164,17 +165,19 @@ sepa exactamente que falta.
 
 ### 4.3 Ejemplo con los parametros del evento
 
-- Evento: 27 de octubre de 2026, 08:00 a 18:00, jornada de manana y jornada de tarde.
+- Evento: 27 de octubre de 2026, jornadas de 8:00 a 12:00 y de 14:00 a 18:00.
 - `hora_fin_seminario = 2026-10-27 18:00 (America/Bogota)`.
 - `tolerancia_minutos = 15`, por lo que el umbral de salida es **17:45**.
+- `minimo_permanencia_horas = 3`.
 
-| Escenario                                                              | Resultado                               |
-| ---------------------------------------------------------------------- | --------------------------------------- |
-| Entro a las 08:05 y salio a las 18:10                                  | Elegible                                |
-| Entro a las 08:05 y salio a las 17:40                                  | No elegible: `salida_antes_de_hora_fin` |
-| Entro a las 08:05 y no salio                                           | No elegible: `sin_registro_salida`      |
-| Entro solo a la manana                                                 | No elegible: `falta_asistencia_jornada` |
-| Entro a ambas y salio a las 18:10, con `exigir_ambas_jornadas = false` | Elegible                                |
+| Escenario                                                                  | Resultado                               |
+| -------------------------------------------------------------------------- | --------------------------------------- |
+| Ingreso y salida en ambas jornadas, salida final a las 18:10               | Elegible                                |
+| Lo mismo, pero sale a las 17:40                                            | No elegible: `salida_antes_de_hora_fin` |
+| Ingresa a la manana y no registra salida                                   | No elegible: `sin_registro_salida`      |
+| Solo asiste a la manana                                                    | No elegible: `falta_asistencia_jornada` |
+| Ingresa 08:05 y sale 09:30 en la manana, y completa la tarde               | No elegible: `permanencia_insuficiente` |
+| Ingresa y sale solo en la tarde, con `exigir_ambas_jornadas = false`       | Elegible                                |
 
 ---
 

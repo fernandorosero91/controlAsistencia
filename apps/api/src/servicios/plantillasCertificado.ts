@@ -4,7 +4,9 @@ import path from 'node:path';
 import JSZip from 'jszip';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
+  MENSAJE_MOTIVO,
   REGLA_ELEGIBILIDAD_DOCX,
+  evaluarElegibilidad,
   type DatosTitularPlantilla,
   type GenerarDesdePlantillaInput,
   type ListadoElegibilidad,
@@ -24,6 +26,7 @@ import {
 } from '../db/esquema.js';
 import { errores } from '../plugins/errores.js';
 import { abrirPlantilla, generarDocx } from './plantillaDocx.js';
+import { obtenerConfig } from './configuracion.js';
 
 /** Sanitiza un texto para usarlo como nombre de archivo. */
 function nombreArchivoSeguro(valor: string): string {
@@ -232,9 +235,50 @@ export interface CertificadoGenerado {
 /** Jornadas ordenadas (manana = menor `orden`, tarde = mayor `orden`). */
 async function jornadasOrdenadas() {
   return db
-    .select({ id: jornadas.id, nombre: jornadas.nombre, orden: jornadas.orden })
+    .select({ id: jornadas.id, nombre: jornadas.nombre, inicio: jornadas.inicio, fin: jornadas.fin, orden: jornadas.orden })
     .from(jornadas)
     .orderBy(asc(jornadas.orden));
+}
+
+interface AsistenciaCruda {
+  jornadaId: number;
+  horaIngreso: Date;
+  horaSalida: Date | null;
+}
+
+/**
+ * Trae las marcas reales (ingreso y salida con sus horas) de cada asistente,
+ * con una sola consulta. La elegibilidad se calcula con la misma funcion que
+ * usa el certificado en PDF: las 4 marcas, el cierre del seminario y la
+ * permanencia minima por jornada.
+ */
+async function asistenciasPorAsistente(
+  asistenteIds: string[],
+): Promise<Map<string, AsistenciaCruda[]>> {
+  const mapa = new Map<string, AsistenciaCruda[]>();
+  if (asistenteIds.length === 0) return mapa;
+
+  const filas = await db
+    .select({
+      asistenteId: asistencias.asistenteId,
+      jornadaId: asistencias.jornadaId,
+      horaIngreso: asistencias.horaIngreso,
+      horaSalida: asistencias.horaSalida,
+    })
+    .from(asistencias)
+    .where(inArray(asistencias.asistenteId, asistenteIds));
+
+  for (const fila of filas) {
+    const lista = mapa.get(fila.asistenteId) ?? [];
+    lista.push({
+      jornadaId: fila.jornadaId,
+      horaIngreso: fila.horaIngreso,
+      horaSalida: fila.horaSalida,
+    });
+    mapa.set(fila.asistenteId, lista);
+  }
+
+  return mapa;
 }
 
 interface ConteosAsistencia {
@@ -281,10 +325,17 @@ async function conteosPorAsistente(
 function evaluarMarcas(
   fila: typeof asistentes.$inferSelect,
   conteos: Map<number, ConteosAsistencia> | undefined,
-  jornadasExigidas: { id: number; nombre: string }[],
+  jornadasTodas: { id: number; nombre: string; fin: Date }[],
+  marcasReales: AsistenciaCruda[],
+  config: {
+    exigirAmbasJornadas: boolean;
+    horaFinSeminario: Date;
+    toleranciaMinutos: number;
+    minimoPermanenciaHoras: number;
+  },
 ): MarcasElegibilidad {
   const nombre = `${fila.nombres} ${fila.apellidos}`.replace(/\s+/g, ' ').trim().toUpperCase();
-  const marcas = jornadasExigidas.map((jornada) => {
+  const marcas = jornadasTodas.map((jornada) => {
     const conteo = conteos?.get(jornada.id);
     return { jornada, ingreso: conteo?.ingreso ?? false, salida: conteo?.salida ?? false };
   });
@@ -294,11 +345,30 @@ function evaluarMarcas(
   const ingresoTarde = marcas[1]?.ingreso ?? false;
   const salidaTarde = marcas[1]?.salida ?? false;
 
-  const faltantes: string[] = [];
-  for (const marca of marcas) {
-    if (!marca.ingreso) faltantes.push(`ingreso ${marca.jornada.nombre}`);
-    if (!marca.salida) faltantes.push(`salida ${marca.jornada.nombre}`);
-  }
+  // Misma regla para Word y PDF: 4 marcas, cierre del seminario y permanencia.
+  const evaluacion = evaluarElegibilidad({
+    exigirAmbasJornadas: config.exigirAmbasJornadas,
+    horaFinSeminario: config.horaFinSeminario,
+    toleranciaMinutos: config.toleranciaMinutos,
+    minimoPermanenciaHoras: config.minimoPermanenciaHoras,
+    jornadas: jornadasTodas.map((jornada) => ({ id: jornada.id, fin: jornada.fin })),
+    asistencias: marcasReales,
+  });
+
+  const faltantes = marcas
+    .filter((marca) => evaluacion.jornadasExigidas.includes(marca.jornada.id))
+    .flatMap((marca) => {
+      const lista: string[] = [];
+      if (!marca.ingreso) lista.push(`ingreso ${marca.jornada.nombre}`);
+      if (!marca.salida) lista.push(`salida ${marca.jornada.nombre}`);
+      return lista;
+    });
+
+  const motivo = evaluacion.elegible
+    ? null
+    : faltantes.length > 0
+      ? `Falta: ${faltantes.join(', ')}`
+      : evaluacion.motivos.map((item) => MENSAJE_MOTIVO[item]).join('; ');
 
   return {
     asistenteId: fila.id,
@@ -307,8 +377,8 @@ function evaluarMarcas(
     salidaManana,
     ingresoTarde,
     salidaTarde,
-    elegible: faltantes.length === 0,
-    motivo: faltantes.length === 0 ? null : `Falta: ${faltantes.join(', ')}`,
+    elegible: evaluacion.elegible,
+    motivo,
   };
 }
 
@@ -320,6 +390,7 @@ export async function listarElegibilidad(filtros: {
   rol?: 'estudiante' | 'docente';
 }): Promise<ListadoElegibilidad> {
   const jornadasExigidas = await jornadasOrdenadas();
+  const config = await obtenerConfig();
 
   const condiciones = [eq(asistentes.activo, true)];
   if (filtros.rol) condiciones.push(eq(asistentes.rol, filtros.rol));
@@ -330,8 +401,23 @@ export async function listarElegibilidad(filtros: {
     .where(and(...condiciones))
     .orderBy(asc(asistentes.apellidos), asc(asistentes.nombres));
 
-  const conteos = await conteosPorAsistente(filas.map((fila) => fila.id));
-  const datos = filas.map((fila) => evaluarMarcas(fila, conteos.get(fila.id), jornadasExigidas));
+  const ids = filas.map((fila) => fila.id);
+  const conteos = await conteosPorAsistente(ids);
+  const marcasReales = await asistenciasPorAsistente(ids);
+  const datos = filas.map((fila) =>
+    evaluarMarcas(
+      fila,
+      conteos.get(fila.id),
+      jornadasExigidas,
+      marcasReales.get(fila.id) ?? [],
+      {
+        exigirAmbasJornadas: config.exigirAmbasJornadas,
+        horaFinSeminario: new Date(config.horaFinSeminario),
+        toleranciaMinutos: config.toleranciaMinutos,
+        minimoPermanenciaHoras: config.minimoPermanenciaHoras,
+      },
+    ),
+  );
   const elegibles = datos.filter((dato) => dato.elegible).length;
 
   return {
@@ -382,10 +468,24 @@ export async function generarCertificados(
   }
 
   const jornadasExigidas = await jornadasOrdenadas();
-  const conteos = await conteosPorAsistente(filas.map((fila) => fila.id));
+  const config = await obtenerConfig();
+  const ids = filas.map((fila) => fila.id);
+  const conteos = await conteosPorAsistente(ids);
+  const marcasReales = await asistenciasPorAsistente(ids);
 
   const elegibilidad = filas.map((fila) =>
-    evaluarMarcas(fila, conteos.get(fila.id), jornadasExigidas),
+    evaluarMarcas(
+      fila,
+      conteos.get(fila.id),
+      jornadasExigidas,
+      marcasReales.get(fila.id) ?? [],
+      {
+        exigirAmbasJornadas: config.exigirAmbasJornadas,
+        horaFinSeminario: new Date(config.horaFinSeminario),
+        toleranciaMinutos: config.toleranciaMinutos,
+        minimoPermanenciaHoras: config.minimoPermanenciaHoras,
+      },
+    ),
   );
 
   const soloElegibles = input.soloElegibles !== false;

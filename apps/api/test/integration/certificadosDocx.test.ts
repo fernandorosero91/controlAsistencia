@@ -132,13 +132,13 @@ describe(descripcion, () => {
     jornadaId: number,
     conSalida = true,
   ): Promise<void> {
-    const ingreso = new Date(Date.now() - 60 * 60 * 1000);
+    // Estancia de 3 h 30 min: cubre el minimo de permanencia (3 horas) y deja la
+    // salida dentro de la tolerancia del cierre del seminario.
     await db.insert(asistencias).values({
       asistenteId,
       jornadaId,
-      horaIngreso: ingreso,
-      // La salida debe ser posterior al ingreso (check asistencias_salida_posterior).
-      horaSalida: conSalida ? new Date(ingreso.getTime() + 60 * 60 * 1000) : null,
+      horaIngreso: new Date(Date.now() - 4 * 60 * 60 * 1000),
+      horaSalida: conSalida ? new Date(Date.now() - 30 * 60 * 1000) : null,
     });
   }
 

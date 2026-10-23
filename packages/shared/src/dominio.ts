@@ -124,11 +124,14 @@ export interface ResultadoElegibilidad {
  * Calcula la elegibilidad para el certificado.
  *
  * Reglas:
- * 1. Si `exigir_ambas_jornadas` es verdadero se exige asistencia en todas las jornadas.
- *    Si es falso se exige asistencia unicamente en la jornada de cierre (la de fin mas tardio).
- * 2. Se exige al menos un registro de salida dentro de las jornadas exigidas con
- *    `hora_salida >= hora_fin_seminario - tolerancia`.
- * 3. En cada jornada exigida el asistente debe permanecer al menos
+ * 1. Si `exigir_ambas_jornadas` es verdadero se exigen todas las jornadas; si es
+ *    falso, unicamente la jornada de cierre (la de fin mas tardio).
+ * 2. En **cada** jornada exigida debe existir **ingreso y salida** (las 4 marcas
+ *    cuando son dos jornadas). Es la regla oficial de la Universidad y la misma
+ *    que usa el certificado en Word.
+ * 3. Se exige al menos una salida con `hora_salida >= hora_fin_seminario - tolerancia`,
+ *    es decir, haber estado hasta el cierre del seminario.
+ * 4. En cada jornada exigida el asistente debe permanecer al menos
  *    `minimo_permanencia_horas` horas (de la entrada a la salida).
  *
  * La funcion es pura: cambiar la hora de fin, la tolerancia o el minimo de
@@ -162,12 +165,29 @@ export function evaluarElegibilidad(parametros: ParametrosElegibilidad): Resulta
     porJornada.set(asistencia.jornadaId, asistencia);
   }
 
+  // Marcas por jornada: ingreso, salida y permanencia minima en cada una.
   for (const jornadaId of jornadasExigidas) {
-    if (!porJornada.has(jornadaId)) {
+    const asistencia = porJornada.get(jornadaId);
+
+    if (!asistencia) {
       motivos.push('falta_asistencia_jornada');
+      continue;
+    }
+
+    if (asistencia.horaSalida === null) {
+      motivos.push('sin_registro_salida');
+      continue;
+    }
+
+    if (permanenciaMinimaMs > 0) {
+      const permanencia = asistencia.horaSalida.getTime() - asistencia.horaIngreso.getTime();
+      if (permanencia < permanenciaMinimaMs) {
+        motivos.push('permanencia_insuficiente');
+      }
     }
   }
 
+  // Cierre del seminario: alguna salida dentro de la tolerancia del final.
   const salidasRelevantes = parametros.asistencias.filter(
     (a) =>
       jornadasExigidas.includes(a.jornadaId) &&
@@ -180,20 +200,6 @@ export function evaluarElegibilidad(parametros: ParametrosElegibilidad): Resulta
       (a) => jornadasExigidas.includes(a.jornadaId) && a.horaSalida !== null,
     );
     motivos.push(tieneAlgunaSalida ? 'salida_antes_de_hora_fin' : 'sin_registro_salida');
-  }
-
-  // Permanencia minima en cada jornada exigida: de la entrada a la salida.
-  if (permanenciaMinimaMs > 0) {
-    for (const jornadaId of jornadasExigidas) {
-      const asistencia = porJornada.get(jornadaId);
-      if (!asistencia || asistencia.horaSalida === null) continue;
-
-      const permanencia = asistencia.horaSalida.getTime() - asistencia.horaIngreso.getTime();
-      if (permanencia < permanenciaMinimaMs) {
-        motivos.push('permanencia_insuficiente');
-        break;
-      }
-    }
   }
 
   return {
