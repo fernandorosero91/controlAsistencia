@@ -24,7 +24,7 @@ import {
   type DatosCrearAsistente,
 } from '../servicios/asistentes.js';
 import { correoConfigurado, enviarQrPorCorreo } from '../servicios/correo.js';
-import { generarCartaQrPDF, generarCarnetsPDF } from '../servicios/pdf.js';
+import { generarCartaQrPDF, generarCarnetsPDF, generarEscarapelaPDF } from '../servicios/pdf.js';
 import {
   construirVistaPrevia,
   parsearCsv,
@@ -454,25 +454,25 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         }
         let pdfEscarapela: Buffer | undefined;
         try {
-          const pdfUint8 = await generarCartaQrPDF([
-            {
-              asistente: {
-                id: fila.id,
-                nombres: fila.nombres,
-                apellidos: fila.apellidos,
-                rol: fila.rol,
-                semestre: fila.semestre,
-              },
-              codigoRegistro: fila.codigoRegistro ?? fila.id,
-              idInstitucional: fila.id,
-              cedulaCiudadania: fila.cedulaCiudadania ?? null,
-              email: fila.email,
-              nombreSeminario: config.nombre,
-              facultad: config.facultad,
-              fecha: config.fecha,
-              lugar: config.lugar,
+          // Escarapela individual del tamano de la tarjeta (280 x 400 pt),
+          // no la hoja A4 con cuatro.
+          const pdfUint8 = await generarEscarapelaPDF({
+            asistente: {
+              id: fila.id,
+              nombres: fila.nombres,
+              apellidos: fila.apellidos,
+              rol: fila.rol,
+              semestre: fila.semestre,
             },
-          ]);
+            codigoRegistro: fila.codigoRegistro ?? fila.id,
+            idInstitucional: fila.id,
+            cedulaCiudadania: fila.cedulaCiudadania ?? null,
+            email: fila.email,
+            nombreSeminario: config.nombre,
+            facultad: config.facultad,
+            fecha: config.fecha,
+            lugar: config.lugar,
+          });
           pdfEscarapela = Buffer.from(pdfUint8);
         } catch (errorPdf) {
           request.log.warn(

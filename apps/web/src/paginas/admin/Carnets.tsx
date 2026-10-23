@@ -174,8 +174,8 @@ export function Carnets() {
         >
           <p className="flex items-start gap-2 text-sm text-neutro-600">
             <Mail className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            El correo incluye el codigo de 6 caracteres, la imagen del QR y las instrucciones. La
-            operacion queda auditada.
+            El correo incluye el codigo de 6 caracteres, la imagen del QR, las instrucciones y la
+            escarapela adjunta en PDF al tamano de la tarjeta. La operacion queda auditada.
           </p>
 
           {resultadoEnvio ? (

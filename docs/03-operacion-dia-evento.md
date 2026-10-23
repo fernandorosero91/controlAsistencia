@@ -53,8 +53,10 @@ El sistema asigna a cada asistente un **codigo de registro** de 6 caracteres (po
 | Correo | **Carnets y QR > Enviar codigo y QR por correo**            | Si hay SMTP configurado   |
 | Papel  | **Carnets y QR > Descargar carta de QR** (PDF, escarapelas) | Alternativa o complemento |
 
-El correo incluye el codigo, la imagen del QR y la indicacion de que se puede dictar.
-La carta en PDF sirve para los asistentes sin correo o para entregarla en la puerta.
+El correo incluye el codigo, la imagen del QR y la indicacion de que se puede dictar, y adjunta la
+**escarapela en PDF del tamano de la tarjeta** (280 x 400 pt, no una hoja A4), lista para imprimir
+o mostrar en el celular. La carta en PDF de cuatro por hoja sirve para los asistentes sin correo o
+para entregarla en la puerta.
 
 ### 1.4 Imprimir los carnets
 

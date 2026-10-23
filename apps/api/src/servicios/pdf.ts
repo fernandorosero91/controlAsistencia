@@ -326,28 +326,277 @@ export async function generarCarnetsPDF(
   return documento.save();
 }
 
+/** Tamano de una escarapela en puntos (3,9 x 5,6 pulgadas). */
+const ESCARAPELA_ANCHO = 280;
+const ESCARAPELA_ALTO = 400;
+
+interface FuentesEscarapela {
+  normal: PDFFont;
+  negrita: PDFFont;
+}
+
+/**
+ * Dibuja una escarapela completa dentro del rectangulo (x0, y0) de la pagina.
+ *
+ * Se usa igual para la hoja A4 de cuatro tarjetas y para el PDF individual que
+ * se adjunta al correo, de modo que ambos salgan identicos.
+ */
+async function dibujarEscarapela(
+  documento: PDFDocument,
+  pagina: PDFPage,
+  x0: number,
+  y0: number,
+  item: DatosCartaQr,
+  fuentes: FuentesEscarapela,
+  logoBlanco: PDFImage | null,
+): Promise<void> {
+  const anchoEsc = ESCARAPELA_ANCHO;
+  const altoEsc = ESCARAPELA_ALTO;
+  const fuenteNormal = fuentes.normal;
+  const fuenteNegrita = fuentes.negrita;
+
+  // ------------------------------------------------------------ fondo y borde
+  pagina.drawRectangle({
+    x: x0,
+    y: y0,
+    width: anchoEsc,
+    height: altoEsc,
+    color: rgb(1, 1, 1),
+    borderColor: GRIS_LINEA,
+    borderWidth: 1,
+  });
+
+  const centro = x0 + anchoEsc / 2;
+  const yTop = y0 + altoEsc;
+
+  // -------------------------------------------------------- banda institucional
+  // El logo va centrado y el nombre del evento debajo: es la composicion
+  // tipica de una escarapela y evita que el texto se monte sobre el logotipo.
+  const altoBanda = 84;
+  pagina.drawRectangle({
+    x: x0,
+    y: yTop - altoBanda,
+    width: anchoEsc,
+    height: altoBanda,
+    color: AZUL_MARINO,
+  });
+
+  if (logoBlanco) {
+    const anchoLogo = 108;
+    const altoLogo = (logoBlanco.height / logoBlanco.width) * anchoLogo;
+    pagina.drawImage(logoBlanco, {
+      x: centro - anchoLogo / 2,
+      y: yTop - 8 - altoLogo,
+      width: anchoLogo,
+      height: altoLogo,
+    });
+  }
+
+  const nombreEvento = item.nombreSeminario;
+  const anchoDisponible = anchoEsc - 36;
+  const tamanoEvento = ajustarTamano(fuenteNegrita, nombreEvento, 10.5, anchoDisponible);
+  textoCentrado(
+    pagina,
+    nombreEvento,
+    centro,
+    yTop - 54,
+    fuenteNegrita,
+    tamanoEvento,
+    rgb(1, 1, 1),
+  );
+
+  const pieEvento = [item.fecha ? fechaLarga(item.fecha) : null, item.lugar]
+    .filter((valor): valor is string => Boolean(valor))
+    .join('  ·  ');
+  if (pieEvento.length > 0) {
+    const tamanoPie = ajustarTamano(fuenteNormal, pieEvento, 7.5, anchoDisponible);
+    textoCentrado(pagina, pieEvento, centro, yTop - 68, fuenteNormal, tamanoPie, CIAN);
+  }
+
+  // Filas de color: cian con un tramo en verde lima.
+  pagina.drawRectangle({
+    x: x0,
+    y: yTop - altoBanda - 3,
+    width: anchoEsc,
+    height: 3,
+    color: CIAN,
+  });
+  pagina.drawRectangle({
+    x: x0,
+    y: yTop - altoBanda - 3,
+    width: anchoEsc * 0.34,
+    height: 3,
+    color: LIMA,
+  });
+
+  let cursor = yTop - altoBanda - 3 - 14;
+
+  // -------------------------------------------------------------- rol y nombre
+  // Solo el rol: el semestre no se imprime en la escarapela.
+  const etiquetaRol = item.asistente.rol === 'docente' ? 'DOCENTE' : 'ESTUDIANTE';
+  const anchoEtiqueta = fuenteNegrita.widthOfTextAtSize(etiquetaRol, 9) + 24;
+  pagina.drawRectangle({
+    x: centro - anchoEtiqueta / 2,
+    y: cursor - 19,
+    width: anchoEtiqueta,
+    height: 19,
+    color: CIAN_CLARO,
+    borderColor: CIAN,
+    borderWidth: 0.75,
+  });
+  textoCentrado(pagina, etiquetaRol, centro, cursor - 13, fuenteNegrita, 9, AZUL_MARINO);
+  cursor -= 19 + 26;
+
+  const anchoTexto = anchoEsc - 40;
+  const tamanoNombres = ajustarTamano(fuenteNegrita, item.asistente.nombres, 25, anchoTexto);
+  textoCentrado(
+    pagina,
+    item.asistente.nombres,
+    centro,
+    cursor,
+    fuenteNegrita,
+    tamanoNombres,
+    AZUL_MARINO,
+  );
+  cursor -= 23;
+
+  const tamanoApellidos = ajustarTamano(fuenteNegrita, item.asistente.apellidos, 19, anchoTexto);
+  textoCentrado(
+    pagina,
+    item.asistente.apellidos,
+    centro,
+    cursor,
+    fuenteNegrita,
+    tamanoApellidos,
+    AZUL_MARINO,
+  );
+  cursor -= 18;
+
+  if (item.facultad) {
+    const tamanoFacultad = ajustarTamano(fuenteNormal, item.facultad, 9.5, anchoTexto);
+    textoCentrado(
+      pagina,
+      item.facultad,
+      centro,
+      cursor,
+      fuenteNormal,
+      tamanoFacultad,
+      GRIS_MEDIO,
+    );
+    cursor -= 14;
+  }
+
+  // --------------------------------------------------------- panel con el QR
+  const altoPanel = 98;
+  const yPanel = cursor - altoPanel;
+  pagina.drawRectangle({
+    x: x0 + 18,
+    y: yPanel,
+    width: anchoEsc - 36,
+    height: altoPanel,
+    color: GRIS_SUAVE,
+  });
+
+  const tamanoQr = 68;
+  const xQr = centro - tamanoQr / 2;
+  const yQr = yPanel + altoPanel - 6 - tamanoQr;
+  // El marco se dibuja primero: si se dibuja despues, su fondo blanco tapa
+  // el codigo.
+  pagina.drawRectangle({
+    x: xQr - 4,
+    y: yQr - 4,
+    width: tamanoQr + 8,
+    height: tamanoQr + 8,
+    color: rgb(1, 1, 1),
+    borderColor: GRIS_LINEA,
+    borderWidth: 0.75,
+  });
+  const qr = await documento.embedPng(await imagenQr(item.codigoRegistro));
+  pagina.drawImage(qr, { x: xQr, y: yQr, width: tamanoQr, height: tamanoQr });
+  textoCentrado(
+    pagina,
+    'ESCANEE PARA REGISTRAR',
+    centro,
+    yPanel + 10,
+    fuenteNegrita,
+    7.5,
+    GRIS_MEDIO,
+  );
+  cursor = yPanel - 10;
+
+  // ---------------------------------------------------------------------- ID
+  // El codigo de registro ya viaja dentro del QR: lo que debe leerse de un
+  // vistazo es el ID institucional, y por eso va grande.
+  textoCentrado(pagina, 'ID INSTITUCIONAL', centro, cursor, fuenteNegrita, 8, GRIS_MEDIO);
+  cursor -= 21;
+
+  const tamanoId = ajustarTamano(fuenteNegrita, item.idInstitucional, 24, anchoTexto);
+  textoCentrado(
+    pagina,
+    item.idInstitucional,
+    centro,
+    cursor,
+    fuenteNegrita,
+    tamanoId,
+    AZUL_MARINO,
+  );
+  cursor -= 18;
+
+  // ------------------------------------------------------------------- datos
+  // La cedula va en su propia linea: es un dato de identificacion y debe
+  // leerse de un vistazo, igual que el nombre.
+  if (item.cedulaCiudadania) {
+    const cedula = `C.C. ${item.cedulaCiudadania}`;
+    const tamanoCedula = ajustarTamano(fuenteNegrita, cedula, 11, anchoTexto);
+    textoCentrado(pagina, cedula, centro, cursor, fuenteNegrita, tamanoCedula, AZUL_MARINO);
+    cursor -= 13;
+  }
+
+  if (item.email) {
+    const tamanoCorreo = ajustarTamano(fuenteNormal, item.email, 8.5, anchoTexto);
+    textoCentrado(pagina, item.email, centro, cursor, fuenteNormal, tamanoCorreo, GRIS_MEDIO);
+  }
+
+  // --------------------------------------------------------------- pie azul
+  pagina.drawRectangle({
+    x: x0,
+    y: y0,
+    width: anchoEsc,
+    height: 24,
+    color: AZUL_MARINO,
+  });
+  textoCentrado(
+    pagina,
+    'Universidad Cooperativa de Colombia',
+    centro,
+    y0 + 8,
+    fuenteNegrita,
+    8,
+    rgb(1, 1, 1),
+  );
+}
+
 /**
  * Carta de QR con forma de escarapela.
  *
- * Cuatro tarjetas verticales por hoja A4 (3,9 x 5,4 pulgadas), con el
- * criterio de las escarapelas de eventos: el nombre es lo mas grande y
- * legible, el logo institucional arriba, el QR con su zona de silencio y el
- * codigo de registro en grande por si el escaner falla, y los datos personales
- * en el tamano mas pequeno.
+ * Cuatro tarjetas verticales por hoja A4, con el criterio de las escarapelas de
+ * eventos: el nombre es lo mas grande y legible, el logo institucional arriba,
+ * el QR con su zona de silencio, el ID institucional en grande y los datos
+ * personales en el tamano mas pequeno.
  *
  * Se imprime en papel y se entrega a mano cuando no hay servidor de correo
  * configurado o cuando el asistente no tiene correo registrado.
  */
 export async function generarCartaQrPDF(datos: DatosCartaQr[]): Promise<Uint8Array> {
   const documento = await PDFDocument.create();
-  const fuenteNormal = await documento.embedFont(StandardFonts.Helvetica);
-  const fuenteNegrita = await documento.embedFont(StandardFonts.HelveticaBold);
+  const fuentes: FuentesEscarapela = {
+    normal: await documento.embedFont(StandardFonts.Helvetica),
+    negrita: await documento.embedFont(StandardFonts.HelveticaBold),
+  };
 
   const anchoPagina = 595.28;
   const altoPagina = 841.89;
-  const anchoEsc = 280;
-  const altoEsc = 400;
-  const margenLateral = (anchoPagina - anchoEsc * 2) / 2;
+  const margenLateral = (anchoPagina - ESCARAPELA_ANCHO * 2) / 2;
   const margenSuperior = 20;
   const separacion = 14;
   const columnas = 2;
@@ -366,229 +615,10 @@ export async function generarCartaQrPDF(datos: DatosCartaQr[]): Promise<Uint8Arr
     const actual = pagina!;
     const columna = posicion % columnas;
     const fila = Math.floor(posicion / columnas);
-    const x0 = margenLateral + columna * (anchoEsc + separacion);
-    const y0 = altoPagina - margenSuperior - (fila + 1) * altoEsc - fila * separacion;
+    const x0 = margenLateral + columna * (ESCARAPELA_ANCHO + separacion);
+    const y0 = altoPagina - margenSuperior - (fila + 1) * ESCARAPELA_ALTO - fila * separacion;
 
-    // ---------------------------------------------------------- fondo y borde
-    actual.drawRectangle({
-      x: x0,
-      y: y0,
-      width: anchoEsc,
-      height: altoEsc,
-      color: rgb(1, 1, 1),
-      borderColor: GRIS_LINEA,
-      borderWidth: 1,
-    });
-
-    const centro = x0 + anchoEsc / 2;
-    const yTop = y0 + altoEsc;
-
-    // ------------------------------------------------------ banda institucional
-    // El logo va centrado y el nombre del evento debajo: es la composicion
-    // tipica de una escarapela y evita que el texto se monte sobre el logotipo.
-    const altoBanda = 84;
-    actual.drawRectangle({
-      x: x0,
-      y: yTop - altoBanda,
-      width: anchoEsc,
-      height: altoBanda,
-      color: AZUL_MARINO,
-    });
-
-    if (logoBlanco) {
-      const anchoLogo = 108;
-      const altoLogo = (logoBlanco.height / logoBlanco.width) * anchoLogo;
-      actual.drawImage(logoBlanco, {
-        x: centro - anchoLogo / 2,
-        y: yTop - 8 - altoLogo,
-        width: anchoLogo,
-        height: altoLogo,
-      });
-    }
-
-    const nombreEvento = item.nombreSeminario;
-    const anchoDisponible = anchoEsc - 36;
-    const tamanoEvento = ajustarTamano(fuenteNegrita, nombreEvento, 10.5, anchoDisponible);
-    textoCentrado(
-      actual,
-      nombreEvento,
-      centro,
-      yTop - 54,
-      fuenteNegrita,
-      tamanoEvento,
-      rgb(1, 1, 1),
-    );
-
-    const pieEvento = [item.fecha ? fechaLarga(item.fecha) : null, item.lugar]
-      .filter((valor): valor is string => Boolean(valor))
-      .join('  ·  ');
-    if (pieEvento.length > 0) {
-      const tamanoPie = ajustarTamano(fuenteNormal, pieEvento, 7.5, anchoDisponible);
-      textoCentrado(actual, pieEvento, centro, yTop - 68, fuenteNormal, tamanoPie, CIAN);
-    }
-
-    // Filas de color: cian con un tramo en verde lima.
-    actual.drawRectangle({
-      x: x0,
-      y: yTop - altoBanda - 3,
-      width: anchoEsc,
-      height: 3,
-      color: CIAN,
-    });
-    actual.drawRectangle({
-      x: x0,
-      y: yTop - altoBanda - 3,
-      width: anchoEsc * 0.34,
-      height: 3,
-      color: LIMA,
-    });
-
-    let cursor = yTop - altoBanda - 3 - 14;
-
-    // ------------------------------------------------------------ rol y nombre
-    // Solo el rol: el semestre no se imprime en la escarapela.
-    const etiquetaRol = item.asistente.rol === 'docente' ? 'DOCENTE' : 'ESTUDIANTE';
-    const anchoEtiqueta = fuenteNegrita.widthOfTextAtSize(etiquetaRol, 9) + 24;
-    actual.drawRectangle({
-      x: centro - anchoEtiqueta / 2,
-      y: cursor - 19,
-      width: anchoEtiqueta,
-      height: 19,
-      color: CIAN_CLARO,
-      borderColor: CIAN,
-      borderWidth: 0.75,
-    });
-    textoCentrado(actual, etiquetaRol, centro, cursor - 13, fuenteNegrita, 9, AZUL_MARINO);
-    cursor -= 19 + 26;
-
-    const anchoTexto = anchoEsc - 40;
-    const tamanoNombres = ajustarTamano(fuenteNegrita, item.asistente.nombres, 25, anchoTexto);
-    textoCentrado(
-      actual,
-      item.asistente.nombres,
-      centro,
-      cursor,
-      fuenteNegrita,
-      tamanoNombres,
-      AZUL_MARINO,
-    );
-    cursor -= 23;
-
-    const tamanoApellidos = ajustarTamano(fuenteNegrita, item.asistente.apellidos, 19, anchoTexto);
-    textoCentrado(
-      actual,
-      item.asistente.apellidos,
-      centro,
-      cursor,
-      fuenteNegrita,
-      tamanoApellidos,
-      AZUL_MARINO,
-    );
-    cursor -= 18;
-
-    if (item.facultad) {
-      const tamanoFacultad = ajustarTamano(fuenteNormal, item.facultad, 9.5, anchoTexto);
-      textoCentrado(
-        actual,
-        item.facultad,
-        centro,
-        cursor,
-        fuenteNormal,
-        tamanoFacultad,
-        GRIS_MEDIO,
-      );
-      cursor -= 14;
-    }
-
-    // ------------------------------------------------------- panel con el QR
-    const altoPanel = 98;
-    const yPanel = cursor - altoPanel;
-    actual.drawRectangle({
-      x: x0 + 18,
-      y: yPanel,
-      width: anchoEsc - 36,
-      height: altoPanel,
-      color: GRIS_SUAVE,
-    });
-
-    const tamanoQr = 68;
-    const xQr = centro - tamanoQr / 2;
-    const yQr = yPanel + altoPanel - 6 - tamanoQr;
-    // El marco se dibuja primero: si se dibuja despues, su fondo blanco tapa
-    // el codigo.
-    actual.drawRectangle({
-      x: xQr - 4,
-      y: yQr - 4,
-      width: tamanoQr + 8,
-      height: tamanoQr + 8,
-      color: rgb(1, 1, 1),
-      borderColor: GRIS_LINEA,
-      borderWidth: 0.75,
-    });
-    const qr = await documento.embedPng(await imagenQr(item.codigoRegistro));
-    actual.drawImage(qr, { x: xQr, y: yQr, width: tamanoQr, height: tamanoQr });
-    textoCentrado(
-      actual,
-      'ESCANEE PARA REGISTRAR',
-      centro,
-      yPanel + 10,
-      fuenteNegrita,
-      7.5,
-      GRIS_MEDIO,
-    );
-    cursor = yPanel - 10;
-
-    // ------------------------------------------------------------------- ID
-    // El codigo de registro ya viaja dentro del QR: lo que debe leerse de un
-    // vistazo es el ID institucional, y por eso va grande.
-    textoCentrado(actual, 'ID INSTITUCIONAL', centro, cursor, fuenteNegrita, 8, GRIS_MEDIO);
-    cursor -= 21;
-
-    const tamanoId = ajustarTamano(fuenteNegrita, item.idInstitucional, 24, anchoTexto);
-    textoCentrado(
-      actual,
-      item.idInstitucional,
-      centro,
-      cursor,
-      fuenteNegrita,
-      tamanoId,
-      AZUL_MARINO,
-    );
-    cursor -= 18;
-
-    // ------------------------------------------------------------- datos
-    // La cedula va en su propia linea: es un dato de identificacion y debe
-    // leerse de un vistazo, igual que el nombre.
-    if (item.cedulaCiudadania) {
-      const cedula = `C.C. ${item.cedulaCiudadania}`;
-      const tamanoCedula = ajustarTamano(fuenteNegrita, cedula, 11, anchoTexto);
-      textoCentrado(actual, cedula, centro, cursor, fuenteNegrita, tamanoCedula, AZUL_MARINO);
-      cursor -= 13;
-    }
-
-    if (item.email) {
-      const tamanoCorreo = ajustarTamano(fuenteNormal, item.email, 8.5, anchoTexto);
-      textoCentrado(actual, item.email, centro, cursor, fuenteNormal, tamanoCorreo, GRIS_MEDIO);
-    }
-
-    // ------------------------------------------------------------- pie azul
-    actual.drawRectangle({
-      x: x0,
-      y: y0,
-      width: anchoEsc,
-      height: 24,
-      color: AZUL_MARINO,
-    });
-    textoCentrado(
-      actual,
-      'Universidad Cooperativa de Colombia',
-      centro,
-      y0 + 8,
-      fuenteNegrita,
-      8,
-      rgb(1, 1, 1),
-    );
-
+    await dibujarEscarapela(documento, actual, x0, y0, item, fuentes, logoBlanco);
     indice += 1;
   }
 
@@ -598,10 +628,29 @@ export async function generarCartaQrPDF(datos: DatosCartaQr[]): Promise<Uint8Arr
       x: 60,
       y: altoPagina / 2,
       size: 14,
-      font: fuenteNormal,
+      font: fuentes.normal,
       color: GRIS_TEXTO,
     });
   }
+
+  return documento.save();
+}
+
+/**
+ * Escarapela individual: una sola pagina del tamano exacto de la tarjeta
+ * (280 x 400 pt), sin el resto de la hoja. Es la que se adjunta al correo para
+ * que el asistente la pueda llevar impresa o en el celular.
+ */
+export async function generarEscarapelaPDF(item: DatosCartaQr): Promise<Uint8Array> {
+  const documento = await PDFDocument.create();
+  const fuentes: FuentesEscarapela = {
+    normal: await documento.embedFont(StandardFonts.Helvetica),
+    negrita: await documento.embedFont(StandardFonts.HelveticaBold),
+  };
+  const logoBlanco = await leerLogo(documento, rutaLogoBlanco());
+  const pagina = documento.addPage([ESCARAPELA_ANCHO, ESCARAPELA_ALTO]);
+
+  await dibujarEscarapela(documento, pagina, 0, 0, item, fuentes, logoBlanco);
 
   return documento.save();
 }
