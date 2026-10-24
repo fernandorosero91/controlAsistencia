@@ -105,10 +105,11 @@ const esquema = z.object({
   SEED_ASISTENTES: z.coerce.number().int().min(0).max(5000).default(600),
   /**
    * Envio de correos con la credencial: cuantos se procesan a la vez, cuantos
-   * por segundo como maximo y cuantos reintentos por correo.
+   * reintentos y cada cuantos segundos sale un correo. Con 180 segundos son
+   * 20 por hora, el ritmo recomendado para no caer en spam.
    */
-  CORREOS_CONCURRENCIA: z.coerce.number().int().min(1).max(20).default(2),
-  CORREOS_POR_SEGUNDO: z.coerce.number().int().min(1).max(50).default(5),
+  CORREOS_CONCURRENCIA: z.coerce.number().int().min(1).max(20).default(1),
+  CORREOS_SEPARACION_SEGUNDOS: z.coerce.number().int().min(5).max(3600).default(180),
   CORREOS_INTENTOS: z.coerce.number().int().min(1).max(5).default(3),
   /**
    * Permite borrar los datos operativos desde el panel (con contrasena de

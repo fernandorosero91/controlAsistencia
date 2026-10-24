@@ -60,10 +60,20 @@ adjunta** (es obligatoria para entrar y para el refrigerio y el souvenir) y regi
 final. Adjunta la **escarapela en PDF del tamano de la tarjeta** (280 x 400 pt, no una hoja A4).
 
 **Los envios se encolan** (BullMQ sobre el Redis del sistema): la peticion responde de inmediato y
-los correos salen de a pocos, con reintentos, mientras el panel muestra el avance
-(*Enviando credenciales: X de Y*). Los valores por defecto son 2 envios simultaneos, 5 por segundo y
-3 intentos; se ajustan con `CORREOS_CONCURRENCIA`, `CORREOS_POR_SEGUNDO` y `CORREOS_INTENTOS`.
-Si el servidor no tiene SMTP o Redis, el envio se hace en linea y el panel muestra el detalle.
+los correos salen **uno cada 3 minutos (20 por hora)**, el ritmo que recomienda Google para no caer
+en spam. Se ajusta con `CORREOS_SEPARACION_SEGUNDOS` (180 por defecto), `CORREOS_CONCURRENCIA` y
+`CORREOS_INTENTOS`. Si el servidor no tiene SMTP o Redis, el envio se hace en linea y el panel
+muestra el detalle.
+
+El envio **queda registrado por asistente**: en **Asistentes** se ve la columna *Credencial*
+(pendiente, en cola, enviada con fecha, o error con el motivo), se filtra por ese estado y cada fila
+tiene un boton para **enviar o reenviar** solo a esa persona. El boton **Enviar pendientes** de
+*Carnets y QR* toma unicamente a quienes nunca la recibieron o les fallo, de modo que repartir el
+envio en varios dias no duplica correos.
+
+Para saber si llegaron a la bandeja (y no a spam), pida al area de TI de la universidad una **traza
+de mensajes** del remitente: el protocolo de correo solo confirma que el servidor de destino acepto
+el mensaje, no en que carpeta lo dejo.
 
 La carta en PDF de cuatro por hoja sirve para los asistentes sin correo o para entregarla en la
 puerta.

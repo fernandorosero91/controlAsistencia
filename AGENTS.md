@@ -89,9 +89,11 @@ Un solo set, tamaño por defecto 20, trazo 2 (stroke-width), consistente en toda
 Justificacion: se requiere **progreso consultable**, **reintentos por elemento sin detener el lote** y
 reintentos ante fallo individual. BullMQ da esas tres cosas de forma nativa y sobrevive reinicios.
 El progreso vive en Redis y se refleja en BD (`certificados_lotes`) para poder consultarlo. La misma
-infraestructura se usa para el **envio de credenciales por correo**: un trabajo por destinatario, con
-concurrencia y ritmo limitados (`CORREOS_*`) para no saturar el servidor SMTP, y el avance se lee de
-un hash en Redis. No se agrega RabbitMQ: la cola persistente y los reintentos ya estan cubiertos.
+infraestructura se usa para el **envio de credenciales por correo**: un trabajo por destinatario,
+espaciado uno cada `CORREOS_SEPARACION_SEGUNDOS` (180 por defecto, 20 por hora) para no saturar el
+servidor SMTP ni caer en spam, y el avance se lee de un hash en Redis. El estado por asistente
+(`credencial_estado`, `credencial_enviada_at`, `credencial_error`) permite reenviar solo a quien
+falta. No se agrega RabbitMQ: la cola persistente y los reintentos ya estan cubiertos.
 
 ---
 

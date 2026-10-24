@@ -165,7 +165,7 @@ export async function actualizarCorreo(asistenteId: string, email: string | null
     .where(eq(asistentes.id, asistenteId));
 }
 
-export async function listarConCorreo(): Promise<
+export async function listarConCorreo(opciones: { soloPendientes?: boolean } = {}): Promise<
   {
     id: string;
     codigoRegistro: string | null;
@@ -177,6 +177,16 @@ export async function listarConCorreo(): Promise<
     semestre: number | null;
   }[]
 > {
+  const condiciones = [eq(asistentes.activo, true), sql`${asistentes.email} IS NOT NULL`];
+
+  // Pendientes = nunca se envio o el ultimo intento fallo. Los que estan en cola
+  // o ya recibieron el correo se omiten para no duplicar.
+  if (opciones.soloPendientes !== false) {
+    condiciones.push(
+      sql`(${asistentes.credencialEstado} IS NULL OR ${asistentes.credencialEstado} = 'error')`,
+    );
+  }
+
   return db
     .select({
       id: asistentes.id,
@@ -189,7 +199,7 @@ export async function listarConCorreo(): Promise<
       semestre: asistentes.semestre,
     })
     .from(asistentes)
-    .where(and(eq(asistentes.activo, true), sql`${asistentes.email} IS NOT NULL`));
+    .where(and(...condiciones));
 }
 
 export interface VerificacionAsistente {

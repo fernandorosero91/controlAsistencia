@@ -12,8 +12,15 @@ Dos manuales de una pagina: uno para el administrador y otro para el operador.
    `http://localhost:8080/api/health/ready` (debe responder `ok`).
 2. **Importe el padron** (Importar): descargue la plantilla, complete las filas y revise la
    vista previa antes de confirmar.
-3. **Entregue los codigos**: por correo (Carnets y QR > Enviar) o en papel (Descargar carta de
-   QR).
+3. **Entregue los codigos**: por correo (Carnets y QR > Enviar pendientes) o en papel (Descargar
+   carta de QR).
+   - El envio sale **uno cada 3 minutos (20 por hora)** para no caer en spam; puedes cerrar la
+     pestaña, la cola sigue en el servidor.
+   - En **Asistentes** la columna *Credencial* dice a quién ya se le envió, a quién está en cola y a
+     quién le falló (con el motivo). El botón de cada fila permite **enviar o reenviar** solo a esa
+     persona, y el filtro *Pendientes de envio* deja a la vista lo que falta.
+   - Para saber si llegaron a la bandeja, pide a TI de la universidad la **traza de mensajes** del
+     remitente.
 4. **Imprima los carnets** (Descargar carnets).
 5. **Revise la configuracion**: hora de fin (18:00), tolerancia (15 min), ventanas de check-in y
    si se permite registrar fuera de ventana.

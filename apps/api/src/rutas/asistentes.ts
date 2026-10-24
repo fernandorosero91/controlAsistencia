@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, inArray, ne, or } from 'drizzle-orm';
+import { and, asc, count, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm';
 import ExcelJS from 'exceljs';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -131,6 +131,11 @@ function aLectura(fila: typeof asistentes.$inferSelect): AsistenteLectura {
     rol: fila.rol,
     semestre: fila.semestre,
     activo: fila.activo,
+    credencialEstado: (fila.credencialEstado as 'en_cola' | 'enviada' | 'error' | null) ?? null,
+    credencialEnviadaAt: fila.credencialEnviadaAt
+      ? fila.credencialEnviadaAt.toISOString()
+      : null,
+    credencialError: fila.credencialError,
     createdAt: fila.createdAt.toISOString(),
     updatedAt: fila.updatedAt.toISOString(),
   };
@@ -153,6 +158,15 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
       if (filtros.rol) condiciones.push(eq(asistentes.rol, filtros.rol));
       if (filtros.semestre) condiciones.push(eq(asistentes.semestre, filtros.semestre));
       if (filtros.activo !== undefined) condiciones.push(eq(asistentes.activo, filtros.activo));
+      if (filtros.credencial) {
+        if (filtros.credencial === 'pendiente') {
+          condiciones.push(
+            sql`(${asistentes.credencialEstado} IS NULL OR ${asistentes.credencialEstado} = 'error')`,
+          );
+        } else {
+          condiciones.push(eq(asistentes.credencialEstado, filtros.credencial));
+        }
+      }
       if (filtros.q) {
         const busqueda = `%${filtros.q.toLowerCase()}%`;
         condiciones.push(
@@ -418,11 +432,16 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
       },
     },
     async (request, reply) => {
-      const cuerpo = request.body as { asistenteId?: string; todos?: boolean };
+      const cuerpo = request.body as {
+        asistenteId?: string;
+        todos?: boolean;
+        /** Por defecto solo se envia a quien nunca lo recibio o le fallo. */
+        reenviar?: boolean;
+      };
       const config = await obtenerConfig();
 
       const destinatarios = cuerpo.todos
-        ? await listarConCorreo()
+        ? await listarConCorreo({ soloPendientes: cuerpo.reenviar !== true })
         : cuerpo.asistenteId
           ? await (async () => {
               const filas = await db
@@ -436,7 +455,9 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
 
       if (destinatarios.length === 0) {
         throw errores.validacion(
-          'No hay asistentes seleccionados. Indique un asistente o active el envio a todos.',
+          cuerpo.todos
+            ? 'No hay credenciales pendientes de envio. Todos los asistentes con correo ya la recibieron o estan en cola.'
+            : 'No hay asistentes seleccionados. Indique un asistente o active el envio a todos.',
         );
       }
 
@@ -474,6 +495,17 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
       // trabajador envia con concurrencia y ritmo limitados.
       const loteId = await encolarCorreosCredencial(destinos);
       if (loteId) {
+        // Queda marcado como "en cola" para que un segundo envio no lo duplique.
+        await db
+          .update(asistentes)
+          .set({ credencialEstado: 'en_cola', credencialError: null })
+          .where(
+            inArray(
+              asistentes.id,
+              destinos.map((destino) => destino.asistenteId),
+            ),
+          );
+
         await registrarAuditoria(request, {
           accion: 'asistente.importado',
           entidad: 'asistentes',
@@ -548,6 +580,18 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           lugar: config.lugar,
           contacto: config.contacto,
         });
+
+        // Se guarda el resultado por asistente para saber a quien falta
+        // enviarle o reintentar.
+        await db
+          .update(asistentes)
+          .set({
+            credencialEstado: resultado.enviado ? 'enviada' : 'error',
+            credencialEnviadaAt: resultado.enviado ? new Date() : null,
+            credencialError: resultado.enviado ? null : resultado.mensaje.slice(0, 500),
+          })
+          .where(eq(asistentes.id, fila.id));
+
         resultados.push({ asistenteId: fila.id, ...resultado });
       }
 

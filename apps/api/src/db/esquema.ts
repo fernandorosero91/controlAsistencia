@@ -162,6 +162,10 @@ export const asistentes = pgTable(
     semestre: integer('semestre'),
     rol: rolAsistenteEnum('rol').notNull(),
     activo: boolean('activo').notNull().default(true),
+    /** Estado del ultimo envio de la credencial por correo. */
+    credencialEstado: text('credencial_estado'),
+    credencialEnviadaAt: timestamp('credencial_enviada_at', { withTimezone: true }),
+    credencialError: text('credencial_error'),
     createdAt: creadoEn,
     updatedAt: actualizadoEn,
   },

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Search } from 'lucide-react';
+import { Mail, Pencil, Plus, Search } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { api, ErrorPeticion } from '../../lib/api';
-import { nombreRol } from '../../lib/formato';
+import { formatearFechaHora, nombreRol } from '../../lib/formato';
 import {
   Aviso,
   EstadoError,
@@ -25,6 +25,9 @@ interface Asistente {
   rol: 'estudiante' | 'docente';
   semestre: number | null;
   activo: boolean;
+  credencialEstado: 'en_cola' | 'enviada' | 'error' | null;
+  credencialEnviadaAt: string | null;
+  credencialError: string | null;
 }
 
 interface RespuestaListado {
@@ -72,23 +75,98 @@ const esquemaFormulario = z
 
 type DatosFormulario = z.infer<typeof esquemaFormulario>;
 
-export function Asistentes() {
-  const cliente = useQueryClient();
+/** Estado del envio de la credencial, con la fecha o el motivo del error. */
+function EstadoCredencial({ asistente }: { asistente: Asistente }) {
+  if (asistente.credencialEstado === 'enviada') {
+    return (
+      <div>
+        <Insignia tono="exito">Enviada</Insignia>
+        {asistente.credencialEnviadaAt ? (
+          <span className="mt-0.5 block text-xs text-neutro-500">
+            {formatearFechaHora(asistente.credencialEnviadaAt)}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (asistente.credencialEstado === 'en_cola') {
+    return <Insignia tono="aviso">En cola</Insignia>;
+  }
+
+  if (asistente.credencialEstado === 'error') {
+    return (
+      <div>
+        <Insignia tono="error">Error</Insignia>
+        {asistente.credencialError ? (
+          <span
+            className="mt-0.5 block max-w-[220px] truncate text-xs text-error-700"
+            title={asistente.credencialError}
+          >
+            {asistente.credencialError}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
+  return <Insignia tono="neutro">Pendiente</Insignia>;
+}
+
+export function Asistentes() {  const cliente = useQueryClient();
   const [pagina, setPagina] = useState(1);
   const [consulta, setConsulta] = useState('');
   const [busquedaAplicada, setBusquedaAplicada] = useState('');
   const [rol, setRol] = useState<'' | 'estudiante' | 'docente'>('');
+  const [credencial, setCredencial] = useState<'' | 'pendiente' | 'enviada' | 'error'>('');
   const [editing, setEditing] = useState<Asistente | null>(null);
   const [creando, setCreando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   const { data, isError, refetch } = useQuery({
-    queryKey: ['asistentes', pagina, busquedaAplicada, rol],
+    queryKey: ['asistentes', pagina, busquedaAplicada, rol, credencial],
     queryFn: () => {
       const parametros = new URLSearchParams({ pagina: String(pagina), porPagina: '25' });
       if (busquedaAplicada) parametros.set('q', busquedaAplicada);
       if (rol) parametros.set('rol', rol);
+      if (credencial) parametros.set('credencial', credencial);
       return api.obtener<RespuestaListado>(`/asistentes?${parametros.toString()}`);
+    },
+  });
+
+  /** Envia (o reenvia) la credencial de un solo asistente. */
+  const enviarCredencial = useMutation({
+    mutationFn: (asistenteId: string) =>
+      api.crear<{
+        enCola: boolean;
+        total: number;
+        enviados?: number;
+        fallidos?: number;
+        resultados?: { asistenteId: string; enviado: boolean; mensaje: string }[];
+      }>('/asistentes/enviar-qr', { asistenteId }),
+    onSuccess: (datos) => {
+      const fallo = datos.resultados?.find((resultado) => !resultado.enviado);
+      if (fallo) {
+        setAviso(null);
+        setError(`No se pudo enviar: ${fallo.mensaje}`);
+      } else {
+        setError(null);
+        setAviso(
+          datos.enCola
+            ? 'Credencial en cola: se enviara en el siguiente turno del envio programado.'
+            : 'Credencial enviada.',
+        );
+      }
+      void cliente.invalidateQueries({ queryKey: ['asistentes'] });
+    },
+    onError: (problema) => {
+      setAviso(null);
+      setError(
+        problema instanceof ErrorPeticion
+          ? problema.message
+          : 'No se pudo enviar la credencial. Intente de nuevo.',
+      );
     },
   });
 
@@ -167,10 +245,32 @@ export function Asistentes() {
             <option value="estudiante">Estudiantes</option>
             <option value="docente">Docentes</option>
           </select>
+          <select
+            className="campo sm:w-56"
+            value={credencial}
+            onChange={(evento) => {
+              setCredencial(
+                evento.target.value as '' | 'pendiente' | 'enviada' | 'error',
+              );
+              setPagina(1);
+            }}
+            aria-label="Filtrar por estado de la credencial"
+          >
+            <option value="">Credencial: todos</option>
+            <option value="pendiente">Pendientes de envio</option>
+            <option value="enviada">Credencial enviada</option>
+            <option value="error">Con error de envio</option>
+          </select>
           <button type="submit" className="boton-secundario">
             Filtrar
           </button>
         </form>
+
+        {aviso ? (
+          <div className="mt-3">
+            <Aviso tono="exito">{aviso}</Aviso>
+          </div>
+        ) : null}
 
         {error ? (
           <div className="mt-3">
@@ -194,6 +294,7 @@ export function Asistentes() {
                 <th scope="col">Rol</th>
                 <th scope="col">Semestre</th>
                 <th scope="col">Estado</th>
+                <th scope="col">Credencial</th>
                 <th scope="col" className="text-right">
                   Acciones
                 </th>
@@ -228,15 +329,40 @@ export function Asistentes() {
                       <Insignia tono="neutro">Inactivo</Insignia>
                     )}
                   </td>
+                  <td>
+                    <EstadoCredencial asistente={asistente} />
+                  </td>
                   <td className="text-right">
-                    <button
-                      type="button"
-                      className="boton-compacto text-primario-700 hover:bg-primario-50"
-                      onClick={() => setEditing(asistente)}
-                      aria-label={`Editar a ${asistente.nombres} ${asistente.apellidos}`}
-                    >
-                      <Pencil className="h-4 w-4" aria-hidden="true" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        className="boton-compacto text-primario-700 hover:bg-primario-50"
+                        onClick={() => {
+                          setError(null);
+                          setAviso(null);
+                          enviarCredencial.mutate(asistente.id);
+                        }}
+                        disabled={!asistente.email || enviarCredencial.isPending}
+                        title={
+                          asistente.email
+                            ? asistente.credencialEstado === 'enviada'
+                              ? 'Reenviar la credencial'
+                              : 'Enviar la credencial por correo'
+                            : 'Sin correo registrado'
+                        }
+                        aria-label={`Enviar la credencial a ${asistente.nombres} ${asistente.apellidos}`}
+                      >
+                        <Mail className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="boton-compacto text-primario-700 hover:bg-primario-50"
+                        onClick={() => setEditing(asistente)}
+                        aria-label={`Editar a ${asistente.nombres} ${asistente.apellidos}`}
+                      >
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -284,6 +410,23 @@ export function Asistentes() {
                   ) : (
                     <Insignia tono="neutro">Inactivo</Insignia>
                   )}
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <EstadoCredencial asistente={asistente} />
+                  <button
+                    type="button"
+                    className="boton-compacto bg-white text-primario-700 shadow-tarjeta"
+                    onClick={() => {
+                      setError(null);
+                      setAviso(null);
+                      enviarCredencial.mutate(asistente.id);
+                    }}
+                    disabled={!asistente.email || enviarCredencial.isPending}
+                    aria-label={`Enviar la credencial a ${asistente.nombres} ${asistente.apellidos}`}
+                  >
+                    <Mail className="h-4 w-4" aria-hidden="true" />
+                    {asistente.credencialEstado === 'enviada' ? 'Reenviar' : 'Enviar'}
+                  </button>
                 </div>
               </li>
             ))}

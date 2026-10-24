@@ -1,8 +1,11 @@
 import { Queue, Worker, type Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import { randomUUID } from 'node:crypto';
+import { eq } from 'drizzle-orm';
 import { cargarEntorno } from '../config/entorno.js';
 import { logger } from '../config/log.js';
+import { db } from '../db/cliente.js';
+import { asistentes } from '../db/esquema.js';
 import { enviarQrPorCorreo } from './correo.js';
 import { generarEscarapelaPDF } from './pdf.js';
 
@@ -138,15 +141,20 @@ async function iniciar(): Promise<void> {
         }
 
         await registrarAvance(loteId, 'enviados');
+        await db
+          .update(asistentes)
+          .set({
+            credencialEstado: 'enviada',
+            credencialEnviadaAt: new Date(),
+            credencialError: null,
+          })
+          .where(eq(asistentes.id, destino.asistenteId));
+
         return { enviado: true };
       },
       {
         connection: conexionTrabajador,
         concurrency: entorno.CORREOS_CONCURRENCIA,
-        limiter: {
-          max: entorno.CORREOS_POR_SEGUNDO,
-          duration: 1000,
-        },
       },
     );
 
@@ -159,6 +167,13 @@ async function iniciar(): Promise<void> {
       );
       if (trabajo.attemptsMade >= intentos) {
         void registrarAvance(trabajo.data.loteId, 'fallidos');
+        void db
+          .update(asistentes)
+          .set({
+            credencialEstado: 'error',
+            credencialError: error.message.slice(0, 500),
+          })
+          .where(eq(asistentes.id, trabajo.data.destino.asistenteId));
       }
     });
 
@@ -170,7 +185,7 @@ async function iniciar(): Promise<void> {
     logger.info(
       {
         concurrencia: entorno.CORREOS_CONCURRENCIA,
-        porSegundo: entorno.CORREOS_POR_SEGUNDO,
+        separacionSegundos: entorno.CORREOS_SEPARACION_SEGUNDOS,
         intentos: entorno.CORREOS_INTENTOS,
       },
       'Cola de correos iniciada',
@@ -230,13 +245,16 @@ export async function encolarCorreosCredencial(
   await cliente.expire(claveLote(loteId), VIGENCIA_LOTE_SEGUNDOS);
 
   await cola.addBulk(
-    destinos.map((destino) => ({
+    destinos.map((destino, indice) => ({
       name: 'credencial',
       data: { loteId, destino },
       opts: {
         jobId: `${loteId}-${destino.asistenteId}`,
+        // Espaciado: un correo cada CORREOS_SEPARACION_SEGUNDOS. Con 180 son
+        // 20 por hora, el ritmo que no dispara los filtros de spam.
+        delay: indice * entorno.CORREOS_SEPARACION_SEGUNDOS * 1000,
         attempts: entorno.CORREOS_INTENTOS,
-        backoff: { type: 'exponential', delay: 30_000 },
+        backoff: { type: 'exponential', delay: 120_000 },
         removeOnComplete: { age: 24 * 60 * 60, count: 5000 },
         removeOnFail: { age: 7 * 24 * 60 * 60, count: 5000 },
       },

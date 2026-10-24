@@ -195,15 +195,16 @@ export function Carnets() {
               disabled={enviarQr.isPending}
             >
               <Send className="h-4 w-4" aria-hidden="true" />
-              {enviarQr.isPending ? 'Encolando' : 'Enviar a todos'}
+              {enviarQr.isPending ? 'Encolando' : 'Enviar pendientes'}
             </button>
           }
         >
           <p className="flex items-start gap-2 text-sm text-neutro-600">
             <Mail className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            El correo incluye el codigo, el QR, las instrucciones de uso y la escarapela adjunta en
-            PDF al tamano de la tarjeta. Los envios se encolan: se procesan de a pocos, con
-            reintentos si el servidor de correo falla, y la operacion queda auditada.
+            Envia la credencial solo a quienes <strong>no la han recibido</strong> o les fallo el
+            envio. Se encola <strong>un correo cada 3 minutos</strong> (20 por hora), el ritmo
+            recomendado para que llegue a la bandeja y no a spam. Cada envio queda registrado por
+            asistente en <strong>Asistentes</strong>.
           </p>
 
           {loteId ? (

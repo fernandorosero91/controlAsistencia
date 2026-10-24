@@ -82,6 +82,10 @@ export const asistenteLecturaSchema = z.object({
   rol: z.enum(ROLES_ASISTENTE),
   semestre: z.number().int().nullable(),
   activo: z.boolean(),
+  /** Estado del ultimo envio de la credencial por correo. */
+  credencialEstado: z.enum(['en_cola', 'enviada', 'error']).nullable().optional(),
+  credencialEnviadaAt: z.string().nullable().optional(),
+  credencialError: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -96,6 +100,8 @@ export const filtrosAsistentesSchema = z.object({
     .enum(['true', 'false'])
     .transform((v) => v === 'true')
     .optional(),
+  /** Filtra por estado del envio de la credencial. */
+  credencial: z.enum(['pendiente', 'en_cola', 'enviada', 'error']).optional(),
   pagina: z.coerce.number().int().min(1).default(1),
   porPagina: z.coerce.number().int().min(1).max(200).default(50),
 });
