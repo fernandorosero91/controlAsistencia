@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Download, FileText, Mail, QrCode, Send } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Download, FileText, Mail, Pause, Play, QrCode, Send } from 'lucide-react';
 import { api, ErrorPeticion } from '../../lib/api';
 import { formatearNumero } from '../../lib/formato';
 import { Aviso, EsqueletoTarjeta, Tarjeta } from '../../componentes/comunes';
 
 export function Carnets() {
+  const cliente = useQueryClient();
   const [rol, setRol] = useState<'' | 'estudiante' | 'docente'>('');
   const [descargando, setDescargando] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +59,37 @@ export function Carnets() {
         problema instanceof ErrorPeticion
           ? problema.message
           : 'No se pudo enviar el correo con los codigos de registro',
+      );
+    },
+  });
+
+  // Estado de la cola: permite pausar el envio si algo se ve mal.
+  const cola = useQuery({
+    queryKey: ['correos', 'cola'],
+    queryFn: () =>
+      api.obtener<{
+        pausada: boolean;
+        esperando: number;
+        activos: number;
+        retrasados: number;
+        completados: number;
+        fallidos: number;
+      }>('/asistentes/enviar-qr/cola'),
+    refetchInterval: 10_000,
+    retry: false,
+  });
+
+  const cambiarCola = useMutation({
+    mutationFn: (accion: 'pausar' | 'reanudar') =>
+      api.crear(`/asistentes/enviar-qr/cola/${accion}`, {}),
+    onSuccess: () => {
+      void cliente.invalidateQueries({ queryKey: ['correos', 'cola'] });
+    },
+    onError: (problema) => {
+      setError(
+        problema instanceof ErrorPeticion
+          ? problema.message
+          : 'No se pudo cambiar el estado de la cola.',
       );
     },
   });
@@ -206,6 +238,44 @@ export function Carnets() {
             recomendado para que llegue a la bandeja y no a spam. Cada envio queda registrado por
             asistente en <strong>Asistentes</strong>.
           </p>
+
+          {cola.data ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutro-200 px-3 py-2">
+              <p className="text-xs text-neutro-600">
+                Cola de envio: <strong>{cola.data.pausada ? 'pausada' : 'activa'}</strong>
+                {' - '}
+                {formatearNumero(cola.data.esperando + cola.data.retrasados)} en espera
+                {cola.data.activos > 0 ? ` - ${cola.data.activos} enviando` : ''}
+                {cola.data.completados > 0
+                  ? ` - ${formatearNumero(cola.data.completados)} enviados`
+                  : ''}
+                {cola.data.fallidos > 0
+                  ? ` - ${formatearNumero(cola.data.fallidos)} con error`
+                  : ''}
+              </p>
+              <button
+                type="button"
+                className={
+                  cola.data.pausada
+                    ? 'boton-compacto bg-marca text-white shadow-marca'
+                    : 'boton-compacto border border-aviso-300 bg-white text-aviso-700'
+                }
+                onClick={() => cambiarCola.mutate(cola.data!.pausada ? 'reanudar' : 'pausar')}
+                disabled={cambiarCola.isPending}
+              >
+                {cola.data.pausada ? (
+                  <Play className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Pause className="h-4 w-4" aria-hidden="true" />
+                )}
+                {cambiarCola.isPending
+                  ? 'Aplicando'
+                  : cola.data.pausada
+                    ? 'Reanudar'
+                    : 'Pausar'}
+              </button>
+            </div>
+          ) : null}
 
           {loteId ? (
             <div className="mt-4 space-y-2">

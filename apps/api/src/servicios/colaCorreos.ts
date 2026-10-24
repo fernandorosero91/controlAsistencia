@@ -50,6 +50,16 @@ export interface EstadoLoteCorreos {
   estado: 'en_proceso' | 'completado' | 'desconocido';
 }
 
+/** Estado general de la cola, para pausar o reanudar el envio programado. */
+export interface EstadoColaCorreos {
+  pausada: boolean;
+  esperando: number;
+  activos: number;
+  retrasados: number;
+  completados: number;
+  fallidos: number;
+}
+
 interface TrabajoCorreo {
   loteId: string;
   destino: DestinoCorreoQr;
@@ -285,6 +295,42 @@ export async function estadoLoteCorreos(loteId: string): Promise<EstadoLoteCorre
     pendientes,
     estado: pendientes === 0 ? 'completado' : 'en_proceso',
   };
+}
+
+/** Estado de la cola (pausada o activa) con sus conteos. */
+export async function estadoColaCorreos(): Promise<EstadoColaCorreos | null> {
+  await iniciar();
+  if (!disponible || !cola) return null;
+
+  const [pausada, conteos] = await Promise.all([
+    cola.isPaused(),
+    cola.getJobCounts('waiting', 'active', 'delayed', 'completed', 'failed'),
+  ]);
+
+  return {
+    pausada,
+    esperando: conteos.waiting ?? 0,
+    activos: conteos.active ?? 0,
+    retrasados: conteos.delayed ?? 0,
+    completados: conteos.completed ?? 0,
+    fallidos: conteos.failed ?? 0,
+  };
+}
+
+/** Detiene el envio: los trabajos quedan en Redis y se reanudan despues. */
+export async function pausarColaCorreos(): Promise<boolean> {
+  await iniciar();
+  if (!disponible || !cola) return false;
+  await cola.pause();
+  return true;
+}
+
+/** Reactiva el envio pausado. */
+export async function reanudarColaCorreos(): Promise<boolean> {
+  await iniciar();
+  if (!disponible || !cola) return false;
+  await cola.resume();
+  return true;
 }
 
 export async function cerrarColaCorreos(): Promise<void> {

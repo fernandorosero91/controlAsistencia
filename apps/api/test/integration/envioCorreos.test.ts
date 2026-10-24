@@ -66,8 +66,7 @@ describe(descripcion, () => {
     expect(datos.resultados[0].mensaje).toContain('correo');
   });
 
-  it('el estado de un lote inexistente responde 404', async () => {
-    const respuesta = await app.inject({
+  it('el estado de un lote inexistente responde 404', async () => {    const respuesta = await app.inject({
       method: 'GET',
       url: '/asistentes/enviar-qr/lote/7d1f2f9e-0000-4000-8000-000000000000',
       headers: cabeceras(),
@@ -84,5 +83,29 @@ describe(descripcion, () => {
     });
 
     expect(respuesta.statusCode).toBe(422);
+  });
+
+  it('sin cola disponible el estado y la pausa responden 503', async () => {
+    const estado = await app.inject({
+      method: 'GET',
+      url: '/asistentes/enviar-qr/cola',
+      headers: cabeceras(),
+    });
+    expect(estado.statusCode).toBe(503);
+    expect(estado.json().codigo).toBe('NO_DISPONIBLE');
+
+    const pausar = await app.inject({
+      method: 'POST',
+      url: '/asistentes/enviar-qr/cola/pausar',
+      headers: cabeceras(),
+    });
+    expect(pausar.statusCode).toBe(503);
+
+    const reanudar = await app.inject({
+      method: 'POST',
+      url: '/asistentes/enviar-qr/cola/reanudar',
+      headers: cabeceras(),
+    });
+    expect(reanudar.statusCode).toBe(503);
   });
 });

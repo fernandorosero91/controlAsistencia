@@ -26,7 +26,10 @@ import {
 import { correoConfigurado, enviarQrPorCorreo } from '../servicios/correo.js';
 import {
   encolarCorreosCredencial,
+  estadoColaCorreos,
   estadoLoteCorreos,
+  pausarColaCorreos,
+  reanudarColaCorreos,
   type DestinoCorreoQr,
 } from '../servicios/colaCorreos.js';
 import { generarCartaQrPDF, generarCarnetsPDF, generarEscarapelaPDF } from '../servicios/pdf.js';
@@ -613,6 +616,64 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         fallidos: resultados.filter((r) => !r.enviado).length,
         resultados,
       };
+    },
+  );
+
+  app.get(
+    '/asistentes/enviar-qr/cola',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Asistentes'],
+        description: 'Estado de la cola de envio de credenciales (pausada o activa)',
+      },
+    },
+    async () => {
+      const estado = await estadoColaCorreos();
+      if (!estado) {
+        throw errores.noDisponible(
+          'La cola de correos no esta disponible: configure SMTP y Redis para enviar de a poco.',
+        );
+      }
+      return estado;
+    },
+  );
+
+  app.post(
+    '/asistentes/enviar-qr/cola/pausar',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Asistentes'],
+        description: 'Pausa el envio de credenciales (los correos quedan en cola)',
+      },
+    },
+    async (request) => {
+      const pausada = await pausarColaCorreos();
+      if (!pausada) {
+        throw errores.noDisponible('La cola de correos no esta disponible en este servidor.');
+      }
+      request.log.info('Cola de correos pausada por el administrador');
+      return { pausada: true };
+    },
+  );
+
+  app.post(
+    '/asistentes/enviar-qr/cola/reanudar',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: {
+        tags: ['Asistentes'],
+        description: 'Reanuda el envio de credenciales que estaba pausado',
+      },
+    },
+    async (request) => {
+      const reanudada = await reanudarColaCorreos();
+      if (!reanudada) {
+        throw errores.noDisponible('La cola de correos no esta disponible en este servidor.');
+      }
+      request.log.info('Cola de correos reanudada por el administrador');
+      return { pausada: false };
     },
   );
 
