@@ -10,6 +10,7 @@ import {
   Modal,
   Paginacion,
   Tarjeta,
+  Ayuda,
 } from '../../componentes/comunes';
 import type { EstadoCertificadoDetalle } from '@seminario/shared';
 
@@ -145,12 +146,12 @@ export function Certificados() {
 
   return (
     <div className="space-y-4">
-      <Aviso tono="primario" titulo="El certificado oficial se genera en Word">
+      <Ayuda titulo="El certificado oficial es el de Word; este PDF es la copia verificable">
         Este modulo emite la <strong>copia verificable en PDF</strong>, con codigo y QR de
         verificacion publica. El documento oficial de la Universidad se descarga en{' '}
         <strong>Certificados (Word)</strong>. Ambos usan la misma regla: 4 marcas (ingreso y salida
         en cada jornada), permanencia minima y cierre del seminario.
-      </Aviso>
+      </Ayuda>
 
       <Tarjeta
         titulo="Certificados PDF (copia verificable)"

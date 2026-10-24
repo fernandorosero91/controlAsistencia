@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, FileText, Mail, Pause, Play, QrCode, Send } from 'lucide-react';
+import { Download, FileText, Mail, Pause, Play, Send } from 'lucide-react';
 import { api, ErrorPeticion } from '../../lib/api';
 import { formatearNumero } from '../../lib/formato';
-import { Aviso, EsqueletoTarjeta, Tarjeta } from '../../componentes/comunes';
+import { Ayuda, Aviso, EsqueletoTarjeta, Tarjeta } from '../../componentes/comunes';
 
 export function Carnets() {
   const cliente = useQueryClient();
@@ -176,19 +176,11 @@ export function Carnets() {
           </p>
         </div>
 
-        <div className="mt-5">
-          <Aviso tono="primario" titulo="Que codifica el QR">
-            <span className="flex items-start gap-2">
-              <QrCode className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>
-                El QR contiene el codigo de registro de 6 caracteres (por ejemplo{' '}
-                <code>K7M4D2</code>), que el operador puede digitar si el escaner falla. La
-                escarapela muestra el nombre, el rol y el ID institucional en grande; el codigo no
-                se imprime porque ya va dentro del QR.
-              </span>
-            </span>
-          </Aviso>
-        </div>
+        <Ayuda titulo="Que codifica el QR" className="mt-4">
+          El QR contiene el codigo de registro de 6 caracteres (por ejemplo <code>K7M4D2</code>),
+          que el operador puede digitar si el escaner falla. La escarapela muestra el nombre, el rol
+          y el ID institucional; el codigo no se imprime porque ya va dentro del QR.
+        </Ayuda>
       </Tarjeta>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -210,10 +202,13 @@ export function Carnets() {
           }
         >
           <p className="text-sm text-neutro-600">
-            Util cuando no hay servidor de correo configurado o cuando un asistente no tiene correo
-            registrado. Son cuatro escarapelas por hoja, con el logo de la Universidad, el nombre
-            del asistente, el rol, el QR con su codigo de registro y los datos de identificacion.
+            Cuatro escarapelas por hoja, para quienes no reciben el correo o la necesitan en papel.
           </p>
+          <Ayuda titulo="Que incluye la carta" className="mt-3">
+            Lleva el logo de la Universidad, el nombre del asistente, el rol, el QR con su codigo de
+            registro y los datos de identificacion. Util cuando no hay servidor de correo
+            configurado o cuando un asistente no tiene correo registrado.
+          </Ayuda>
         </Tarjeta>
 
         <Tarjeta
@@ -233,11 +228,14 @@ export function Carnets() {
         >
           <p className="flex items-start gap-2 text-sm text-neutro-600">
             <Mail className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            Envia la credencial solo a quienes <strong>no la han recibido</strong> o les fallo el
-            envio. Se encola <strong>un correo cada 3 minutos</strong> (20 por hora), el ritmo
-            recomendado para que llegue a la bandeja y no a spam. Cada envio queda registrado por
-            asistente en <strong>Asistentes</strong>.
+            Envia la credencial solo a los pendientes, uno cada 3 minutos.
           </p>
+          <Ayuda titulo="Como funciona el envio" className="mt-3">
+            Se envia solo a quienes <strong>no la han recibido</strong> o les fallo el envio. El
+            ritmo es de <strong>un correo cada 3 minutos</strong> (20 por hora) para que llegue a la
+            bandeja y no a spam. Cada envio queda registrado por asistente en{' '}
+            <strong>Asistentes</strong>, donde puedes reenviar a quien falte.
+          </Ayuda>
 
           {cola.data ? (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutro-200 px-3 py-2">

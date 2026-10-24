@@ -7,7 +7,7 @@ import type { Firmante } from '@seminario/shared';
 import { CalendarClock, Pencil, Plus, Save, ShieldAlert, Timer, Trash2 } from 'lucide-react';
 import { api, ErrorPeticion } from '../../lib/api';
 import { formatearFechaHora } from '../../lib/formato';
-import { Aviso, EsqueletoTarjeta, Insignia, Modal, Tarjeta } from '../../componentes/comunes';
+import { Ayuda, Aviso, EsqueletoTarjeta, Insignia, Modal, Tarjeta } from '../../componentes/comunes';
 
 const esquema = z.object({
   nombre: z.string().trim().min(3, 'El nombre es obligatorio').max(160),
@@ -282,10 +282,10 @@ export function Configuracion() {
                   className="campo"
                   {...register('minimoPermanenciaHoras')}
                 />
-                <p className="mt-1 text-xs text-neutro-500">
-                  El asistente debe permanecer ese numero de horas en cada jornada exigida para
-                  que sea elegible para el certificado. Con 0 la regla no se aplica.
-                </p>
+                <Ayuda titulo="Como se aplica la permanencia minima" className="mt-2">
+                  El asistente debe permanecer ese numero de horas en cada jornada exigida para que
+                  sea elegible para el certificado. Con 0 la regla no se aplica.
+                </Ayuda>
                 {errors.minimoPermanenciaHoras ? (
                   <p className="mt-1 text-sm text-error-600">
                     {errors.minimoPermanenciaHoras.message}
@@ -732,10 +732,10 @@ export function Configuracion() {
           }}
         />
       </Modal>
-      <p className="text-xs text-neutro-500">
+      <Ayuda titulo="Cuando se recalculan los certificados">
         La elegibilidad de los certificados se recalcula con estos valores en cada consulta, sin
         necesidad de migraciones ni scripts.
-      </p>
+      </Ayuda>
     </div>
   );
 }
@@ -868,10 +868,10 @@ function AccesosOperador({ jornadas }: { jornadas: Jornada[] }) {
       titulo="Accesos del operador"
       descripcion="Lo que el operador puede hacer desde el celular"
     >
-      <p className="text-sm text-neutro-600">
+      <Ayuda titulo="Como funciona la jornada y los interruptores">
         La jornada no la elige el operador: se deduce del horario de cada jornada. Lo que apague
         aqui desaparece de la app del operador, y la API tambien lo rechaza.
-      </p>
+      </Ayuda>
 
       <div className="mt-4 space-y-3">
         {MODULOS_OPERADOR.map((modulo) => (
@@ -1075,12 +1075,12 @@ function Mantenimiento() {
         ))}
       </div>
 
-      <p className="mt-3 text-sm text-neutro-600">
+      <Ayuda titulo="Que se borra y que se conserva" className="mt-3">
         Borra el padron, las asistencias, los refrigerios entregados, los certificados, los lotes
         de certificados (PDF y Word), la auditoria y los registros de idempotencia.{' '}
         <strong>Se conservan</strong> la configuracion del seminario, las jornadas, los
         refrigerios configurados, las plantillas de certificado y las cuentas de usuario.
-      </p>
+      </Ayuda>
 
       <div className="mt-4">
         <button
@@ -1298,10 +1298,10 @@ function Souvenirs() {
         ) : null}
       </ul>
 
-      <p className="mt-3 text-xs text-neutro-500">
+      <Ayuda titulo="Como se usa el souvenir en el evento" className="mt-3">
         Para usarlo en la app del operador, active el interruptor <strong>Souvenir</strong> en
         Accesos del operador. El reporte de entregas y pendientes esta en Reportes.
-      </p>
+      </Ayuda>
 
       <Modal
         abierto={nuevo || enEdicion !== null}

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
-import { AlertTriangle, CircleAlert, Code2, Inbox, Loader2, RefreshCw, X } from 'lucide-react';
+import { AlertTriangle, ChevronDown, CircleAlert, CircleHelp, Code2, Inbox, Loader2, RefreshCw, X } from 'lucide-react';
 import clsx from 'clsx';
 
 export function PantallaCarga({ mensaje = 'Cargando' }: { mensaje?: string }) {
@@ -296,5 +296,38 @@ export function Creditos({ compacto = false }: { compacto?: boolean }) {
         Estudiantes de Ingenieria de Software - Universidad Cooperativa de Colombia
       </p>
     </footer>
+  );
+}
+
+/**
+ * Ayuda plegable. Los textos explicativos largos van aqui para que las tarjetas
+ * queden limpias: se ve el titulo y el detalle solo si el usuario lo abre.
+ */
+export function Ayuda({
+  titulo = 'Ayuda',
+  children,
+  className,
+}: {
+  titulo?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <details
+      className={clsx(
+        'group rounded-lg border border-neutro-200 bg-neutro-50/70 px-3 py-2',
+        className,
+      )}
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs font-semibold text-neutro-600 hover:text-primario-700 [&::-webkit-details-marker]:hidden">
+        <CircleHelp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span className="flex-1">{titulo}</span>
+        <ChevronDown
+          className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-180"
+          aria-hidden="true"
+        />
+      </summary>
+      <div className="mt-2 space-y-1.5 text-xs leading-relaxed text-neutro-600">{children}</div>
+    </details>
   );
 }

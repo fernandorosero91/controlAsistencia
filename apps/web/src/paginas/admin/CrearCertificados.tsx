@@ -22,7 +22,7 @@ import {
 } from '@seminario/shared';
 import { api, ErrorPeticion } from '../../lib/api';
 import { formatearFechaHora, formatearNumero } from '../../lib/formato';
-import { Aviso, EsqueletoTarjeta, EstadoVacio, Insignia, Modal, Tarjeta } from '../../componentes/comunes';
+import { Ayuda, Aviso, EsqueletoTarjeta, EstadoVacio, Insignia, Modal, Tarjeta } from '../../componentes/comunes';
 
 interface RespuestaListado {
   datos: PlantillaCertificado[];
@@ -224,18 +224,19 @@ export function CrearCertificados() {
       {error ? <Aviso tono="error" titulo="No fue posible completar la accion">{error}</Aviso> : null}
       {mensaje ? <Aviso tono="exito">{mensaje}</Aviso> : null}
 
-      <Aviso tono="primario" titulo="Como se habilita un certificado">
+      <Ayuda titulo="Quien puede recibir el certificado">
         El certificado oficial de la Universidad se genera en <strong>Word</strong>. Solo se genera
         el de los asistentes con las <strong>4 marcas</strong> (ingreso y salida de la manana y de
         la tarde), que hayan permanecido el <strong>minimo de horas</strong> en cada jornada y
         esten hasta el cierre del seminario. Quien no cumpla queda omitido y se muestra el motivo.
-      </Aviso>
+        Para un caso especial, use la casilla de excepcion al generar.
+      </Ayuda>
 
       <Tarjeta
         titulo="Certificados oficiales en Word"
         descripcion="Formato .docx de la Universidad: suba la plantilla y genere los certificados del padron"
       >
-        <Aviso tono="primario" titulo="Como marcar los campos en la plantilla">
+        <Ayuda titulo="Como marcar los campos en la plantilla">
           <p>En el documento de Word escriba los datos del titular entre dobles llaves, por ejemplo:</p>
           <ul className="mt-2 grid gap-1 sm:grid-cols-2">
             {CAMPOS_PLANTILLA.map((campo) => (
@@ -247,7 +248,7 @@ export function CrearCertificados() {
               </li>
             ))}
           </ul>
-        </Aviso>
+        </Ayuda>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
           <div>

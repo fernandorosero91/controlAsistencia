@@ -36,7 +36,7 @@ import {
   TarjetaVerificacion,
   type VerificacionAsistente,
 } from '../componentes/operador/TarjetaVerificacion';
-import { Aviso, Creditos, Esqueleto, Insignia, Modal } from '../componentes/comunes';
+import { Ayuda, Aviso, Creditos, Esqueleto, Insignia, Modal } from '../componentes/comunes';
 
 interface JornadaResumen {
   id: number;
@@ -794,12 +794,14 @@ export function Operador() {
             <ScanLine className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
-        <p id="ayuda-id" className="mt-2 text-xs text-neutro-500">
-          Escriba la cedula o el codigo estudiantil, o el codigo de 6 caracteres que trae el QR (por
-          ejemplo <span className="font-mono font-semibold">K7M4D2</span>). Pulse{' '}
-          <span className="font-semibold">Verificar</span> para comparar el nombre con la escarapela
-          antes de registrar.
-        </p>
+        <Ayuda titulo="Que puedo escribir en este campo" className="mt-2">
+          <p id="ayuda-id">
+            La cedula, el codigo estudiantil o el codigo de 6 caracteres del QR (por ejemplo{' '}
+            <span className="font-mono font-semibold">K7M4D2</span>). Pulse{' '}
+            <span className="font-semibold">Verificar</span> para comparar el nombre con la
+            escarapela antes de registrar.
+          </p>
+        </Ayuda>
         <div className="mt-3 flex gap-2">
           <button
             type="submit"
