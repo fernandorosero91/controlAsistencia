@@ -40,6 +40,40 @@ export interface OpcionesPeticion {
 
 const ESPERA_REINTENTO_MS = [300, 800, 1600];
 
+const CLAVE_DISPOSITIVO = 'seminario.dispositivo';
+let dispositivoCache: string | null = null;
+
+/**
+ * Identificador estable de este navegador o celular.
+ *
+ * El servidor lo usa para dar a cada dispositivo su propio cupo de peticiones
+ * de escaneo. Asi varios operadores pueden compartir la misma cuenta sin
+ * consumir entre todos un unico limite: el caso del evento, donde una cuenta
+ * se usa en varios celulares a la vez.
+ */
+function identificadorDispositivo(): string {
+  if (typeof window === 'undefined') return 'servidor';
+  try {
+    const guardado = window.localStorage.getItem(CLAVE_DISPOSITIVO);
+    if (guardado) return guardado;
+    const nuevo =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `dispositivo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    window.localStorage.setItem(CLAVE_DISPOSITIVO, nuevo);
+    return nuevo;
+  } catch {
+    // Navegacion privada con almacenamiento bloqueado: la sesion sigue
+    // funcionando; solo comparte cupo con los demas dispositivos.
+    return 'navegador';
+  }
+}
+
+function dispositivoActual(): string {
+  dispositivoCache ??= identificadorDispositivo();
+  return dispositivoCache;
+}
+
 function esperar(ms: number): Promise<void> {
   return new Promise((resolver) => setTimeout(resolver, ms));
 }
@@ -175,6 +209,7 @@ async function ejecutar<T>(ruta: string, opciones: OpcionesPeticion): Promise<T>
   const esFormulario = typeof FormData !== 'undefined' && opciones.cuerpo instanceof FormData;
   const cabeceras: Record<string, string> = {
     Accept: 'application/json',
+    'X-Dispositivo': dispositivoActual(),
     ...(opciones.cuerpo !== undefined && !esFormulario
       ? { 'Content-Type': 'application/json' }
       : {}),

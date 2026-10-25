@@ -175,8 +175,12 @@ Si el registro DNS del subdominio esta **proxificado** (nube naranja de Cloudfla
   Cloudflare-origen. Con Full (strict) ambos son validos.
 - Cloudflare reescribe `X-Forwarded-For` y la API corre con `trustProxy`, de modo que el rate limit
   por dispositivo sigue funcionando. Aun asi, en la sede todos los celulares salen por la misma IP
-  publica: por eso el limite de escaneo se aplica **por usuario autenticado** y no por direccion de
-  red, y cada operador tiene su propio presupuesto (80 peticiones por minuto, `RATE_LIMIT_ESCANEO_MAX`).
+  publica y varios pueden compartir **la misma cuenta de operador**: por eso el limite de escaneo se
+  aplica **por usuario + dispositivo** (`X-Dispositivo`) y no por direccion de red. Cada celular
+  tiene su propio presupuesto (150 peticiones por minuto, `RATE_LIMIT_ESCANEO_MAX`).
+- Para que quince celulares entren a la vez con la misma cuenta, `RATE_LIMIT_LOGIN_MAX` debe ser
+  **30** (por defecto). Si en Dokploy se fijo en 10, el equipo vera `429` al iniciar sesion. El panel
+  de Control de asistencia > Mantenimiento no requiere cambios.
 - Los QR de los certificados quedan atados a este dominio: cambiarlo despues invalida los codigos ya
   impresos.
 

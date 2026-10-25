@@ -93,6 +93,8 @@ actualizar, generar, descargar o eliminar un lote o una plantilla queda en la au
 ### Que hacer
 
 1. Entre con el usuario que le entregaron. La sesion dura 15 minutos; si expira, entre de nuevo.
+   **La misma cuenta se puede usar en varios celulares a la vez** (hasta quince en el evento):
+   cada dispositivo tiene su propio cupo de registros, asi que no se estorban entre si.
 2. Elija el modo: **Ingreso**, **Refrigerio**, **Salida** o **Souvenir**. El sistema le muestra siempre la
    jornada activa.
 3. **Escanee el QR** con el boton de camara, o **escriba** el codigo de 6 caracteres, o la

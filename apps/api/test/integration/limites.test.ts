@@ -75,6 +75,31 @@ describe(descripcion, () => {
     expect(Number(respuesta.headers['retry-after'])).toBeGreaterThan(0);
   });
 
+  it('da a cada dispositivo su propio cupo aunque compartan la misma cuenta', async () => {
+    const enviar = (dispositivo: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/asistencias/ingreso',
+        headers: { authorization: `Bearer ${token}`, 'x-dispositivo': dispositivo },
+        payload: { asistenteId: 'LIMITE0001', jornadaId: 1 },
+      });
+
+    // El celular A agota su cupo de 5.
+    const celularA: number[] = [];
+    for (let intento = 0; intento < 7; intento += 1) {
+      celularA.push((await enviar('celular-a')).statusCode);
+    }
+    expect(celularA.slice(0, 5).every((estado) => estado === 200)).toBe(true);
+    expect(celularA[5]).toBe(429);
+
+    // El celular B usa la misma cuenta, pero conserva su propio cupo.
+    const celularB: number[] = [];
+    for (let intento = 0; intento < 5; intento += 1) {
+      celularB.push((await enviar('celular-b')).statusCode);
+    }
+    expect(celularB.every((estado) => estado === 200)).toBe(true);
+  });
+
   it('no aplica el limite de escaneo a las rutas del panel', async () => {
     const respuestas = await Promise.all(
       Array.from({ length: 7 }, () =>

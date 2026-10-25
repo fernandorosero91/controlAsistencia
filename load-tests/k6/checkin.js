@@ -55,8 +55,8 @@ export const options = {
     },
     duplicados: {
       // Varios operadores repiten el mismo ID a la vez: comprueba la alerta de
-      // duplicado y que nunca se crea un segundo registro. El ritmo se modera
-      // para no disparar el limite de 600 solicitudes por minuto y por operador.
+      // duplicado y que nunca se crea un segundo registro. Cada VU envia su
+      // propio X-Dispositivo, asi que cada uno tiene su cupo de escaneo.
       executor: 'constant-vus',
       vus: 8,
       duration: '1m',
@@ -100,7 +100,7 @@ export function setup() {
         throw new Error(`No se pudo iniciar sesion de ${cuenta}: ${respuesta.status}`);
       }
       // El limite de inicio de sesion esta activo: se espera y se reintenta.
-      http.sleep(20);
+      sleep(20);
     }
     if (token === null) {
       throw new Error(`No se pudo iniciar sesion de ${cuenta}: limite de intentos alcanzado`);
@@ -130,7 +130,9 @@ export function ingresos(datos) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenDe(datos)}`,
-        'X-Dispositivo': 'k6',
+        // Cada VU simula un celular distinto: la app envia este identificador
+        // y el servidor le da su propio cupo de escaneo.
+        'X-Dispositivo': `k6-ingreso-${exec.vu.idInTest}`,
       },
       tags: { escenario: 'ingresos' },
     },
@@ -167,7 +169,7 @@ export function repetirMismoId(datos) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenDe(datos)}`,
-        'X-Dispositivo': 'k6',
+        'X-Dispositivo': `k6-duplicado-${exec.vu.idInTest}`,
       },
       tags: { escenario: 'duplicados' },
     },
@@ -186,5 +188,8 @@ export function repetirMismoId(datos) {
   if (cuerpo.resultado === 'duplicado') duplicados.add(1);
   else if (cuerpo.resultado === 'exito') exitos.add(1);
 
-  sleep(0.25);
+  // Medio segundo por VU: ocho dispositivos quedan en 2 peticiones por segundo
+  // cada uno (120 por minuto), por debajo del cupo de escaneo. La prueba sigue
+  // siendo de concurrencia real sobre el mismo registro, sin medir el limite.
+  sleep(0.5);
 }

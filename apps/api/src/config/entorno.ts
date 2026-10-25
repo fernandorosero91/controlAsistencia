@@ -67,10 +67,14 @@ const esquema = z.object({
 
   CORS_ORIGINS: z.string().default('http://localhost:5173,http://localhost:4173'),
 
-  RATE_LIMIT_LOGIN_MAX: z.coerce.number().int().min(1).max(1000).default(10),
+  // Inicio de sesion por IP + correo. 30 por minuto permite que un equipo de
+  // quince operadores entre a la vez desde la misma red (misma IP publica y
+  // misma cuenta) sin bloquearse; sigue siendo un tope bajo para fuerza bruta.
+  RATE_LIMIT_LOGIN_MAX: z.coerce.number().int().min(1).max(1000).default(30),
   RATE_LIMIT_LOGIN_VENTANA_SEGUNDOS: z.coerce.number().int().min(1).default(60),
-  // Escaneo del operador: por usuario autenticado. 80 por minuto alcanza para
-  // unas cuarenta registraciones por minuto y protege la base de datos.
+  // Escaneo del operador: por usuario + dispositivo. 150 por minuto y por
+  // celular alcanza para unas setenta registraciones por minuto desde un solo
+  // dispositivo y protege la base de datos.
   RATE_LIMIT_ESCANEO_MAX: z.coerce.number().int().min(1).max(100000).default(150),
   RATE_LIMIT_ESCANEO_VENTANA_SEGUNDOS: z.coerce.number().int().min(1).default(60),
   RATE_LIMIT_VERIFICACION_MAX: z.coerce.number().int().min(1).max(1000).default(20),

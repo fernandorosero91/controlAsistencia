@@ -356,8 +356,11 @@ tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice 
 2. **Atomicidad.** Toda escritura critica es una sola sentencia atomica o transaccion corta, apoyada en
    constraints UNIQUE. **Nunca "consultar y luego insertar".**
 3. **Rate limiting** por IP y por usuario/token, con limites distintos por ruta (login estricto,
-   escaneo holgado por dispositivo, verificacion publica limitada por IP). Respuestas `429` con
-   `Retry-After`.
+   escaneo holgado **por usuario + dispositivo**, verificacion publica limitada por IP). Respuestas
+   `429` con `Retry-After`. **Una misma cuenta de operador se usa desde varios celulares** (hasta
+   15 en el evento): el cupo de escaneo se cuenta con la cabecera `X-Dispositivo`, que la app
+   rellena con un identificador estable guardado en cada navegador. El inicio de sesion admite 30
+   accesos por minuto y por IP + correo para que quince dispositivos entren a la vez.
 4. **Idempotencia** mediante cabecera `Idempotency-Key` en endpoints de escritura.
 5. **Cache** de configuracion del seminario y de agregados del dashboard (TTL de 2-5 s) para que el
    polling no sobrecargue la BD.

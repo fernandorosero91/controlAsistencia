@@ -101,6 +101,30 @@ describe(descripcion, () => {
     expect(borraCookie(perdedor)).toBe(false);
   });
 
+  it('varias sesiones de la misma cuenta se renuevan sin invalidarse entre si', async () => {
+    // Caso del evento: quince celulares con la misma cuenta de operador.
+    const cookies = await Promise.all([iniciarSesion(), iniciarSesion(), iniciarSesion()]);
+
+    const primeras = await Promise.all(
+      cookies.map((cookie) =>
+        app.inject({ method: 'POST', url: '/auth/refresh', headers: { cookie } }),
+      ),
+    );
+    expect(primeras.map((respuesta) => respuesta.statusCode)).toEqual([200, 200, 200]);
+
+    // Cada dispositivo sigue renovando con su propia cookie nueva.
+    const segundas = await Promise.all(
+      primeras.map((respuesta) =>
+        app.inject({
+          method: 'POST',
+          url: '/auth/refresh',
+          headers: { cookie: cookieDeRespuesta(respuesta) },
+        }),
+      ),
+    );
+    expect(segundas.map((respuesta) => respuesta.statusCode)).toEqual([200, 200, 200]);
+  });
+
   it('un token desconocido no borra la cookie del navegador', async () => {
     const respuesta = await app.inject({
       method: 'POST',

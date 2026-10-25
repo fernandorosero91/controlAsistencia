@@ -185,18 +185,25 @@ El contador vive en Redis y se separa **por ruta**, con la clave del usuario aut
 direccion de red cuando la peticion no lleva sesion). Cada grupo de rutas tiene su propio
 presupuesto, de modo que el trafico de escaneo del operador no consume el del panel:
 
-| Grupo                   | Rutas                                            | Clave            | Valor por defecto |
-| ----------------------- | ------------------------------------------------ | ---------------- | ----------------- |
-| Escaneo del operador    | ingresos, salidas, refrigerios y busqueda previa | usuario          | 80 por minuto     |
-| Panel de administracion | rutas que exigen rol `admin`                     | usuario          | 600 por minuto    |
-| Inicio de sesion        | `POST /auth/login`                               | IP + correo      | 10 por minuto     |
-| Verificacion publica    | `GET /publico/verificar/:codigo`                 | direccion de red | 20 por minuto     |
+| Grupo                   | Rutas                                            | Clave              | Valor por defecto |
+| ----------------------- | ------------------------------------------------ | ------------------ | ----------------- |
+| Escaneo del operador    | ingresos, salidas, refrigerios y busqueda previa | usuario + dispositivo | 150 por minuto |
+| Panel de administracion | rutas que exigen rol `admin`                     | usuario            | 600 por minuto    |
+| Inicio de sesion        | `POST /auth/login`                               | IP + correo        | 30 por minuto     |
+| Verificacion publica    | `GET /publico/verificar/:codigo`                 | direccion de red   | 20 por minuto     |
 
-**Por que 80 por minuto para el operador.** En la sede todos los celulares salen por la misma IP
-publica, asi que un limite por direccion de red bloquearia a todo el equipo a la vez. Con el
-limite por usuario, cada operador puede registrar unos cuarenta asistentes por minuto (cada
-registro son dos peticiones: verificar el nombre y escribir el registro) sin que un solo
-dispositivo pueda saturar la base de datos. Las variables `RATE_LIMIT_*` adjustan cada valor.
+**Por que el escaneo se cuenta por usuario + dispositivo.** En el evento una misma cuenta de
+operador se usa en **varios celulares a la vez** (hasta quince), y en la sede todos salen por la
+misma IP publica. Un limite solo por cuenta haria que los quince dispositivos compartieran un unico
+cupo y recibieran `429` en mitad de la fila; un limite por IP haria lo mismo detras del NAT. La app
+guarda un identificador estable en cada navegador y lo envia en `X-Dispositivo`: cada celular tiene
+su propio cupo de 150 peticiones por minuto, suficiente para unas setenta registraciones por minuto
+(cada registro son dos peticiones: verificar el nombre y escribir el registro). Si la cabecera no
+llega, el contador cae de nuevo en la cuenta, que es el caso mas restrictivo.
+
+**Inicio de sesion: 30 por minuto y por IP + correo.** Debe alcanzar para que quince dispositivos
+entren al mismo tiempo desde la misma red; sigue siendo un tope bajo para fuerza bruta. Las
+variables `RATE_LIMIT_*` ajustan cada valor.
 
 ---
 
