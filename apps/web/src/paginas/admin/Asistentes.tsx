@@ -19,6 +19,7 @@ interface Asistente {
   id: string;
   codigoRegistro: string | null;
   cedulaCiudadania: string | null;
+  tipoDocumento: 'CC' | 'TI';
   nombres: string;
   apellidos: string;
   email: string | null;
@@ -45,6 +46,7 @@ const esquemaFormulario = z
     apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios').max(80),
     rol: z.enum(['estudiante', 'docente']),
     semestre: z.number().int().min(1).max(30).nullable(),
+    tipoDocumento: z.enum(['CC', 'TI']),
     cedulaCiudadania: z
       .string()
       .trim()
@@ -63,10 +65,6 @@ const esquemaFormulario = z
       .max(120)
       .optional()
       .or(z.literal('')),
-  })
-  .refine((datos) => datos.rol !== 'estudiante' || datos.semestre !== null, {
-    message: 'El semestre es obligatorio para estudiantes',
-    path: ['semestre'],
   })
   .refine((datos) => datos.rol !== 'docente' || datos.semestre === null, {
     message: 'El semestre no aplica para docentes',
@@ -178,6 +176,7 @@ export function Asistentes() {  const cliente = useQueryClient();
         rol: datos.rol,
         semestre: datos.rol === 'docente' ? null : datos.semestre,
         cedulaCiudadania: datos.cedulaCiudadania?.trim() ? datos.cedulaCiudadania.trim() : '',
+          tipoDocumento: datos.tipoDocumento,
         email: datos.email?.trim() ? datos.email.trim() : '',
         activo: true,
       };
@@ -489,8 +488,9 @@ function FormularioAsistente({
       nombres: asistente?.nombres ?? '',
       apellidos: asistente?.apellidos ?? '',
       rol: asistente?.rol ?? 'estudiante',
-      semestre: asistente?.semestre ?? 1,
+      semestre: asistente?.semestre ?? null,
       cedulaCiudadania: asistente?.cedulaCiudadania ?? '',
+      tipoDocumento: asistente?.tipoDocumento ?? 'CC',
       email: asistente?.email ?? '',
     },
   });
@@ -565,19 +565,19 @@ function FormularioAsistente({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="cedula" className="etiqueta-campo">
-            Cedula de ciudadania
+          <label htmlFor="tipoDocumento" className="etiqueta-campo">
+            Tipo de documento
           </label>
-          <input
-            id="cedula"
-            className="campo font-mono"
-            placeholder="1094867245"
-            autoComplete="off"
-            inputMode="numeric"
-            {...register('cedulaCiudadania', {
-              setValueAs: (valor) => String(valor).toUpperCase(),
-            })}
-          />
+          <select id="tipoDocumento" className="campo" {...register('tipoDocumento')}>
+            <option value="CC">C.C.</option>
+            <option value="TI">T.I.</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="cedula" className="etiqueta-campo">
+            Numero de documento
+          </label>
+          <input id="cedula" className="campo font-mono" placeholder="1094867245" autoComplete="off" inputMode="numeric" {...register('cedulaCiudadania', { setValueAs: (valor) => String(valor).toUpperCase() })} />
           {errors.cedulaCiudadania ? (
             <p className="mt-1 text-sm text-error-600">{errors.cedulaCiudadania.message}</p>
           ) : null}
@@ -610,7 +610,7 @@ function FormularioAsistente({
             {...register('rol', {
               onChange: (evento) => {
                 if (evento.target.value === 'docente') setValue('semestre', null);
-                else if (watch('semestre') === null) setValue('semestre', 1);
+                else if (watch('semestre') === null) setValue('semestre', null);
               },
             })}
           >
@@ -620,7 +620,7 @@ function FormularioAsistente({
         </div>
         <div>
           <label htmlFor="semestre" className="etiqueta-campo">
-            Semestre
+            Semestre (opcional)
           </label>
           <input
             id="semestre"

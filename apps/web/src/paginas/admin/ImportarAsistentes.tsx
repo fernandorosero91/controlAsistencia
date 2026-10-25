@@ -87,6 +87,7 @@ export function ImportarAsistentes() {
           rol: String(fila.datos.rol ?? 'estudiante') as 'estudiante' | 'docente',
           semestre: (fila.datos.semestre ?? null) as number | null,
           cedulaCiudadania: String(fila.datos.cedulaCiudadania ?? ''),
+          tipoDocumento: (fila.datos.tipoDocumento ?? 'CC') as 'CC' | 'TI',
           email: String(fila.datos.email ?? ''),
         }));
       return api.crear<{ creados: number; actualizados: number; omitidos: number }>(
@@ -103,13 +104,20 @@ export function ImportarAsistentes() {
       );
       if (referenciaArchivo.current) referenciaArchivo.current.value = '';
     },
+    onError: (problema) => {
+      setError(
+        problema instanceof ErrorPeticion
+          ? problema.message
+          : 'No se pudo confirmar la importacion. Intente de nuevo.',
+      );
+    },
   });
 
   return (
     <div className="space-y-4">
       <Tarjeta
         titulo="Importacion masiva de asistentes"
-        descripcion="Archivo XLSX o CSV con las columnas: id, nombres, apellidos, rol, semestre, cedula y email"
+        descripcion="Archivo XLSX o CSV con las columnas: id, nombres, apellidos, rol, semestre, tipo documento, nro. documento y email"
         accion={
           <button
             type="button"

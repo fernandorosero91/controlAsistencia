@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { ROLES_ASISTENTE } from './enums.js';
 import { CEDULA_REGEX, normalizarCedula, normalizarId } from './dominio.js';
 
+export const TIPOS_DOCUMENTO = ['CC', 'TI'] as const;
+export type TipoDocumento = (typeof TIPOS_DOCUMENTO)[number];
+
 /** Cedula de ciudadania: opcional, entre 5 y 20 caracteres alfanumericos. */
 export const cedulaSchema = z
   .string()
@@ -18,6 +21,7 @@ export const asistenteSchema = z.object({
   apellidos: z.string().trim().min(1, 'Los apellidos son obligatorios').max(80),
   rol: z.enum(ROLES_ASISTENTE),
   semestre: z.number().int().min(1).max(30).nullable().optional(),
+  tipoDocumento: z.enum(TIPOS_DOCUMENTO).default('CC'),
   cedulaCiudadania: cedulaSchema.nullable().optional().or(z.literal('')),
   email: z
     .string()
@@ -33,13 +37,6 @@ export const asistenteSchema = z.object({
 export type AsistenteInput = z.infer<typeof asistenteSchema>;
 
 export const asistenteCreateSchema = asistenteSchema.superRefine((datos, ctx) => {
-  if (datos.rol === 'estudiante' && (datos.semestre === null || datos.semestre === undefined)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['semestre'],
-      message: 'El semestre es obligatorio para estudiantes',
-    });
-  }
   if (datos.rol === 'docente' && datos.semestre !== null && datos.semestre !== undefined) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -55,6 +52,7 @@ export const asistenteUpdateSchema = z
     apellidos: z.string().trim().min(1).max(80).optional(),
     rol: z.enum(ROLES_ASISTENTE).optional(),
     semestre: z.number().int().min(1).max(30).nullable().optional(),
+    tipoDocumento: z.enum(TIPOS_DOCUMENTO).optional(),
     cedulaCiudadania: cedulaSchema.nullable().optional().or(z.literal('')),
     email: z
       .string()
@@ -78,6 +76,7 @@ export const asistenteLecturaSchema = z.object({
   nombres: z.string(),
   apellidos: z.string(),
   cedulaCiudadania: z.string().nullable(),
+  tipoDocumento: z.enum(TIPOS_DOCUMENTO),
   email: z.string().nullable(),
   rol: z.enum(ROLES_ASISTENTE),
   semestre: z.number().int().nullable(),

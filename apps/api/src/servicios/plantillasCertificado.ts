@@ -215,10 +215,11 @@ export async function eliminarPlantilla(id: string): Promise<void> {
 /** Convierte una fila del padron al conjunto de campos de la plantilla. */
 function datosTitular(fila: typeof asistentes.$inferSelect): DatosTitularPlantilla {
   const cedula = (fila.cedulaCiudadania ?? '').trim();
+  const prefijoDocumento = fila.tipoDocumento === 'TI' ? 'T.I.' : 'C.C.';
   return {
     asistenteId: fila.id,
     nombre: `${fila.nombres} ${fila.apellidos}`.replace(/\s+/g, ' ').trim().toUpperCase(),
-    cedula: cedula.length > 0 ? cedula : fila.id,
+    cedula: cedula.length > 0 ? `${prefijoDocumento} ${cedula}` : fila.id,
     id: fila.id,
     rol: fila.rol === 'estudiante' ? 'Estudiante' : 'Docente',
     semestre: fila.semestre !== null ? String(fila.semestre) : '',

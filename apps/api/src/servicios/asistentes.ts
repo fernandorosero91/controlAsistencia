@@ -62,6 +62,7 @@ export interface DatosCrearAsistente {
   apellidos: string;
   rol: 'estudiante' | 'docente';
   semestre: number | null;
+  tipoDocumento?: 'CC' | 'TI';
   cedulaCiudadania?: string | null;
   email?: string | null;
   activo: boolean;
@@ -84,6 +85,7 @@ export async function crearAsistente(datos: DatosCrearAsistente) {
       id,
       codigoRegistro,
       cedulaCiudadania: cedulaNormalizada(datos.cedulaCiudadania),
+      tipoDocumento: datos.tipoDocumento ?? 'CC',
       email: datos.email ? datos.email.toLowerCase() : null,
       nombres: datos.nombres,
       apellidos: datos.apellidos,
@@ -122,6 +124,7 @@ export async function crearAsistentesLote(lista: DatosCrearAsistente[]): Promise
       id: normalizarId(datos.id),
       codigoRegistro: codigo,
       cedulaCiudadania: cedulaNormalizada(datos.cedulaCiudadania),
+      tipoDocumento: datos.tipoDocumento ?? 'CC',
       email: datos.email ? datos.email.toLowerCase() : null,
       nombres: datos.nombres,
       apellidos: datos.apellidos,
@@ -170,6 +173,7 @@ export async function listarConCorreo(opciones: { soloPendientes?: boolean } = {
     id: string;
     codigoRegistro: string | null;
     cedulaCiudadania: string | null;
+    tipoDocumento: 'CC' | 'TI';
     email: string | null;
     nombres: string;
     apellidos: string;
@@ -192,6 +196,7 @@ export async function listarConCorreo(opciones: { soloPendientes?: boolean } = {
       id: asistentes.id,
       codigoRegistro: asistentes.codigoRegistro,
       cedulaCiudadania: asistentes.cedulaCiudadania,
+      tipoDocumento: asistentes.tipoDocumento,
       email: asistentes.email,
       nombres: asistentes.nombres,
       apellidos: asistentes.apellidos,
@@ -208,6 +213,7 @@ export interface VerificacionAsistente {
     id: string;
     codigoRegistro: string | null;
     cedulaCiudadania: string | null;
+    tipoDocumento: 'CC' | 'TI';
     nombres: string;
     apellidos: string;
     rol: 'estudiante' | 'docente';
@@ -256,6 +262,7 @@ export async function verificarAsistente(valor: string): Promise<VerificacionAsi
       id: asistente.id,
       codigoRegistro: asistente.codigoRegistro,
       cedulaCiudadania: asistente.cedulaCiudadania,
+      tipoDocumento: asistente.tipoDocumento,
       nombres: asistente.nombres,
       apellidos: asistente.apellidos,
       rol: asistente.rol,

@@ -25,6 +25,7 @@ import {
 export const rolAsistenteEnum = pgEnum('rol_asistente', ['estudiante', 'docente']);
 export const rolSistemaEnum = pgEnum('rol_sistema', ['admin', 'operador']);
 export const estadoLoteEnum = pgEnum('estado_lote', ['en_proceso', 'completado', 'fallido']);
+export const tipoDocumentoEnum = pgEnum('tipo_documento', ['CC', 'TI']);
 
 const creadoEn = timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 const actualizadoEn = timestamp('updated_at', { withTimezone: true }).notNull().defaultNow();
@@ -156,6 +157,7 @@ export const asistentes = pgTable(
     id: text('id').primaryKey(),
     codigoRegistro: text('codigo_registro'),
     cedulaCiudadania: text('cedula_ciudadania'),
+    tipoDocumento: tipoDocumentoEnum('tipo_documento').notNull().default('CC'),
     email: text('email'),
     nombres: text('nombres').notNull(),
     apellidos: text('apellidos').notNull(),
@@ -184,10 +186,6 @@ export const asistentes = pgTable(
     index('asistentes_email_idx')
       .on(sql`lower(${tabla.email})`)
       .where(sql`${tabla.email} IS NOT NULL`),
-    check(
-      'asistentes_semestre_rol',
-      sql`(${tabla.rol} = 'estudiante') = (${tabla.semestre} IS NOT NULL)`,
-    ),
     check(
       'asistentes_semestre_rango',
       sql`${tabla.semestre} IS NULL OR ${tabla.semestre} BETWEEN 1 AND 30`,

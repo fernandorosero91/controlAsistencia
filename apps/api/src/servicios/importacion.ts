@@ -16,6 +16,27 @@ const ENCABEZADOS = ['id', 'nombres', 'apellidos', 'rol', 'semestre'] as const;
 
 /** Columnas opcionales que tambien se aceptan con su nombre completo. */
 const COLUMNAS_CEDULA = ['cedula', 'cedula_ciudadania', 'cedulaciudadania'] as const;
+const COLUMNAS_DOCUMENTO = ['nro. documento', 'nro_documento', 'numero_documento', 'documento'] as const;
+const COLUMNAS_TIPO_DOCUMENTO = ['tipo documento', 'tipo_documento', 'tipodocumento'] as const;
+
+function normalizarEncabezado(valor: string): string {
+  const encabezado = valor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+  const alias: Record<string, string> = {
+    'id estudiante': 'id',
+    'id institucional': 'id',
+    'nro. documento': 'nro. documento',
+    'nro documento': 'nro. documento',
+    'numero de documento': 'nro. documento',
+    correo: 'email',
+    'correo electronico': 'email',
+    'tipo de documento': 'tipo documento',
+  };
+  return alias[encabezado] ?? encabezado;
+}
 
 export type FormatoImportacion = 'csv' | 'xlsx';
 
@@ -45,7 +66,7 @@ export function parsearCsv(contenido: string): ResultadoParseo {
     return { filas: [], errorLectura: 'El archivo esta vacio' };
   }
 
-  const encabezados = registros[0]!.map((valor) => valor.toLowerCase().trim());
+  const encabezados = registros[0]!.map(normalizarEncabezado);
   const faltantes = ENCABEZADOS.filter(
     (encabezado) => !encabezados.includes(encabezado) && encabezado !== 'semestre',
   );
@@ -85,7 +106,7 @@ export async function parsearXlsx(buffer: Buffer): Promise<ResultadoParseo> {
     if (valores.every((valor) => valor.length === 0)) return;
 
     if (!encabezados) {
-      encabezados = valores.map((valor) => valor.toLowerCase().trim());
+      encabezados = valores.map(normalizarEncabezado);
       return;
     }
 
@@ -137,7 +158,10 @@ export function validarFila(
   const nombres = (datos.nombres ?? '').trim();
   const apellidos = (datos.apellidos ?? '').trim();
   const rolTexto = (datos.rol ?? '').trim().toLowerCase();
-  const semestreTexto = (datos.semestre ?? '').trim();
+  const semestreTextoOriginal = (datos.semestre ?? '').trim();
+  const semestreTexto = ['n/a', 'na', '-'].includes(semestreTextoOriginal.toLowerCase())
+    ? ''
+    : semestreTextoOriginal;
   const correoTexto = (datos.email ?? '').trim().toLowerCase();
 
   if (idOriginal.length === 0) {
@@ -176,7 +200,7 @@ export function validarFila(
 
   // Cedula de ciudadania: opcional, pero si viene debe tener formato valido.
   const cedulaTexto = (
-    COLUMNAS_CEDULA.map((columna) => datos[columna] ?? '').find(
+    [...COLUMNAS_DOCUMENTO, ...COLUMNAS_CEDULA].map((columna) => datos[columna] ?? '').find(
       (valor) => valor.trim().length > 0,
     ) ?? ''
   ).trim();
@@ -189,6 +213,18 @@ export function validarFila(
       valor: cedulaTexto,
     });
   }
+
+  const tipoDocumentoTexto = (
+    COLUMNAS_TIPO_DOCUMENTO.map((columna) => datos[columna] ?? '').find(
+      (valor) => valor.trim().length > 0,
+    ) ?? ''
+  )
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const tipoDocumento =
+    tipoDocumentoTexto === 'tarjeta de identidad' || tipoDocumentoTexto === 'ti' ? 'TI' : 'CC';
 
   let semestre: number | null = null;
   if (semestreTexto.length > 0) {
@@ -203,15 +239,6 @@ export function validarFila(
     } else {
       semestre = numero;
     }
-  }
-
-  if (rol.success && rol.data === 'estudiante' && semestre === null) {
-    errores.push({
-      fila,
-      campo: 'semestre',
-      mensaje: 'El semestre es obligatorio para estudiantes',
-      valor: null,
-    });
   }
 
   if (rol.success && rol.data === 'docente' && semestre !== null) {
@@ -251,6 +278,7 @@ export function validarFila(
       rol: rol.success ? rol.data : 'estudiante',
       semestre,
       cedulaCiudadania: cedula,
+      tipoDocumento,
       email: correo ?? '',
     },
     errores,

@@ -280,7 +280,7 @@ export function Configuracion() {
                   min={0}
                   max={12}
                   className="campo"
-                  {...register('minimoPermanenciaHoras')}
+                  {...register('minimoPermanenciaHoras', { valueAsNumber: true })}
                 />
                 <Ayuda titulo="Como se aplica la permanencia minima" className="mt-2">
                   El asistente debe permanecer ese numero de horas en cada jornada exigida para que

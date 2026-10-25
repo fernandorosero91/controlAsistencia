@@ -128,6 +128,7 @@ function aLectura(fila: typeof asistentes.$inferSelect): AsistenteLectura {
     id: fila.id,
     codigoRegistro: fila.codigoRegistro,
     cedulaCiudadania: fila.cedulaCiudadania,
+    tipoDocumento: fila.tipoDocumento,
     nombres: fila.nombres,
     apellidos: fila.apellidos,
     email: fila.email,
@@ -309,22 +310,41 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
       libro.creator = 'Sistema de control de asistencia';
       const hoja = libro.addWorksheet('Asistentes');
 
-      hoja.addRow(['id', 'nombres', 'apellidos', 'rol', 'semestre', 'cedula', 'email']);
+      hoja.addRow([
+        'id',
+        'nombres',
+        'apellidos',
+        'rol',
+        'semestre',
+        'tipo documento',
+        'nro. documento',
+        'email',
+      ]);
       hoja.addRow([
         'EST00001',
         'Ana',
         'Acosta Lopez',
         'estudiante',
         3,
+        'CC',
         '1094867245',
         'ana@example.edu',
       ]);
-      hoja.addRow(['DOC0001', 'Luis', 'Perez Diaz', 'docente', '', '80123456', 'luis@example.edu']);
+      hoja.addRow([
+        'DOC0001',
+        'Luis',
+        'Perez Diaz',
+        'docente',
+        '',
+        'CC',
+        '80123456',
+        'luis@example.edu',
+      ]);
 
       hoja.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
       hoja.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D31D4' } };
       hoja.columns.forEach((columna, indice) => {
-        columna.width = [16, 24, 24, 14, 12, 16, 30][indice] ?? 18;
+        columna.width = [16, 24, 24, 14, 12, 18, 18, 30][indice] ?? 18;
       });
       hoja.views = [{ state: 'frozen', ySplit: 1 }];
 
@@ -340,13 +360,18 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
       ayuda.addRow(['rol', 'Si', 'estudiante o docente (en minusculas).']);
       ayuda.addRow([
         'semestre',
-        'Solo estudiantes',
-        'Numero entre 1 y 30. Dejar vacio para docentes.',
+        'No',
+        'Numero entre 1 y 30. Puede dejarse vacio.',
       ]);
       ayuda.addRow([
-        'cedula',
+        'tipo documento',
         'No',
-        'Cedula de ciudadania. No puede repetirse en el padron. El operador tambien puede registrar a la persona escribiendo su cedula.',
+        'CC (cedula de ciudadania) o TI (tarjeta de identidad).',
+      ]);
+      ayuda.addRow([
+        'nro. documento',
+        'No',
+        'Numero del documento. No puede repetirse en el padron. El operador tambien puede registrar a la persona escribiendolo.',
       ]);
       ayuda.addRow([
         'email',
@@ -484,6 +509,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           codigoRegistro: fila.codigoRegistro ?? fila.id,
           idInstitucional: fila.id,
           cedulaCiudadania: fila.cedulaCiudadania ?? null,
+          tipoDocumento: fila.tipoDocumento,
           email: fila.email,
           nombreSeminario: config.nombre,
           facultad: config.facultad,
@@ -775,6 +801,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         rol: datos.rol,
         semestre: datos.semestre ?? null,
         cedulaCiudadania: datos.cedulaCiudadania ? datos.cedulaCiudadania : null,
+        tipoDocumento: datos.tipoDocumento,
         email: datos.email ? datos.email : null,
         activo: datos.activo,
       });
@@ -822,11 +849,6 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
             ? null
             : actual.semestre;
 
-      if (rolNuevo === 'estudiante' && semestreNuevo === null) {
-        throw errores.validacion('El semestre es obligatorio para estudiantes', [
-          { campo: 'semestre', mensaje: 'El semestre es obligatorio para estudiantes' },
-        ]);
-      }
       if (rolNuevo === 'docente' && semestreNuevo !== null) {
         throw errores.validacion('El semestre no aplica para docentes', [
           { campo: 'semestre', mensaje: 'El semestre no aplica para docentes' },
@@ -847,6 +869,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           ...(datos.cedulaCiudadania !== undefined
             ? { cedulaCiudadania: datos.cedulaCiudadania ? datos.cedulaCiudadania : null }
             : {}),
+          ...(datos.tipoDocumento !== undefined ? { tipoDocumento: datos.tipoDocumento } : {}),
           ...(datos.email !== undefined ? { email: datos.email ? datos.email : null } : {}),
           ...(datos.activo !== undefined ? { activo: datos.activo } : {}),
         })
@@ -952,6 +975,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           apellidos: string;
           rol: string;
           semestre?: number | null;
+          tipoDocumento?: 'CC' | 'TI';
           cedulaCiudadania?: string;
           email?: string;
         }[];
@@ -975,6 +999,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
             rol: fila.rol,
             semestre:
               fila.semestre === null || fila.semestre === undefined ? '' : String(fila.semestre),
+            'tipo documento': fila.tipoDocumento ?? 'CC',
             cedula: fila.cedulaCiudadania ?? '',
             email: fila.email ?? '',
           },
@@ -1020,6 +1045,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           apellidos: datos.apellidos!,
           rol: datos.rol!,
           semestre: datos.rol === 'docente' ? null : (datos.semestre ?? null),
+          tipoDocumento: datos.tipoDocumento,
           cedulaCiudadania: datos.cedulaCiudadania ? datos.cedulaCiudadania : null,
           email: datos.email ? datos.email : null,
         };
@@ -1034,6 +1060,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
             apellidos: valores.apellidos,
             rol: valores.rol,
             semestre: valores.semestre,
+            tipoDocumento: valores.tipoDocumento,
             cedulaCiudadania: valores.cedulaCiudadania,
             email: valores.email,
             activo: true,

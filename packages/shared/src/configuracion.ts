@@ -18,7 +18,7 @@ export const seminarioConfigSchema = z.object({
   exigirAmbasJornadas: z.boolean(),
   intensidadHoraria: z.coerce.number().int().min(1).max(24),
   /** Horas minimas de permanencia en cada jornada exigida para el certificado. */
-  minimoPermanenciaHoras: z.coerce.number().int().min(0).max(12).default(3),
+  minimoPermanenciaHoras: z.coerce.number().int().min(0).max(12),
   permitirRegistroFueraDeVentana: z.boolean().default(false),
   textoEncabezado: z.string().trim().max(200).optional(),
   textoCierre: z.string().trim().max(600).optional(),

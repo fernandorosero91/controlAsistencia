@@ -9,7 +9,7 @@ import { ROLES_ASISTENTE } from './enums.js';
  * emitir un archivo por asistente. Los campos reconocidos en la plantilla son:
  *
  *   {{nombre}}          Nombre completo del asistente (mayusculas).
- *   {{cedula}}          Cedula de ciudadania (o el ID si no hay cedula).
+ *   {{cedula}}          Tipo y numero de documento (C.C. 123 o T.I. 456).
  *   {{id}}              ID institucional.
  *   {{rol}}             Estudiante o Docente.
  *   {{semestre}}        Semestre del estudiante.
