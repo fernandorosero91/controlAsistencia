@@ -142,6 +142,8 @@ export interface DatosCartaQr {
   codigoRegistro: string;
   idInstitucional: string;
   cedulaCiudadania: string | null;
+  /** Tipo de documento: CC (cedula) o TI (tarjeta de identidad). */
+  tipoDocumento?: 'CC' | 'TI' | null;
   email: string | null;
   nombreSeminario: string;
   facultad: string | null;
@@ -279,10 +281,14 @@ export async function generarCarnetsPDF(
     }
 
     const rol = participante.asistente.rol === 'estudiante' ? 'Estudiante' : 'Docente';
+    // El semestre es opcional para estudiantes: si no viene, se sigue mostrando
+    // que es estudiante y no "Docente".
     const semestre =
-      participante.asistente.semestre !== null
-        ? `Semestre ${participante.asistente.semestre}`
-        : 'Docente';
+      participante.asistente.rol === 'docente'
+        ? 'Docente'
+        : participante.asistente.semestre !== null
+          ? `Semestre ${participante.asistente.semestre}`
+          : 'Estudiante';
     actual.drawText(rol, {
       x: textoX,
       y: cursorY,
@@ -546,7 +552,8 @@ async function dibujarEscarapela(
   // La cedula va en su propia linea: es un dato de identificacion y debe
   // leerse de un vistazo, igual que el nombre.
   if (item.cedulaCiudadania) {
-    const cedula = `C.C. ${item.cedulaCiudadania}`;
+    const etiquetaDocumento = item.tipoDocumento === 'TI' ? 'T.I.' : 'C.C.';
+    const cedula = `${etiquetaDocumento} ${item.cedulaCiudadania}`;
     const tamanoCedula = ajustarTamano(fuenteNegrita, cedula, 11, anchoTexto);
     textoCentrado(pagina, cedula, centro, cursor, fuenteNegrita, tamanoCedula, AZUL_MARINO);
     cursor -= 13;

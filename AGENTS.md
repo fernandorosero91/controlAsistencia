@@ -193,10 +193,12 @@ Ver `apps/api/drizzle/0000_init.sql` (version de verdad) y `docs/04-reglas-negoc
   **unico e inmutable**, normalizado (trim, sin espacios, mayusculas). Formato validado con una
   expresion regular **configurable** (`seminario_config.id_regex`, por defecto
   `^[A-Z0-9]{4,20}$`).
-- `cedula_ciudadania` **TEXT NULL**: cedula de ciudadania (5 a 20 caracteres alfanumericos,
+- `cedula_ciudadania` **TEXT NULL**: numero del documento (5 a 20 caracteres alfanumericos,
   normalizada sin espacios ni guiones). **Unica cuando existe** (indice unico parcial): dos
-  asistentes no pueden compartir cedula. Opcional: se importa y se edita desde el panel, y
+  asistentes no pueden compartir documento. Opcional: se importa y se edita desde el panel, y
   tambien sirve como clave de busqueda en la app del operador.
+- `tipo_documento` **ENUM('CC','TI') NOT NULL DEFAULT 'CC'**: cedula de ciudadania o tarjeta de
+  identidad. Se imprime con la cedula en la escarapela y en los certificados (`C.C. 123`, `T.I. 456`).
 - `codigo_registro` **TEXT UNIQUE e inmutable**: codigo corto de 6 caracteres generado por el
   sistema con el alfabeto `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (sin `O`, `I`, `0` ni `1`, para
   que se pueda dictar sin ambiguedad). **Es lo que codifica el QR.** La unicidad la impone un
@@ -204,11 +206,12 @@ Ver `apps/api/drizzle/0000_init.sql` (version de verdad) y `docs/04-reglas-negoc
 - `email` **TEXT NULL**: correo institucional. Es el destino del envio del codigo de registro y
   del QR. Validado por formato, con indice parcial sobre `lower(email)`.
 - `nombres` TEXT NOT NULL, `apellidos` TEXT NOT NULL.
-- `semestre` INTEGER NULL: **obligatorio para estudiantes, nullable para docentes**.
+- `semestre` INTEGER NULL: **opcional** para estudiantes (el archivo institucional puede traerlo
+  como `N/A`) y siempre nulo para docentes.
 - `rol` ENUM('estudiante','docente') NOT NULL.
 - `created_at`, `updated_at` TIMESTAMPTZ NOT NULL DEFAULT now().
-- CHECK: `rol = 'estudiante' AND semestre IS NOT NULL` OR `rol = 'docente'`. Es decir:
-  `(rol = 'estudiante') = (semestre IS NOT NULL)`.
+- CHECK de rango: `semestre IS NULL OR semestre BETWEEN 1 AND 30`. El semestre no obliga segun el
+  rol; cuando viene en un docente se rechaza por validacion de la API.
 - **La busqueda durante el registro acepta el `id` o el `codigo_registro`**: el operador nunca
   tiene que saber cual de los dos digito.
 
@@ -273,14 +276,13 @@ tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice 
    - Registro de **ingreso y salida en cada jornada exigida** (las **4 marcas**: ingreso y salida de
      la manana y de la tarde). Es la regla oficial de la Universidad y la aplican por igual el
      certificado en Word y la copia verificable en PDF.
-   - Permanecio **hasta que finalizo el seminario**: alguna salida con
-     `hora_salida >= hora_fin_seminario - tolerancia`, segun la hora configurada por el administrador.
    - **Permanecio el minimo de horas configurado en cada jornada exigida**
      (`minimo_permanencia_horas`, 3 horas por defecto, ajustable por el administrador; con 0 la
      regla no se aplica): `hora_salida - hora_ingreso >= minimo_permanencia_horas`.
+   - La hora de fin del seminario y la tolerancia **no condicionan la elegibilidad**: se conservan
+     para la operacion de las jornadas (ventanas de registro y validaciones del dia).
    - La elegibilidad se **calcula en consulta/servicio**, **no se persiste** como hecho irreversible:
-     si el administrador cambia la hora de fin, la tolerancia o el minimo de permanencia, aplica de
-     inmediato.
+     si el administrador cambia el minimo de permanencia, aplica de inmediato.
    - El **formato oficial del certificado es Word (.docx)** desde la plantilla institucional; el PDF
      con codigo y QR es la copia verificable.
 5. **Los certificados los emite solo el administrador.** Puede (a) generar el certificado de un
@@ -299,7 +301,8 @@ tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice 
 - Login seguro, gestion de usuarios operadores.
 - Configuracion del seminario, jornadas, refrigerios, hora de fin y tolerancia.
 - **Importacion masiva de asistentes** por CSV/XLSX con validacion fila a fila (formato del ID,
-  duplicados, semestre segun rol), vista previa y reporte de errores.
+  duplicados de documento, tipo de documento, semestre opcional), vista previa y reporte de errores.
+  Columnas: `id`, `nombres`, `apellidos`, `rol`, `semestre`, `tipo documento`, `nro. documento`, `email`.
 - CRUD de asistentes con busqueda y filtros (rol, semestre).
 - Generacion de **escarapelas/carnets con QR** por asistente y descarga masiva en PDF.
 - **Modulo de certificados**: listado con estado (elegible, no elegible con motivo, emitido,

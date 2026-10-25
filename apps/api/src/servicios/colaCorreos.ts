@@ -33,6 +33,7 @@ export interface DestinoCorreoQr {
   codigoRegistro: string;
   idInstitucional: string;
   cedulaCiudadania: string | null;
+  tipoDocumento: 'CC' | 'TI';
   email: string;
   nombreSeminario: string;
   facultad: string | null;
@@ -125,6 +126,7 @@ async function iniciar(): Promise<void> {
           codigoRegistro: destino.codigoRegistro,
           idInstitucional: destino.idInstitucional,
           cedulaCiudadania: destino.cedulaCiudadania,
+          tipoDocumento: destino.tipoDocumento,
           email: destino.email,
           nombreSeminario: destino.nombreSeminario,
           facultad: destino.facultad,

@@ -54,7 +54,10 @@ omitido y se muestra el motivo (por ejemplo,
 "Falta: salida Tarde" o "La permanencia en una de las jornadas exigidas fue menor al minimo").
 
 1. **Prepare la plantilla** en Word y marque los datos del titular entre dobles llaves. Campos
-   disponibles: `{{nombre}}`, `{{cedula}}`, `{{id}}`, `{{rol}}` y `{{semestre}}`.
+   disponibles: `{{nombre}}`, `{{cedula}}`, `{{id}}`, `{{rol}}` y `{{semestre}}`. `{{cedula}}`
+   imprime el tipo y el numero de documento (`C.C. 1094867245` o `T.I. 1099888777`); si el
+   asistente no tiene documento cargado, imprime el ID institucional. `{{semestre}}` queda vacio
+   cuando el estudiante no lo tiene registrado (es opcional).
 2. **Cargue la plantilla** en **Crear certificados**. El sistema la guarda y muestra los campos
    detectados. Si no detecta ninguno, revise la ortografia de los marcadores.
 3. Marque una plantilla como **Predeterminada** si va a ser la habitual (solo puede haber una).
