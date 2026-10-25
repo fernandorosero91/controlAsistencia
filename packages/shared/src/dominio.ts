@@ -129,9 +129,7 @@ export interface ResultadoElegibilidad {
  * 2. En **cada** jornada exigida debe existir **ingreso y salida** (las 4 marcas
  *    cuando son dos jornadas). Es la regla oficial de la Universidad y la misma
  *    que usa el certificado en Word.
- * 3. Se exige al menos una salida con `hora_salida >= hora_fin_seminario - tolerancia`,
- *    es decir, haber estado hasta el cierre del seminario.
- * 4. En cada jornada exigida el asistente debe permanecer al menos
+ * 3. En cada jornada exigida el asistente debe permanecer al menos
  *    `minimo_permanencia_horas` horas (de la entrada a la salida).
  *
  * La funcion es pura: cambiar la hora de fin, la tolerancia o el minimo de
@@ -185,21 +183,6 @@ export function evaluarElegibilidad(parametros: ParametrosElegibilidad): Resulta
         motivos.push('permanencia_insuficiente');
       }
     }
-  }
-
-  // Cierre del seminario: alguna salida dentro de la tolerancia del final.
-  const salidasRelevantes = parametros.asistencias.filter(
-    (a) =>
-      jornadasExigidas.includes(a.jornadaId) &&
-      a.horaSalida !== null &&
-      a.horaSalida.getTime() >= umbralCierre.getTime(),
-  );
-
-  if (salidasRelevantes.length === 0) {
-    const tieneAlgunaSalida = parametros.asistencias.some(
-      (a) => jornadasExigidas.includes(a.jornadaId) && a.horaSalida !== null,
-    );
-    motivos.push(tieneAlgunaSalida ? 'salida_antes_de_hora_fin' : 'sin_registro_salida');
   }
 
   return {

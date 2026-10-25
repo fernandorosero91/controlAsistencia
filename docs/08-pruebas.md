@@ -19,7 +19,7 @@ npm -w @seminario/web test       # contraste de la paleta
 | Normalizacion del ID   | Recorta, elimina espacios y pasa a mayusculas; es idempotente.                                                                                    |
 | Formato del ID         | Expresion regular por defecto y configurable; una expresion invalida no rompe.                                                                    |
 | Semestre por rol       | Obligatorio en estudiantes, opcional en docentes, rango 1 a 30.                                                                                   |
-| Elegibilidad           | Asistencia en las jornadas exigidas, salida registrada, salida dentro de la tolerancia, recalculo al cambiar la hora de fin y motivos reportados. |
+| Elegibilidad           | Asistencia en las jornadas exigidas, salida registrada, permanencia minima y motivos reportados. |
 | Ventanas de check-in   | Estado antes, dentro y despues, con los limites incluidos.                                                                                        |
 | Formula de inyeccion   | `=`, `+`, `-`, `@` y tab quedan escapados en las exportaciones.                                                                                   |
 | Codigo de registro     | 6 caracteres del alfabeto sin `O`, `I`, `0` ni `1`, reproducible y validable.                                                                     |

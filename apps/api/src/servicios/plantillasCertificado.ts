@@ -250,8 +250,7 @@ interface AsistenciaCruda {
 /**
  * Trae las marcas reales (ingreso y salida con sus horas) de cada asistente,
  * con una sola consulta. La elegibilidad se calcula con la misma funcion que
- * usa el certificado en PDF: las 4 marcas, el cierre del seminario y la
- * permanencia minima por jornada.
+ * usa el certificado en PDF: las 4 marcas y la permanencia minima por jornada.
  */
 async function asistenciasPorAsistente(
   asistenteIds: string[],
@@ -346,7 +345,7 @@ function evaluarMarcas(
   const ingresoTarde = marcas[1]?.ingreso ?? false;
   const salidaTarde = marcas[1]?.salida ?? false;
 
-  // Misma regla para Word y PDF: 4 marcas, cierre del seminario y permanencia.
+  // Misma regla para Word y PDF: 4 marcas y permanencia.
   const evaluacion = evaluarElegibilidad({
     exigirAmbasJornadas: config.exigirAmbasJornadas,
     horaFinSeminario: config.horaFinSeminario,

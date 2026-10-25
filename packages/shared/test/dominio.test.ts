@@ -151,7 +151,7 @@ describe('evaluacion de elegibilidad para el certificado', () => {
     expect(resultado.motivos).toContain('sin_registro_salida');
   });
 
-  it('rechaza a quien salio antes de la hora de fin mas alla de la tolerancia', () => {
+  it('acepta salidas anteriores a la hora de fin si cumple las cuatro marcas y la permanencia', () => {
     const resultado = evaluarElegibilidad({
       ...base,
       asistencias: [
@@ -168,8 +168,8 @@ describe('evaluacion de elegibilidad para el certificado', () => {
       ],
     });
 
-    expect(resultado.elegible).toBe(false);
-    expect(resultado.motivos).toContain('salida_antes_de_hora_fin');
+    expect(resultado.elegible).toBe(true);
+    expect(resultado.motivos).toHaveLength(0);
   });
 
   it('acepta una salida que cae dentro de la tolerancia', () => {
@@ -213,7 +213,7 @@ describe('evaluacion de elegibilidad para el certificado', () => {
     expect(resultado.motivos).not.toContain('permanencia_insuficiente');
   });
 
-  it('recalcula el resultado al cambiar la hora de fin', () => {
+  it('no depende de la hora de fin del seminario', () => {
     const asistencias = [
       {
         jornadaId: 1,
@@ -235,7 +235,7 @@ describe('evaluacion de elegibilidad para el certificado', () => {
       asistencias,
     });
 
-    expect(antes.elegible).toBe(false);
+    expect(antes.elegible).toBe(true);
     expect(despues.elegible).toBe(true);
   });
 

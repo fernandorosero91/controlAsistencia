@@ -125,7 +125,7 @@ export type ActualizarPlantillaInput = z.infer<typeof actualizarPlantillaSchema>
  * 4 marcas: ingreso y salida de cada una de las 2 jornadas.
  */
 export const REGLA_ELEGIBILIDAD_DOCX =
-  'Requiere ingreso y salida en cada jornada, permanencia minima y cierre del seminario';
+  'Requiere ingreso y salida en cada jornada y permanencia minima';
 
 /** Seleccion de asistentes para generar certificados desde una plantilla. */
 export const generarDesdePlantillaSchema = z

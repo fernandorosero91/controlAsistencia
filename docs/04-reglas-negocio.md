@@ -169,7 +169,6 @@ Un asistente es **elegible** si cumple las condiciones siguientes:
 | --------------------------- | -------------------------------------------------------------- |
 | `falta_asistencia_jornada`  | No tiene ingreso en una de las jornadas exigidas.              |
 | `sin_registro_salida`       | Le falta la salida en alguna jornada exigida.                  |
-| `salida_antes_de_hora_fin`  | Registro la salida antes de la hora de fin mas la tolerancia.  |
 | `permanencia_insuficiente`  | Permanecio menos horas que el minimo en una jornada exigida.   |
 | `sin_jornadas_configuradas` | El seminario no tiene jornadas (error de configuracion).       |
 
@@ -179,14 +178,14 @@ sepa exactamente que falta.
 ### 4.3 Ejemplo con los parametros del evento
 
 - Evento: 27 de octubre de 2026, jornadas de 8:00 a 12:00 y de 14:00 a 18:00.
-- `hora_fin_seminario = 2026-10-27 18:00 (America/Bogota)`.
-- `tolerancia_minutos = 15`, por lo que el umbral de salida es **17:45**.
+- `hora_fin_seminario` y `tolerancia_minutos` se conservan para la operacion de las jornadas,
+  pero no condicionan la elegibilidad del certificado.
 - `minimo_permanencia_horas = 3`.
 
 | Escenario                                                                  | Resultado                               |
 | -------------------------------------------------------------------------- | --------------------------------------- |
 | Ingreso y salida en ambas jornadas, salida final a las 18:10               | Elegible                                |
-| Lo mismo, pero sale a las 17:40                                            | No elegible: `salida_antes_de_hora_fin` |
+| Lo mismo, pero sale antes del cierre                                     | Elegible si cumple las cuatro marcas y la permanencia |
 | Ingresa a la manana y no registra salida                                   | No elegible: `sin_registro_salida`      |
 | Solo asiste a la manana                                                    | No elegible: `falta_asistencia_jornada` |
 | Ingresa 08:05 y sale 09:30 en la manana, y completa la tarde               | No elegible: `permanencia_insuficiente` |

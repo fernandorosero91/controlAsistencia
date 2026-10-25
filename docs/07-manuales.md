@@ -49,8 +49,8 @@ QR de consulta publica.
 
 **Regla de habilitacion (igual para Word y PDF):** solo se genera el certificado de los asistentes
 con las **4 marcas** (ingreso y salida de la **manana** e ingreso y salida de la **tarde**), que
-hayan cumplido la **permanencia minima por jornada** (3 horas por defecto) y que hayan estado hasta
-el **cierre del seminario**. Quien no cumpla queda omitido y se muestra el motivo (por ejemplo,
+hayan cumplido la **permanencia minima por jornada** (3 horas por defecto). Quien no cumpla queda
+omitido y se muestra el motivo (por ejemplo,
 "Falta: salida Tarde" o "La permanencia en una de las jornadas exigidas fue menor al minimo").
 
 1. **Prepare la plantilla** en Word y marque los datos del titular entre dobles llaves. Campos

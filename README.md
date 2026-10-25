@@ -39,8 +39,8 @@ Reglas que el sistema garantiza y que no dependen del comportamiento de la inter
   mismo refrigerio, aunque lleguen peticiones simultaneas.
 - Un certificado **solo** se emite a un asistente elegible, salvo excepcion manual del
   administrador con motivo obligatorio (queda auditado).
-- Cambiar la hora de fin o la tolerancia **recalcula** la elegibilidad de inmediato, sin
-  migraciones ni scripts.
+- La elegibilidad del certificado depende de las cuatro marcas y la permanencia minima por
+  jornada; la hora de fin y la tolerancia no la condicionan.
 
 ---
 

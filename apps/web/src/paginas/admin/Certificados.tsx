@@ -150,7 +150,7 @@ export function Certificados() {
         Este modulo emite la <strong>copia verificable en PDF</strong>, con codigo y QR de
         verificacion publica. El documento oficial de la Universidad se descarga en{' '}
         <strong>Certificados (Word)</strong>. Ambos usan la misma regla: 4 marcas (ingreso y salida
-        en cada jornada), permanencia minima y cierre del seminario.
+        en cada jornada) y permanencia minima configurada.
       </Ayuda>
 
       <Tarjeta

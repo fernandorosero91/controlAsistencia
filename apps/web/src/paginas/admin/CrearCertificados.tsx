@@ -228,7 +228,7 @@ export function CrearCertificados() {
         El certificado oficial de la Universidad se genera en <strong>Word</strong>. Solo se genera
         el de los asistentes con las <strong>4 marcas</strong> (ingreso y salida de la manana y de
         la tarde), que hayan permanecido el <strong>minimo de horas</strong> en cada jornada y
-        esten hasta el cierre del seminario. Quien no cumpla queda omitido y se muestra el motivo.
+        cumplan la permanencia minima en cada jornada. Quien no cumpla queda omitido y se muestra el motivo.
         Para un caso especial, use la casilla de excepcion al generar.
       </Ayuda>
 
