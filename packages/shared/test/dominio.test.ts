@@ -192,6 +192,27 @@ describe('evaluacion de elegibilidad para el certificado', () => {
     expect(resultado.elegible).toBe(true);
   });
 
+  it('omite la permanencia cuando el minimo configurado es cero', () => {
+    const resultado = evaluarElegibilidad({
+      ...base,
+      minimoPermanenciaHoras: 0,
+      asistencias: [
+        {
+          jornadaId: 1,
+          horaIngreso: new Date('2026-11-20T16:59:00.000Z'),
+          horaSalida: new Date('2026-11-20T17:00:00.000Z'),
+        },
+        {
+          jornadaId: 2,
+          horaIngreso: new Date('2026-11-20T22:49:00.000Z'),
+          horaSalida: new Date('2026-11-20T22:50:00.000Z'),
+        },
+      ],
+    });
+
+    expect(resultado.motivos).not.toContain('permanencia_insuficiente');
+  });
+
   it('recalcula el resultado al cambiar la hora de fin', () => {
     const asistencias = [
       {

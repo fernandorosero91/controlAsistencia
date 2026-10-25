@@ -56,7 +56,7 @@ describe(descripcion, () => {
     if (app) await app.close();
   });
 
-  it('devuelve la vista previa de un CSV con las filas validas y las con error', async () => {
+  it('devuelve la vista previa de un CSV con semestre opcional', async () => {
     const csv = [
       'id,nombres,apellidos,rol,semestre,email',
       'IMP00001,Ana,Prueba Importacion,estudiante,3,ana@pruebas.local',
@@ -75,13 +75,13 @@ describe(descripcion, () => {
     expect(respuesta.statusCode).toBe(200);
     const cuerpo = respuesta.json();
     expect(cuerpo.totalFilas).toBe(3);
-    expect(cuerpo.filasValidas).toBe(2);
-    expect(cuerpo.filasConError).toBe(1);
-    expect(cuerpo.nuevos).toBe(2);
+    expect(cuerpo.filasValidas).toBe(3);
+    expect(cuerpo.filasConError).toBe(0);
+    expect(cuerpo.nuevos).toBe(3);
     // La vista previa devuelve TODAS las filas: el panel necesita el archivo
     // completo para confirmar la importacion.
     expect(cuerpo.filas).toHaveLength(3);
-    expect(cuerpo.filas[2].errores[0].campo).toBe('semestre');
+    expect(cuerpo.filas[2].errores).toHaveLength(0);
   });
 
   it('importa las 600 filas de un padron completo, no solo una muestra', async () => {
@@ -192,7 +192,7 @@ describe(descripcion, () => {
         filas: [
           {
             fila: 2,
-            id: 'IMP00004',
+            id: 'x',
             nombres: 'Pedro',
             apellidos: 'Prueba Importacion',
             rol: 'estudiante',
