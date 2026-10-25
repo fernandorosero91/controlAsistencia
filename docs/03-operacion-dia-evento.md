@@ -41,7 +41,8 @@ El sistema asigna a cada asistente un **codigo de registro** de 6 caracteres (po
 > duplicarlos: el total de asistentes del panel no debe cambiar.
 >
 > Si vas a hacer **pruebas** y necesitas empezar de cero, usa **Configuracion > Mantenimiento
-> de la base de datos > Borrar todos los datos**. Pide la contrasena del administrador y la frase
+> de la base de datos > Borrar todos los datos**. Pide la contrasena de **la cuenta con la que se
+> inicio sesion** (si hay varios administradores, cada uno confirma con la suya) y la frase
 > `BORRAR TODOS LOS DATOS`. Borra el padron, las asistencias, los refrigerios entregados, los
 > certificados, la auditoria y la idempotencia; conserva la configuracion, las jornadas, los
 > refrigerios configurados y las cuentas. Cuando la base ya tenga el padron **real**, apague la

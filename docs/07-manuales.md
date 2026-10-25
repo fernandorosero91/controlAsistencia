@@ -24,7 +24,11 @@ Dos manuales de una pagina: uno para el administrador y otro para el operador.
 4. **Imprima los carnets** (Descargar carnets).
 5. **Revise la configuracion**: hora de fin (18:00), tolerancia (15 min), ventanas de check-in y
    si se permite registrar fuera de ventana.
-6. **Cree las cuentas de los operadores** (Usuarios) y entréguelas en mano.
+6. **Cree las cuentas de los operadores** (Usuarios) y entréguelas en mano. Desde la misma pagina
+   puede **editar** (nombre, correo, rol y, si hace falta, una contrasena nueva) y **eliminar** una
+   cuenta. Para retirar el acceso sin borrar el historial, use **Desactivar**: la cuenta se conserva
+   y puede reactivarse. Solo un administrador puede entrar a Usuarios, y el sistema no permite
+   eliminar ni desactivar la ultima cuenta de administrador activa.
 
 ### Durante el evento
 

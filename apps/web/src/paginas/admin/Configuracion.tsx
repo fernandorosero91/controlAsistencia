@@ -7,6 +7,7 @@ import type { Firmante } from '@seminario/shared';
 import { CalendarClock, Pencil, Plus, Save, ShieldAlert, Timer, Trash2 } from 'lucide-react';
 import { api, ErrorPeticion } from '../../lib/api';
 import { formatearFechaHora } from '../../lib/formato';
+import { useSesion } from '../../estado/sesion';
 import { Ayuda, Aviso, EsqueletoTarjeta, Insignia, Modal, Tarjeta } from '../../componentes/comunes';
 
 const esquema = z.object({
@@ -1002,6 +1003,7 @@ function AccesosOperador({ jornadas }: { jornadas: Jornada[] }) {
  */
 function Mantenimiento() {
   const cliente = useQueryClient();
+  const sesion = useSesion((estado) => estado.usuario);
   const [abierto, setAbierto] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmacion, setConfirmacion] = useState('');
@@ -1144,7 +1146,7 @@ function Mantenimiento() {
         <div className="mt-4 space-y-3">
           <div>
             <label htmlFor="limpiar-password" className="etiqueta-campo">
-              Contrasena del administrador
+              Su contrasena de administrador
             </label>
             <input
               id="limpiar-password"
@@ -1154,6 +1156,11 @@ function Mantenimiento() {
               onChange={(evento) => setPassword(evento.target.value)}
               autoComplete="current-password"
             />
+            <p className="mt-1 text-xs text-neutro-500">
+              Se valida la contrasena de la cuenta con la que esta conectado
+              {sesion ? ` (${sesion.email})` : ''}. Si hay varios administradores, cada uno debe
+              escribir la suya.
+            </p>
           </div>
 
           <div>

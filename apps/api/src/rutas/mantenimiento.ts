@@ -130,7 +130,13 @@ export async function registrarRutasMantenimiento(app: FastifyInstance): Promise
       if (!valida) {
         // 403 y no 401: un 401 haria que el panel intente renovar la sesion y
         // expulsaria al administrador por un error de digitacion.
-        throw errores.noAutorizado('La contrasena del administrador no es correcta.');
+        //
+        // El mensaje nombra la cuenta conectada: con varios administradores es
+        // facil digitar la contrasena de otro y el error generico no lo aclara.
+        throw errores.noAutorizado(
+          `La contrasena no corresponde a la cuenta con la que esta conectado (${usuario.email}). ` +
+            'Con varios administradores, cada uno confirma con su propia contrasena.',
+        );
       }
 
       const antes = await contarDatos();

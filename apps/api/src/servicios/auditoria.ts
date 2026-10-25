@@ -31,6 +31,7 @@ export type AccionAuditada =
   | 'plantilla.lote_eliminado'
   | 'usuario.creado'
   | 'usuario.actualizado'
+  | 'usuario.eliminado'
   | 'mantenimiento.limpieza'
   | 'reporte.exportado';
 

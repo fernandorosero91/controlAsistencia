@@ -142,6 +142,52 @@ describe(descripcion, () => {
     expect(await db.select().from(seminarioConfig)).toHaveLength(1);
   });
 
+  it('limpia con dos administradores activos usando la contrasena de la cuenta conectada', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/usuarios',
+      headers: cabeceras(),
+      payload: {
+        nombre: 'Segundo administrador',
+        email: 'segundo.admin@pruebas.local',
+        password: 'Segundo2026',
+        rol: 'admin',
+      },
+    });
+
+    const respuesta = await limpiar({
+      password: CLAVE_ADMIN,
+      confirmacion: 'BORRAR TODOS LOS DATOS',
+    });
+
+    expect(respuesta.statusCode).toBe(200);
+    expect(respuesta.json().limpiado).toBe(true);
+  });
+
+  it('aclara cual cuenta debe confirmar cuando hay varios administradores', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/usuarios',
+      headers: cabeceras(),
+      payload: {
+        nombre: 'Segundo administrador',
+        email: 'segundo.admin@pruebas.local',
+        password: 'Segundo2026',
+        rol: 'admin',
+      },
+    });
+
+    // La contrasena es valida, pero pertenece a la otra cuenta.
+    const respuesta = await limpiar({
+      password: 'Segundo2026',
+      confirmacion: 'BORRAR TODOS LOS DATOS',
+    });
+
+    expect(respuesta.statusCode).toBe(403);
+    expect(respuesta.json().mensaje).toContain(CORREO_ADMIN);
+    expect(respuesta.json().mensaje).toContain('su propia contrasena');
+  });
+
   it('despues de limpiar se puede volver a cargar el padron', async () => {
     await limpiar({ password: CLAVE_ADMIN, confirmacion: 'BORRAR TODOS LOS DATOS' });
 

@@ -489,6 +489,7 @@ GET    /operador/contexto       (config, jornadas, jornada activa, refrigerios)
 GET    /usuarios
 POST   /usuarios
 PATCH  /usuarios/:id
+DELETE /usuarios/:id            (no permite la propia cuenta ni el ultimo admin activo)
 GET    /mantenimiento/resumen   (conteos de datos operativos)
 POST   /mantenimiento/limpiar   (borra datos de prueba; exige contrasena de admin)
 GET    /health/live

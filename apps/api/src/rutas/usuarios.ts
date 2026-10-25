@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import argon2 from 'argon2';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -10,6 +10,28 @@ import { registrarAuditoria } from '../servicios/auditoria.js';
 import { validarCuerpo, validarConsulta, validarParametros } from '../lib/validacion.js';
 
 const parametrosUsuario = z.object({ id: z.string().uuid('El identificador no es valido') });
+
+/**
+ * Cuenta los administradores activos distintos del indicado.
+ *
+ * El sistema no puede quedarse sin ningun administrador activo: nadie podria
+ * volver a entrar al panel ni recuperar la cuenta. Por eso cada operacion que
+ * desactiva, degrada o elimina una cuenta comprueba este numero antes de
+ * escribir.
+ */
+async function contarOtrosAdminsActivos(exceptoId: string): Promise<number> {
+  const filas = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(usuariosSistema)
+    .where(
+      and(
+        eq(usuariosSistema.rol, 'admin'),
+        eq(usuariosSistema.activo, true),
+        ne(usuariosSistema.id, exceptoId),
+      ),
+    );
+  return filas[0]?.total ?? 0;
+}
 
 export async function registrarRutasUsuarios(app: FastifyInstance): Promise<void> {
   app.get(
@@ -122,6 +144,23 @@ export async function registrarRutasUsuarios(app: FastifyInstance): Promise<void
       const actual = actuales[0];
       if (!actual) throw errores.noEncontrado('El usuario no existe');
 
+      const esUnoMismo = id === request.usuario?.id;
+      if (esUnoMismo && datos.activo === false) {
+        throw errores.conflicto('No puede desactivar su propia cuenta.');
+      }
+
+      // Desactivar o quitar el rol de administrador a la ultima cuenta activa
+      // dejaria el sistema sin quien lo administre.
+      const quedaInactivo = datos.activo === false;
+      const dejaDeSerAdmin = datos.rol !== undefined && datos.rol !== 'admin';
+      if (actual.rol === 'admin' && actual.activo && (quedaInactivo || dejaDeSerAdmin)) {
+        if ((await contarOtrosAdminsActivos(id)) === 0) {
+          throw errores.conflicto(
+            'Debe quedar al menos un administrador activo. Cree o active otra cuenta de administrador antes de hacer este cambio.',
+          );
+        }
+      }
+
       if (datos.email && datos.email !== actual.email) {
         const existe = await db
           .select({ id: usuariosSistema.id })
@@ -181,6 +220,58 @@ export async function registrarRutasUsuarios(app: FastifyInstance): Promise<void
       });
 
       return actualizados[0];
+    },
+  );
+
+  app.delete(
+    '/usuarios/:id',
+    {
+      onRequest: [app.autorizar(['admin'])],
+      schema: { tags: ['Usuarios'], description: 'Elimina un administrador u operador' },
+    },
+    async (request, reply) => {
+      const { id } = validarParametros(parametrosUsuario, request.params);
+
+      const filas = await db
+        .select()
+        .from(usuariosSistema)
+        .where(eq(usuariosSistema.id, id))
+        .limit(1);
+      const actual = filas[0];
+      if (!actual) throw errores.noEncontrado('El usuario no existe');
+
+      if (id === request.usuario?.id) {
+        throw errores.conflicto('No puede eliminar su propia cuenta.');
+      }
+
+      if (
+        actual.rol === 'admin' &&
+        actual.activo &&
+        (await contarOtrosAdminsActivos(id)) === 0
+      ) {
+        throw errores.conflicto(
+          'Debe quedar al menos un administrador activo. Cree o active otra cuenta de administrador antes de eliminar esta.',
+        );
+      }
+
+      // El historial no se pierde: las asistencias y entregas guardan el
+      // usuario como SET NULL y el nombre queda en la auditoria. Los refresh
+      // tokens de la cuenta se eliminan en cascada.
+      await db.delete(usuariosSistema).where(eq(usuariosSistema.id, id));
+
+      await registrarAuditoria(request, {
+        accion: 'usuario.eliminado',
+        entidad: 'usuarios_sistema',
+        entidadId: id,
+        datosAntes: {
+          nombre: actual.nombre,
+          email: actual.email,
+          rol: actual.rol,
+          activo: actual.activo,
+        },
+      });
+
+      return reply.status(204).send();
     },
   );
 }
