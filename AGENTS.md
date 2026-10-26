@@ -605,7 +605,10 @@ del seminario, con el mismo criterio de una sola entrega por persona.
   (asistente_id, tipo_souvenir_id, entregado_at, entregado_por, dispositivo, idempotency_key) con
   **`UNIQUE (asistente_id, tipo_souvenir_id)`**. La entrega es del **evento**, no de una jornada:
   no depende de la jornada vigente.
-- **Requisito:** el asistente debe tener **al menos una asistencia** registrada en el seminario.
+- **Requisito:** el asistente debe tener registrado su **ingreso en la primera jornada** (la de
+  menor `orden`), que es cuando se entrega el souvenir. Quien llego unicamente en la tarde **no**
+  lo recibe. La validacion es por la fila de `asistencias` de esa jornada, no por una asistencia
+  cualquiera del evento.
 - **Sin doble entrega:** `INSERT ... ON CONFLICT DO NOTHING`; el segundo intento responde
   `resultado: "duplicado"` con la fecha y el operador que lo entrego, **aunque sea otro operador**.
 - **Modulo configurable:** `seminario_config.operador_souvenir_habilitado` (apagado por defecto).
@@ -615,6 +618,7 @@ del seminario, con el mismo criterio de una sola entrega por persona.
   cola offline igual que los demas registros. **En este modo la app no muestra la jornada**: el
   souvenir es unico por seminario.
 - **Reportes:** `souvenirs-entregados` (detalle con fecha y responsable) y `souvenirs-pendientes`
-  (asistentes con asistencia que aun no lo recibieron), exportables en CSV, XLSX y PDF.
+  (asistentes que ingresaron en la primera jornada y aun no lo recibieron), exportables en CSV,
+  XLSX y PDF.
 - **API:** `POST /souvenirs/entregar`, `GET /souvenirs/estado/:asistenteId`,
   `GET/POST /souvenirs/tipos`, `PATCH /souvenirs/tipos/:id`.

@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { normalizarId, type AsistenteResumen, type RespuestaRegistro } from '@seminario/shared';
 import { db } from '../db/cliente.js';
 import {
@@ -481,9 +481,12 @@ export async function entregarRefrigerio(
 
 /**
  * Entrega un souvenir o regalo. Se controla una sola vez por asistente y tipo,
- * sin importar la jornada: el souvenir es del evento. Solo se entrega a quien
- * tenga al menos una asistencia registrada. La unicidad la garantiza el indice
- * unico (asistente_id, tipo_souvenir_id).
+ * sin importar la jornada: el souvenir es del evento.
+ *
+ * Requisito de negocio: solo se entrega a quien registro su **ingreso en la
+ * primera jornada** (la de menor `orden`). La entrega se hace en la manana, y
+ * con esta regla quien solo llego en la tarde no lo recibe. La unicidad la
+ * garantiza el indice unico (asistente_id, tipo_souvenir_id).
  */
 export async function entregarSouvenir(
   parametros: {
@@ -521,16 +524,43 @@ export async function entregarSouvenir(
     };
   }
 
+  const primeraJornada = (
+    await db
+      .select({ id: jornadas.id, nombre: jornadas.nombre })
+      .from(jornadas)
+      .orderBy(asc(jornadas.orden), asc(jornadas.inicio))
+      .limit(1)
+  )[0];
+
+  if (!primeraJornada) {
+    return {
+      resultado: 'no_permitido',
+      mensaje: 'No hay jornadas configuradas: no se puede validar la entrega del souvenir.',
+      asistente: aResumen(asistente),
+      existente: null,
+      requiereBusquedaManual: false,
+    };
+  }
+
+  // Una fila de asistencias existe cuando se registro el ingreso: se exige la
+  // de la primera jornada, no una asistencia cualquiera del evento.
   const asistencia = await db
     .select({ id: asistencias.id })
     .from(asistencias)
-    .where(eq(asistencias.asistenteId, asistente.id))
+    .where(
+      and(
+        eq(asistencias.asistenteId, asistente.id),
+        eq(asistencias.jornadaId, primeraJornada.id),
+      ),
+    )
     .limit(1);
 
   if (asistencia.length === 0) {
     return {
       resultado: 'no_permitido',
-      mensaje: 'El asistente no tiene ninguna asistencia registrada en el seminario.',
+      mensaje:
+        `El souvenir se entrega a quienes registraron su ingreso en la primera jornada ` +
+        `(${primeraJornada.nombre}). Este asistente no tiene ese ingreso.`,
       asistente: aResumen(asistente),
       existente: null,
       requiereBusquedaManual: false,

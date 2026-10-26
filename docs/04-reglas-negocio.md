@@ -119,7 +119,11 @@ Un duplicado **nunca** es un error de servidor.
 ### 3.1 Souvenirs y regalos
 
 - El souvenir **no pertenece a una jornada**: se entrega una vez por evento.
-- Solo se entrega a quien tenga **al menos una asistencia** registrada en el seminario.
+- Solo se entrega a quien tenga registrado su **ingreso en la primera jornada** (la de menor
+  `orden`), que es la jornada en la que se hace la entrega (alrededor de las 11:00). Quien llego
+  unicamente en la tarde **no** lo recibe, aunque tenga asistencia en esa jornada.
+- El reporte de pendientes aplica la misma regla: solo lista a quienes ingresaron en la primera
+  jornada y aun no lo recibieron.
 - La unicidad la impone `UNIQUE (asistente_id, tipo_souvenir_id)`, con la misma escritura atomica
   (`ON CONFLICT DO NOTHING`).
 - Un duplicado responde `resultado: "duplicado"` con la fecha y el operador de la entrega previa,

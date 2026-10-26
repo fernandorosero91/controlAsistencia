@@ -155,8 +155,9 @@ por asistente.
 1. En **Configuracion > Souvenirs** cree el o los souvenirs (por ejemplo "Camiseta del seminario") y
    dejelos activos.
 2. En **Configuracion > Accesos del operador** encienda el interruptor **Souvenir**.
-3. El operador elige el modo **Souvenir**, escanea el ID y registra. Solo se entrega a quien tenga
-   al menos una asistencia; el segundo intento muestra la alerta con la fecha y el operador que lo
-   entrego.
+3. El operador elige el modo **Souvenir**, escanea el ID y registra. Solo se entrega a quien haya
+   registrado su **ingreso en la primera jornada** (la manana): quien llego unicamente en la tarde
+   no lo recibe, aunque tenga asistencia. El segundo intento muestra la alerta con la fecha y el
+   operador que lo entrego.
 4. Para saber quien lo recibio y quien no: **Reportes > Souvenirs entregados** y
    **Souvenirs pendientes** (CSV, Excel o PDF).

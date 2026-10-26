@@ -354,11 +354,21 @@ async function reporteSouvenirs(
     };
   }
 
-  // Pendientes: asistentes activos con al menos una asistencia y sin ninguna
-  // entrega de souvenir registrada.
+  // Pendientes: asistentes activos que registraron su ingreso en la primera
+  // jornada (la de menor orden) y aun no tienen ninguna entrega de souvenir.
+  // Es la misma regla que aplica el operador al entregarlo.
+  const primeraJornada = (
+    await db
+      .select({ id: jornadas.id })
+      .from(jornadas)
+      .orderBy(asc(jornadas.orden), asc(jornadas.inicio))
+      .limit(1)
+  )[0];
+  const idPrimeraJornada = primeraJornada?.id ?? -1;
+
   const condiciones = [
     eq(asistentes.activo, true),
-    sql`EXISTS (SELECT 1 FROM asistencias a WHERE a.asistente_id = ${asistentes.id})`,
+    sql`EXISTS (SELECT 1 FROM asistencias a WHERE a.asistente_id = ${asistentes.id} AND a.jornada_id = ${idPrimeraJornada})`,
     sql`NOT EXISTS (SELECT 1 FROM entregas_souvenir e WHERE e.asistente_id = ${asistentes.id})`,
   ];
   if (filtros.rol) condiciones.push(eq(asistentes.rol, filtros.rol));
@@ -376,7 +386,7 @@ async function reporteSouvenirs(
     .orderBy(asc(asistentes.apellidos), asc(asistentes.nombres));
 
   return {
-    titulo: 'Souvenirs pendientes (asistieron y no lo han recibido)',
+    titulo: 'Souvenirs pendientes (ingresaron en la primera jornada y no lo han recibido)',
     columnas: ['ID institucional', 'Nombres', 'Apellidos', 'Rol', 'Semestre'],
     filas: pendientes.map((fila) => [
       fila.id,

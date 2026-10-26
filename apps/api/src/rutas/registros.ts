@@ -340,7 +340,8 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
       const datos = validarCuerpo(entregaSouvenirSchema, request.body);
       const usuario = request.usuario!;
 
-      // El souvenir es del evento, no de una jornada: solo se valida el modulo.
+      // El souvenir es del evento, pero solo para quien ingreso en la primera
+      // jornada: el servicio `entregarSouvenir` hace esa validacion.
       await validarAcceso('souvenir');
       const capturadoEn = horaDiferida(datos.registradoEn);
 

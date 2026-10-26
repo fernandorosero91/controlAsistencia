@@ -41,7 +41,7 @@ const REPORTES: DefinicionReporte[] = [
   {
     id: 'souvenirs-pendientes',
     titulo: 'Souvenirs pendientes',
-    descripcion: 'Asistentes que todavia no recibieron el souvenir',
+    descripcion: 'Asistentes que ingresaron en la primera jornada y aun no recibieron el souvenir',
   },
   {
     id: 'elegibles',

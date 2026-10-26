@@ -1,7 +1,8 @@
+import { asc } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { db } from '../../src/db/cliente.js';
-import { tiposSouvenir } from '../../src/db/esquema.js';
+import { asistencias, jornadas, tiposSouvenir } from '../../src/db/esquema.js';
 import {
   CLAVE_ADMIN,
   CORREO_ADMIN,
@@ -9,6 +10,7 @@ import {
   hayBaseDePruebas,
   ID_ASISTENTE,
   ID_ASISTENTE_2,
+  ID_ASISTENTE_3,
   prepararBaseDePruebas,
 } from '../ayudas/basePruebas.js';
 
@@ -18,8 +20,8 @@ const descripcion = hayBaseDePruebas()
 
 /**
  * El souvenir es del evento, no de una jornada: una entrega por asistente y
- * tipo, solo para quien tenga asistencia, y con el modulo que el administrador
- * activa desde Configuracion.
+ * tipo. Solo se entrega a quien registro su ingreso en la PRIMERA jornada, y
+ * depende del modulo que el administrador activa desde Configuracion.
  */
 describe(descripcion, () => {
   let app: FastifyInstance;
@@ -85,6 +87,15 @@ describe(descripcion, () => {
     });
   }
 
+  /** Inserta la asistencia directamente en la jornada indicada. */
+  async function asistirEnJornada(asistenteId: string, idJornada: number) {
+    await db.insert(asistencias).values({ asistenteId, jornadaId: idJornada });
+  }
+
+  async function jornadasPorOrden() {
+    return db.select().from(jornadas).orderBy(asc(jornadas.orden));
+  }
+
   it('viene apagado hasta que el administrador lo active', async () => {
     await registrarIngreso(ID_ASISTENTE);
 
@@ -108,12 +119,35 @@ describe(descripcion, () => {
     expect(datos.souvenirActivo.id).toBe(tipoId);
   });
 
-  it('no entrega el souvenir a quien no tiene asistencia', async () => {
+  it('no entrega el souvenir a quien no tiene el ingreso de la primera jornada', async () => {
     await habilitar({ operadorSouvenirHabilitado: true });
 
     const respuesta = await entregar(ID_ASISTENTE_2);
     expect(respuesta.json().resultado).toBe('no_permitido');
-    expect(respuesta.json().mensaje).toContain('asistencia');
+    expect(respuesta.json().mensaje).toContain('primera jornada');
+  });
+
+  it('no entrega el souvenir a quien solo ingreso en la segunda jornada', async () => {
+    await habilitar({ operadorSouvenirHabilitado: true });
+    const [, segunda] = await jornadasPorOrden();
+    await asistirEnJornada(ID_ASISTENTE_2, segunda!.id);
+
+    const respuesta = await entregar(ID_ASISTENTE_2);
+
+    expect(respuesta.statusCode).toBe(200);
+    expect(respuesta.json().resultado).toBe('no_permitido');
+    expect(respuesta.json().mensaje).toContain('primera jornada');
+  });
+
+  it('entrega el souvenir a quien ingreso en la primera jornada', async () => {
+    await habilitar({ operadorSouvenirHabilitado: true });
+    const [primera] = await jornadasPorOrden();
+    await asistirEnJornada(ID_ASISTENTE_2, primera!.id);
+
+    const respuesta = await entregar(ID_ASISTENTE_2);
+
+    expect(respuesta.statusCode).toBe(200);
+    expect(respuesta.json().resultado).toBe('exito');
   });
 
   it('entrega el souvenir y no permite una segunda entrega, aunque sea otro operador', async () => {
@@ -171,10 +205,13 @@ describe(descripcion, () => {
     expect(nombres).toContain('Camiseta del seminario');
   });
 
-  it('reporta los entregados y los pendientes', async () => {
+  it('reporta los entregados y pendientes con la regla de la primera jornada', async () => {
     await habilitar({ operadorSouvenirHabilitado: true });
     await registrarIngreso(ID_ASISTENTE);
     await registrarIngreso(ID_ASISTENTE_2);
+    // ID_ASISTENTE_3 solo llego en la tarde: no debe aparecer entre los pendientes.
+    const [, segunda] = await jornadasPorOrden();
+    await asistirEnJornada(ID_ASISTENTE_3, segunda!.id);
     await entregar(ID_ASISTENTE);
 
     const entregados = await app.inject({
@@ -194,5 +231,6 @@ describe(descripcion, () => {
     expect(pendientes.statusCode).toBe(200);
     expect(pendientes.body).toContain(ID_ASISTENTE_2);
     expect(pendientes.body).not.toContain(`\n${ID_ASISTENTE},`);
+    expect(pendientes.body).not.toContain(ID_ASISTENTE_3);
   });
 });

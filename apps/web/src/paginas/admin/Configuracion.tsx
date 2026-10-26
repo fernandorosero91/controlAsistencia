@@ -1307,7 +1307,9 @@ function Souvenirs() {
 
       <Ayuda titulo="Como se usa el souvenir en el evento" className="mt-3">
         Para usarlo en la app del operador, active el interruptor <strong>Souvenir</strong> en
-        Accesos del operador. El reporte de entregas y pendientes esta en Reportes.
+        Accesos del operador. Se entrega <strong>una sola vez por persona</strong> y solo a quien
+        registro su ingreso en la <strong>primera jornada</strong>; quien llego unicamente en la
+        tarde no lo recibe. El reporte de entregas y pendientes esta en Reportes.
       </Ayuda>
 
       <Modal

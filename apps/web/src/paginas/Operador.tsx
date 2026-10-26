@@ -547,7 +547,9 @@ export function Operador() {
                 <span className="font-semibold text-neutro-800">
                   {contexto?.souvenirActivo?.nombre ?? 'Souvenir del seminario'}
                 </span>
-                <span className="text-neutro-500">Una entrega por asistente</span>
+                <span className="text-neutro-500">
+                  Solo con el ingreso de la primera jornada
+                </span>
               </>
             ) : contexto?.jornadaActiva ? (
               <>
