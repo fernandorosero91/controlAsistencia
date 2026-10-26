@@ -6,6 +6,7 @@ import {
   CORREO_ADMIN,
   crearAplicacionDePruebas,
   hayBaseDePruebas,
+  ID_ASISTENTE,
   prepararBaseDePruebas,
 } from '../ayudas/basePruebas.js';
 import { db } from '../../src/db/cliente.js';
@@ -181,6 +182,119 @@ describe(descripcion, () => {
       .from(asistentes)
       .where(eq(asistentes.id, 'IMP00001'));
     expect(guardados).toHaveLength(1);
+  });
+
+  it('reimportar el padron no borra el estado de envio de la credencial', async () => {
+    // Caso real: ya se enviaron 400 correos y se agregan 6 estudiantes. El
+    // archivo vuelve a traer a los 400 existentes.
+    const enviadaAt = new Date('2026-10-20T15:30:00.000Z');
+    await db
+      .update(asistentes)
+      .set({
+        email: 'ana@pruebas.local',
+        credencialEstado: 'enviada',
+        credencialEnviadaAt: enviadaAt,
+        credencialError: null,
+      })
+      .where(eq(asistentes.id, ID_ASISTENTE));
+
+    const respuesta = await app.inject({
+      method: 'POST',
+      url: '/asistentes/importar/confirmar',
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        modo: 'crear_actualizar',
+        filas: [
+          {
+            fila: 2,
+            id: ID_ASISTENTE,
+            nombres: 'Ana Reimportada',
+            apellidos: 'Prueba Integracion',
+            rol: 'estudiante',
+            semestre: 4,
+            email: 'ana@pruebas.local',
+          },
+          {
+            fila: 3,
+            id: 'IMP00006',
+            nombres: 'Nuevo',
+            apellidos: 'Sin Enviar',
+            rol: 'estudiante',
+            semestre: 2,
+            email: 'nuevo@pruebas.local',
+          },
+        ],
+      },
+    });
+
+    expect(respuesta.statusCode).toBe(200);
+    expect(respuesta.json().actualizados).toBe(1);
+    expect(respuesta.json().creados).toBe(1);
+
+    const [existente] = await db
+      .select()
+      .from(asistentes)
+      .where(eq(asistentes.id, ID_ASISTENTE));
+    // Los datos se actualizan...
+    expect(existente!.nombres).toBe('Ana Reimportada');
+    // ...pero el historial de envio queda intacto.
+    expect(existente!.credencialEstado).toBe('enviada');
+    expect(existente!.credencialEnviadaAt?.getTime()).toBe(enviadaAt.getTime());
+
+    // El nuevo aparece como no enviado.
+    const [nuevo] = await db
+      .select()
+      .from(asistentes)
+      .where(eq(asistentes.id, 'IMP00006'));
+    expect(nuevo!.credencialEstado).toBeNull();
+    expect(nuevo!.credencialEnviadaAt).toBeNull();
+  });
+
+  it('con modo solo_nuevos no toca a quienes ya existen', async () => {
+    await db
+      .update(asistentes)
+      .set({ credencialEstado: 'enviada' })
+      .where(eq(asistentes.id, ID_ASISTENTE));
+
+    const respuesta = await app.inject({
+      method: 'POST',
+      url: '/asistentes/importar/confirmar',
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        modo: 'solo_nuevos',
+        filas: [
+          {
+            fila: 2,
+            id: ID_ASISTENTE,
+            nombres: 'Nombre Que No Debe Aplicarse',
+            apellidos: 'Prueba Integracion',
+            rol: 'estudiante',
+            semestre: 4,
+            email: 'ana@pruebas.local',
+          },
+          {
+            fila: 3,
+            id: 'IMP00007',
+            nombres: 'Otro',
+            apellidos: 'Nuevo',
+            rol: 'estudiante',
+            semestre: 1,
+            email: 'otro@pruebas.local',
+          },
+        ],
+      },
+    });
+
+    expect(respuesta.statusCode).toBe(200);
+    expect(respuesta.json().omitidos).toBe(1);
+    expect(respuesta.json().creados).toBe(1);
+
+    const [existente] = await db
+      .select()
+      .from(asistentes)
+      .where(eq(asistentes.id, ID_ASISTENTE));
+    expect(existente!.nombres).not.toBe('Nombre Que No Debe Aplicarse');
+    expect(existente!.credencialEstado).toBe('enviada');
   });
 
   it('rechaza una fila invalida al confirmar la importacion', async () => {

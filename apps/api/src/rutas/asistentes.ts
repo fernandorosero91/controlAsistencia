@@ -1042,6 +1042,10 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
           continue;
         }
 
+        // Solo se actualizan los datos del padron. A proposito NO se incluyen
+        // credencialEstado, credencialEnviadaAt ni credencialError: reimportar
+        // el padron para agregar personas no puede borrar el historial de
+        // envio de la credencial de quienes ya la recibieron.
         const valores = {
           nombres: datos.nombres!,
           apellidos: datos.apellidos!,

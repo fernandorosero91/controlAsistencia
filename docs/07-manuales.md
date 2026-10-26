@@ -11,7 +11,10 @@ Dos manuales de una pagina: uno para el administrador y otro para el operador.
 1. **Verifique el sistema**: `docker compose ps` (todo en `healthy`) y
    `http://localhost:8080/api/health/ready` (debe responder `ok`).
 2. **Importe el padron** (Importar): descargue la plantilla, complete las filas y revise la
-   vista previa antes de confirmar.
+   vista previa antes de confirmar. **Volver a importar no borra el historial de envio**: a quien ya
+   se le envio la credencial sigue marcado como enviado, y solo las personas nuevas quedan como
+   pendientes. Para agregar unas pocas sin tocar a los demas, importe un archivo que contenga
+   **solo las filas nuevas** (con todas las columnas, incluido el correo).
 3. **Entregue los codigos**: por correo (Carnets y QR > Enviar pendientes) o en papel (Descargar
    carta de QR).
    - El envio sale **uno cada 3 minutos (20 por hora)** para no caer en spam; puedes cerrar la
