@@ -214,17 +214,37 @@ export function validarFila(
     });
   }
 
-  const tipoDocumentoTexto = (
+  // El archivo institucional no siempre escribe "CC" o "TI": aparecen "C.C.",
+  // "T.I.", "Tarjeta de Identidad", etc. Se normaliza la puntuacion y los
+  // espacios para no convertir una tarjeta de identidad en cedula por accidente.
+  const tipoDocumentoOriginal =
     COLUMNAS_TIPO_DOCUMENTO.map((columna) => datos[columna] ?? '').find(
       (valor) => valor.trim().length > 0,
-    ) ?? ''
-  )
+    ) ?? '';
+  const tipoDocumentoTexto = tipoDocumentoOriginal
     .trim()
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-  const tipoDocumento =
-    tipoDocumentoTexto === 'tarjeta de identidad' || tipoDocumentoTexto === 'ti' ? 'TI' : 'CC';
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[.\s]+/g, ' ')
+    .trim();
+
+  const VARIANTES_TI = new Set(['ti', 't i', 'tarjeta de identidad', 'tarjeta identidad']);
+  const VARIANTES_CC = new Set(['cc', 'c c', 'cedula', 'cedula de ciudadania']);
+
+  let tipoDocumento: 'CC' | 'TI' = 'CC';
+  if (tipoDocumentoTexto.length > 0) {
+    if (VARIANTES_TI.has(tipoDocumentoTexto)) {
+      tipoDocumento = 'TI';
+    } else if (!VARIANTES_CC.has(tipoDocumentoTexto)) {
+      errores.push({
+        fila,
+        campo: 'tipo documento',
+        mensaje: 'El tipo de documento debe ser CC o TI',
+        valor: tipoDocumentoOriginal,
+      });
+    }
+  }
 
   let semestre: number | null = null;
   if (semestreTexto.length > 0) {
@@ -292,6 +312,7 @@ export function construirVistaPrevia(
   actualizados: number,
   duplicados: number,
   totalEnArchivo: number,
+  idsExistentes: ReadonlySet<string> = new Set(),
 ): VistaPreviaImportacion {
   return {
     totalFilas: totalEnArchivo,
@@ -306,6 +327,7 @@ export function construirVistaPrevia(
     filas: validaciones.map((validacion) => ({
       fila: validacion.fila,
       datos: validacion.datos,
+      existe: Boolean(validacion.datos.id && idsExistentes.has(validacion.datos.id)),
       errores: validacion.errores,
     })),
   };

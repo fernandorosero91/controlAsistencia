@@ -47,6 +47,8 @@ export const vistaPreviaImportacionSchema = z.object({
     z.object({
       fila: z.number().int(),
       datos: filaAsistenteImportadaSchema.partial(),
+      /** `false` = el ID no esta en el padron: se crea al confirmar. */
+      existe: z.boolean(),
       errores: z.array(errorImportacionSchema),
     }),
   ),

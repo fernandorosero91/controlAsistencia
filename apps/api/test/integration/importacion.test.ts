@@ -85,6 +85,35 @@ describe(descripcion, () => {
     expect(cuerpo.filas[2].errores).toHaveLength(0);
   });
 
+  it('la vista previa marca cual fila ya existe y cual es nueva', async () => {
+    const csv = [
+      'id,nombres,apellidos,rol,semestre,tipo documento,nro. documento,email',
+      // ID_ASISTENTE ya esta en el padron de pruebas.
+      'PRUEBA0001,Ana,Prueba Integracion,estudiante,3,C.C.,1094000001,ana@pruebas.local',
+      'IMP00010,Nueva,Persona,estudiante,2,T.I.,1099000010,nueva@pruebas.local',
+    ].join('\n');
+    const { payload, contentType } = cuerpoMultipart(csv);
+
+    const respuesta = await app.inject({
+      method: 'POST',
+      url: '/asistentes/importar/previa',
+      headers: { authorization: `Bearer ${token}`, 'content-type': contentType },
+      payload,
+    });
+
+    expect(respuesta.statusCode).toBe(200);
+    const cuerpo = respuesta.json();
+    expect(cuerpo.nuevos).toBe(1);
+    expect(cuerpo.actualizados).toBe(1);
+
+    // La fila que ya existe se marca para actualizar y conserva su tipo.
+    expect(cuerpo.filas[0].existe).toBe(true);
+    expect(cuerpo.filas[0].datos.tipoDocumento).toBe('CC');
+    // La que no existe se marca como nueva, con su tarjeta de identidad.
+    expect(cuerpo.filas[1].existe).toBe(false);
+    expect(cuerpo.filas[1].datos.tipoDocumento).toBe('TI');
+  });
+
   it('importa las 600 filas de un padron completo, no solo una muestra', async () => {
     const total = 600;
     const encabezados = 'id,nombres,apellidos,rol,semestre,email';

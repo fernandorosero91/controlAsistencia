@@ -15,6 +15,8 @@ interface VistaPrevia {
   filas: {
     fila: number;
     datos: Record<string, unknown>;
+    /** false = el ID no esta en el padron y se creara al confirmar. */
+    existe: boolean;
     errores: { fila: number; campo: string | null; mensaje: string; valor: string | null }[];
   }[];
 }
@@ -26,6 +28,7 @@ export function ImportarAsistentes() {
   const cliente = useQueryClient();
   const referenciaArchivo = useRef<HTMLInputElement | null>(null);
   const [vistaPrevia, setVistaPrevia] = useState<VistaPrevia | null>(null);
+  const [soloNuevas, setSoloNuevas] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultadoImportacion, setResultadoImportacion] = useState<string | null>(null);
   const [archivoNombre, setArchivoNombre] = useState<string | null>(null);
@@ -60,6 +63,7 @@ export function ImportarAsistentes() {
     },
     onSuccess: (datos) => {
       setVistaPrevia(datos);
+      setSoloNuevas(false);
       setError(null);
     },
     onError: (problema) => {
@@ -112,6 +116,13 @@ export function ImportarAsistentes() {
       );
     },
   });
+
+  // Filtro opcional para revisar solo las filas que aun no estan en el padron.
+  const filasVisibles = vistaPrevia
+    ? soloNuevas
+      ? vistaPrevia.filas.filter((fila) => !fila.existe)
+      : vistaPrevia.filas
+    : [];
 
   return (
     <div className="space-y-4">
@@ -196,11 +207,12 @@ export function ImportarAsistentes() {
             </button>
           }
         >
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <Metrica titulo="Filas" valor={vistaPrevia.totalFilas} />
             <Metrica titulo="Validas" valor={vistaPrevia.filasValidas} tono="exito" />
             <Metrica titulo="Con error" valor={vistaPrevia.filasConError} tono="error" />
-            <Metrica titulo="Nuevos" valor={vistaPrevia.nuevos} />
+            <Metrica titulo="Nuevas" valor={vistaPrevia.nuevos} />
+            <Metrica titulo="Actualiza" valor={vistaPrevia.actualizados} />
           </dl>
 
           {vistaPrevia.duplicadosEnArchivo > 0 ? (
@@ -212,6 +224,19 @@ export function ImportarAsistentes() {
             </div>
           ) : null}
 
+          {vistaPrevia.nuevos > 0 ? (
+            <label className="mt-4 flex items-center gap-2 text-sm text-neutro-700">
+              <input
+                type="checkbox"
+                checked={soloNuevas}
+                onChange={(evento) => setSoloNuevas(evento.target.checked)}
+                className="h-4 w-4"
+              />
+              Ver solo las filas nuevas ({formatearNumero(vistaPrevia.nuevos)}): son las que no
+              estan en el padron y se crearan al confirmar.
+            </label>
+          ) : null}
+
           <div className="mt-4 overflow-x-auto sin-barra-espacial">
             <table className="tabla">
               <thead className="tabla-cabecera">
@@ -219,6 +244,7 @@ export function ImportarAsistentes() {
                   <th scope="col">Fila</th>
                   <th scope="col">ID</th>
                   <th scope="col">Cedula</th>
+                  <th scope="col">Tipo doc.</th>
                   <th scope="col">Nombre</th>
                   <th scope="col">Rol</th>
                   <th scope="col">Semestre</th>
@@ -226,12 +252,15 @@ export function ImportarAsistentes() {
                 </tr>
               </thead>
               <tbody className="tabla-cuerpo">
-                {vistaPrevia.filas.slice(0, FILAS_MOSTRADAS).map((fila) => (
+                {filasVisibles.slice(0, FILAS_MOSTRADAS).map((fila) => (
                   <tr key={fila.fila}>
                     <td className="text-neutro-500">{fila.fila}</td>
                     <td className="font-mono">{String(fila.datos.id ?? '')}</td>
                     <td className="font-mono text-neutro-700">
                       {String(fila.datos.cedulaCiudadania ?? '')}
+                    </td>
+                    <td>
+                      {fila.datos.tipoDocumento === 'TI' ? 'T.I.' : 'C.C.'}
                     </td>
                     <td>
                       {String(fila.datos.nombres ?? '')} {String(fila.datos.apellidos ?? '')}
@@ -242,7 +271,11 @@ export function ImportarAsistentes() {
                     </td>
                     <td>
                       {fila.errores.length === 0 ? (
-                        <Insignia tono="exito">Valida</Insignia>
+                        fila.existe ? (
+                          <Insignia tono="neutro">Actualiza</Insignia>
+                        ) : (
+                          <Insignia tono="primario">Nueva</Insignia>
+                        )
                       ) : (
                         <span className="flex items-start gap-1.5 text-sm text-error-700">
                           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -256,15 +289,15 @@ export function ImportarAsistentes() {
             </table>
           </div>
 
-          {vistaPrevia.filas.length > FILAS_MOSTRADAS ? (
+          {filasVisibles.length > FILAS_MOSTRADAS ? (
             <p className="mt-2 text-xs text-neutro-500">
               Se muestran las primeras {formatearNumero(FILAS_MOSTRADAS)} filas de{' '}
-              {formatearNumero(vistaPrevia.filas.length)}. Al confirmar se importan todas las filas
+              {formatearNumero(filasVisibles.length)}. Al confirmar se importan todas las filas
               validas del archivo.
             </p>
           ) : null}
 
-          {vistaPrevia.filas.length === 0 ? (
+          {filasVisibles.length === 0 ? (
             <EstadoVacio titulo="El archivo no tiene filas para mostrar" />
           ) : null}
         </Tarjeta>

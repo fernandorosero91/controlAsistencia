@@ -15,6 +15,12 @@ Dos manuales de una pagina: uno para el administrador y otro para el operador.
    se le envio la credencial sigue marcado como enviado, y solo las personas nuevas quedan como
    pendientes. Para agregar unas pocas sin tocar a los demas, importe un archivo que contenga
    **solo las filas nuevas** (con todas las columnas, incluido el correo).
+   - La vista previa marca cada fila como **Nueva** (no esta en el padron y se creara) o
+     **Actualiza** (ya existe), y trae la casilla *Ver solo las filas nuevas* para encontrar lo que
+     falta.
+   - En `tipo documento` se acepta `CC`, `C.C.`, `Cedula` o `TI`, `T.I.`, `Tarjeta de Identidad`.
+     Sin esa columna se asume `CC`. Un valor distinto (por ejemplo `Pasaporte`) se marca como error
+     antes de importar.
 3. **Entregue los codigos**: por correo (Carnets y QR > Enviar pendientes) o en papel (Descargar
    carta de QR).
    - El envio sale **uno cada 3 minutos (20 por hora)** para no caer en spam; puedes cerrar la

@@ -955,6 +955,7 @@ export async function registrarRutasAsistentes(app: FastifyInstance): Promise<vo
         actualizados,
         duplicados,
         validaciones.length,
+        existentesSet,
       );
     },
   );
