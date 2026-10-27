@@ -349,6 +349,9 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
         entregarSouvenir({
           asistenteId: datos.asistenteId,
           tipoSouvenirId: datos.tipoSouvenirId,
+          rolUsuario: usuario.rol,
+          forzar: datos.forzar,
+          motivo: datos.motivo,
           usuarioId: usuario.id,
           usuarioNombre: usuario.nombre,
           dispositivo: datos.dispositivo ?? null,
@@ -365,7 +368,13 @@ export async function registrarRutasRegistros(app: FastifyInstance): Promise<voi
           accion: 'souvenir.entregado',
           entidad: 'entregas_souvenir',
           entidadId: datos.asistenteId,
-          datosDespues: { tipoSouvenirId: datos.tipoSouvenirId },
+          datosDespues: {
+            tipoSouvenirId: datos.tipoSouvenirId,
+            excepcionManual: datos.forzar === true && usuario.rol === 'admin',
+            ...(datos.forzar === true && usuario.rol === 'admin' && datos.motivo
+              ? { motivo: datos.motivo }
+              : {}),
+          },
         });
       }
 

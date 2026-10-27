@@ -1,8 +1,13 @@
-import { asc } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { db } from '../../src/db/cliente.js';
-import { asistencias, jornadas, tiposSouvenir } from '../../src/db/esquema.js';
+import {
+  asistencias,
+  entregasSouvenir,
+  jornadas,
+  tiposSouvenir,
+} from '../../src/db/esquema.js';
 import {
   CLAVE_ADMIN,
   CORREO_ADMIN,
@@ -125,6 +130,96 @@ describe(descripcion, () => {
     const respuesta = await entregar(ID_ASISTENTE_2);
     expect(respuesta.json().resultado).toBe('no_permitido');
     expect(respuesta.json().mensaje).toContain('primera jornada');
+    // Al administrador se le ofrece la excepcion manual.
+    expect(respuesta.json().puedeForzar).toBe(true);
+  });
+
+  it('el administrador entrega como excepcion con motivo y queda reportado', async () => {
+    await habilitar({ operadorSouvenirHabilitado: true });
+    const motivo = 'No registro el ingreso de la manana por falta de red en el celular.';
+
+    const respuesta = await app.inject({
+      method: 'POST',
+      url: '/souvenirs/entregar',
+      headers: cabeceras(),
+      payload: { asistenteId: ID_ASISTENTE_2, tipoSouvenirId: tipoId, forzar: true, motivo },
+    });
+
+    expect(respuesta.statusCode).toBe(200);
+    expect(respuesta.json().resultado).toBe('exito');
+
+    const [entrega] = await db
+      .select()
+      .from(entregasSouvenir)
+      .where(eq(entregasSouvenir.asistenteId, ID_ASISTENTE_2));
+    expect(entrega!.excepcionManual).toBe(true);
+    expect(entrega!.motivoExcepcion).toBe(motivo);
+
+    const reporte = await app.inject({
+      method: 'GET',
+      url: '/reportes/souvenirs-entregados?formato=csv',
+      headers: cabeceras(),
+    });
+    expect(reporte.body).toContain('Si');
+    expect(reporte.body).toContain('falta de red');
+  });
+
+  it('la excepcion exige un motivo de al menos 10 caracteres', async () => {
+    await habilitar({ operadorSouvenirHabilitado: true });
+
+    const respuesta = await app.inject({
+      method: 'POST',
+      url: '/souvenirs/entregar',
+      headers: cabeceras(),
+      payload: {
+        asistenteId: ID_ASISTENTE_2,
+        tipoSouvenirId: tipoId,
+        forzar: true,
+        motivo: 'corto',
+      },
+    });
+
+    // El esquema de la peticion valida el motivo antes de llegar al servicio.
+    expect(respuesta.statusCode).toBe(422);
+    expect(
+      respuesta.json().detalles.some((detalle: { campo: string }) => detalle.campo === 'motivo'),
+    ).toBe(true);
+  });
+
+  it('un operador no puede forzar la entrega', async () => {
+    await habilitar({ operadorSouvenirHabilitado: true });
+    await app.inject({
+      method: 'POST',
+      url: '/usuarios',
+      headers: cabeceras(),
+      payload: {
+        nombre: 'Operador Souvenir',
+        email: 'operador.souvenir@pruebas.local',
+        password: 'Operador2026',
+        rol: 'operador',
+      },
+    });
+    const login = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { email: 'operador.souvenir@pruebas.local', password: 'Operador2026' },
+    });
+    const tokenOperador = login.json().tokenAcceso as string;
+
+    const respuesta = await app.inject({
+      method: 'POST',
+      url: '/souvenirs/entregar',
+      headers: { authorization: `Bearer ${tokenOperador}` },
+      payload: {
+        asistenteId: ID_ASISTENTE_2,
+        tipoSouvenirId: tipoId,
+        forzar: true,
+        motivo: 'Intento de excepcion sin ser administrador.',
+      },
+    });
+
+    expect(respuesta.json().resultado).toBe('no_permitido');
+    expect(respuesta.json().puedeForzar).not.toBe(true);
   });
 
   it('no entrega el souvenir a quien solo ingreso en la segunda jornada', async () => {

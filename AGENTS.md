@@ -609,6 +609,10 @@ del seminario, con el mismo criterio de una sola entrega por persona.
   menor `orden`), que es cuando se entrega el souvenir. Quien llego unicamente en la tarde **no**
   lo recibe. La validacion es por la fila de `asistencias` de esa jornada, no por una asistencia
   cualquiera del evento.
+- **Excepcion del administrador:** si el asistente no cumple la condicion, **solo un `admin`** puede
+  entregarlo con `forzar: true` y **motivo obligatorio** (minimo 10 caracteres). La entrega queda
+  con `excepcion_manual = true` y el motivo, se registra en auditoria y aparece en el reporte de
+  entregados. Un operador recibe `puedeForzar` en falso y no puede saltarse la regla.
 - **Sin doble entrega:** `INSERT ... ON CONFLICT DO NOTHING`; el segundo intento responde
   `resultado: "duplicado"` con la fecha y el operador que lo entrego, **aunque sea otro operador**.
 - **Modulo configurable:** `seminario_config.operador_souvenir_habilitado` (apagado por defecto).

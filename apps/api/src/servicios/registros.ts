@@ -492,6 +492,10 @@ export async function entregarSouvenir(
   parametros: {
     asistenteId: string;
     tipoSouvenirId: number;
+    /** El rol decide si puede aplicar la excepcion manual. */
+    rolUsuario: 'admin' | 'operador';
+    forzar?: boolean;
+    motivo?: string;
   } & ContextoOperador,
 ): Promise<RespuestaRegistro> {
   const ahora = parametros.ahora ?? new Date();
@@ -555,16 +559,43 @@ export async function entregarSouvenir(
     )
     .limit(1);
 
+  let excepcionManual = false;
+  let motivoExcepcion: string | null = null;
+
   if (asistencia.length === 0) {
-    return {
-      resultado: 'no_permitido',
-      mensaje:
-        `El souvenir se entrega a quienes registraron su ingreso en la primera jornada ` +
-        `(${primeraJornada.nombre}). Este asistente no tiene ese ingreso.`,
-      asistente: aResumen(asistente),
-      existente: null,
-      requiereBusquedaManual: false,
-    };
+    const esAdmin = parametros.rolUsuario === 'admin';
+    const mensajeCondicion =
+      `El souvenir se entrega a quienes registraron su ingreso en la primera jornada ` +
+      `(${primeraJornada.nombre}). Este asistente no tiene ese ingreso.`;
+
+    if (!esAdmin || parametros.forzar !== true) {
+      return {
+        resultado: 'no_permitido',
+        mensaje: esAdmin
+          ? `${mensajeCondicion} Como administrador puede entregarlo como excepcion manual, con motivo.`
+          : `${mensajeCondicion} Si es un caso especial, avise al administrador.`,
+        asistente: aResumen(asistente),
+        existente: null,
+        requiereBusquedaManual: false,
+        puedeForzar: esAdmin,
+      };
+    }
+
+    const motivo = (parametros.motivo ?? '').trim();
+    if (motivo.length < 10) {
+      return {
+        resultado: 'no_permitido',
+        mensaje:
+          'Para entregar el souvenir como excepcion escriba el motivo (minimo 10 caracteres).',
+        asistente: aResumen(asistente),
+        existente: null,
+        requiereBusquedaManual: false,
+        puedeForzar: true,
+      };
+    }
+
+    excepcionManual = true;
+    motivoExcepcion = motivo;
   }
 
   const insertada = await db
@@ -576,6 +607,8 @@ export async function entregarSouvenir(
       entregadoPor: parametros.usuarioId,
       dispositivo: parametros.dispositivo ?? null,
       idempotencyKey: parametros.idempotencyKey ?? null,
+      excepcionManual,
+      motivoExcepcion,
     })
     .onConflictDoNothing({
       target: [entregasSouvenir.asistenteId, entregasSouvenir.tipoSouvenirId],

@@ -287,7 +287,8 @@ export const tiposSouvenir = pgTable(
 
 /**
  * Entrega de un souvenir. No depende de la jornada: se entrega una vez por
- * evento a quien tenga al menos una asistencia registrada.
+ * evento a quien registro su ingreso en la primera jornada, o por excepcion
+ * manual del administrador con motivo.
  */
 export const entregasSouvenir = pgTable(
   'entregas_souvenir',
@@ -305,6 +306,9 @@ export const entregasSouvenir = pgTable(
     }),
     dispositivo: text('dispositivo'),
     idempotencyKey: text('idempotency_key'),
+    /** true cuando el administrador lo entrego sin cumplir la condicion. */
+    excepcionManual: boolean('excepcion_manual').notNull().default(false),
+    motivoExcepcion: text('motivo_excepcion'),
     createdAt: creadoEn,
   },
   (tabla) => [

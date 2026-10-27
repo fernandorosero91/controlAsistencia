@@ -323,6 +323,8 @@ async function reporteSouvenirs(
         souvenir: tiposSouvenir.nombre,
         entregadoAt: entregasSouvenir.entregadoAt,
         entregadoPor: usuariosSistema.nombre,
+        excepcionManual: entregasSouvenir.excepcionManual,
+        motivoExcepcion: entregasSouvenir.motivoExcepcion,
       })
       .from(entregasSouvenir)
       .innerJoin(asistentes, eq(asistentes.id, entregasSouvenir.asistenteId))
@@ -341,6 +343,8 @@ async function reporteSouvenirs(
         'Souvenir',
         'Fecha y hora',
         'Entregado por',
+        'Excepcion',
+        'Motivo de la excepcion',
       ],
       filas: filas.map((fila) => [
         fila.id,
@@ -350,6 +354,8 @@ async function reporteSouvenirs(
         fila.souvenir,
         fecha(fila.entregadoAt),
         fila.entregadoPor ?? '',
+        fila.excepcionManual ? 'Si' : 'No',
+        fila.motivoExcepcion ?? '',
       ]),
     };
   }

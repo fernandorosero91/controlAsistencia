@@ -32,6 +32,12 @@ export const entregaSouvenirSchema = z.object({
   tipoSouvenirId: z.coerce.number().int().positive('El tipo de souvenir es obligatorio'),
   dispositivo: z.string().trim().max(120).optional(),
   registradoEn: z.coerce.date().optional(),
+  /**
+   * Excepcion manual: solo el administrador puede entregarlo a quien no
+   * registro su ingreso en la primera jornada. Exige motivo.
+   */
+  forzar: z.boolean().optional(),
+  motivo: z.string().trim().min(10).max(500).optional(),
 });
 
 export type EntregaSouvenirInput = z.infer<typeof entregaSouvenirSchema>;
@@ -82,6 +88,11 @@ export const respuestaRegistroSchema = z.object({
   asistente: asistenteResumenSchema.nullable(),
   existente: z.union([registroExistenteSchema, entregaExistenteSchema]).nullable(),
   requiereBusquedaManual: z.boolean().default(false),
+  /**
+   * Solo en la entrega de souvenir: el administrador puede insistir como
+   * excepcion manual aunque el asistente no cumpla la condicion.
+   */
+  puedeForzar: z.boolean().optional(),
 });
 
 export type RespuestaRegistro = z.infer<typeof respuestaRegistroSchema>;

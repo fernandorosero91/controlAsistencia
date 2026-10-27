@@ -140,6 +140,9 @@ export function Operador() {
   const [ajustes, setAjustes] = useState(false);
   const [historial, setHistorial] = useState<EntradaHistorial[]>([]);
   const [consultaManual, setConsultaManual] = useState('');
+  const [motivoExcepcion, setMotivoExcepcion] = useState('');
+  const [enviandoExcepcion, setEnviandoExcepcion] = useState(false);
+  const [errorExcepcion, setErrorExcepcion] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const enLinea = useColaOffline((estado) => estado.enLinea);
@@ -226,6 +229,8 @@ export function Operador() {
 
   const enviar = useCallback(
     async (id: string, clave: string) => {
+      setMotivoExcepcion('');
+      setErrorExcepcion(null);
       const modoCola: TipoRegistroCola =
         modo === 'ingreso' || modo === 'salida' || modo === 'souvenir' ? modo : 'refrigerio';
 
@@ -343,6 +348,64 @@ export function Operador() {
     },
     [cliente, enLinea, enfocarCampo, jornadaId, modo, refrescarCola, registrarEnHistorial, tipoRefrigerioId, tipoSouvenirId],
   );
+
+  /**
+   * Excepcion del administrador: entrega el souvenir a quien no registro su
+   * ingreso en la primera jornada. Exige motivo y queda en la auditoria.
+   */
+  const entregarComoExcepcion = useCallback(async () => {
+    const asistente = resultado?.asistente;
+    const motivo = motivoExcepcion.trim();
+    if (!asistente || !tipoSouvenirId) return;
+    if (motivo.length < 10) {
+      setErrorExcepcion('El motivo debe tener al menos 10 caracteres.');
+      return;
+    }
+    if (!enLinea) {
+      setErrorExcepcion('Sin conexion: la excepcion necesita comunicarse con el servidor.');
+      return;
+    }
+
+    setEnviandoExcepcion(true);
+    setErrorExcepcion(null);
+    try {
+      const respuesta = await api.enviar<RespuestaRegistro>(
+        '/souvenirs/entregar',
+        {
+          asistenteId: asistente.id,
+          tipoSouvenirId,
+          dispositivo: 'navegador',
+          forzar: true,
+          motivo,
+        },
+        { claveIdempotencia: nuevoClaveIdempotencia() },
+      );
+
+      setResultado(respuesta);
+      setMotivoExcepcion('');
+      registrarEnHistorial({
+        id: asistente.id,
+        modo: 'souvenir',
+        nombre: respuesta.asistente
+          ? `${respuesta.asistente.nombres} ${respuesta.asistente.apellidos}`
+          : asistente.id,
+        asistenteId: asistente.id,
+        resultado: `${respuesta.mensaje} (excepcion del administrador)`,
+        hora: new Date().toISOString(),
+        pendiente: false,
+      });
+      avisar(respuesta.resultado === 'exito' ? 'exito' : 'aviso');
+      void cliente.invalidateQueries({ queryKey: ['operador', 'contexto'] });
+    } catch (error) {
+      setErrorExcepcion(
+        error instanceof ErrorPeticion
+          ? error.message
+          : 'No se pudo entregar el souvenir como excepcion.',
+      );
+    } finally {
+      setEnviandoExcepcion(false);
+    }
+  }, [resultado, tipoSouvenirId, motivoExcepcion, enLinea, registrarEnHistorial, cliente]);
 
   /**
    * Verifica el codigo ingresado y muestra el nombre del asistente para que el
@@ -848,6 +911,47 @@ export function Operador() {
       />
 
       <ResultadoRegistro resultado={resultado} />
+
+      {modo === 'souvenir' &&
+      usuario?.rol === 'admin' &&
+      resultado?.resultado === 'no_permitido' &&
+      resultado.puedeForzar === true &&
+      resultado.asistente &&
+      tipoSouvenirId ? (
+        <div className="superficie border border-aviso-300 p-3">
+          <Aviso tono="aviso" titulo="Excepcion del administrador">
+            <span className="font-semibold">
+              {resultado.asistente.nombres} {resultado.asistente.apellidos}
+            </span>{' '}
+            no cumple la condicion del souvenir. Puede entregarlo igualmente dejando el motivo; la
+            excepcion queda registrada en la auditoria y en el reporte.
+          </Aviso>
+          <label htmlFor="motivo-excepcion-souvenir" className="etiqueta-campo mt-3">
+            Motivo de la excepcion
+          </label>
+          <textarea
+            id="motivo-excepcion-souvenir"
+            className="campo"
+            rows={3}
+            maxLength={500}
+            value={motivoExcepcion}
+            onChange={(evento) => setMotivoExcepcion(evento.target.value)}
+            placeholder="Ejemplo: el celular no tenia red al registrar el ingreso de la manana."
+          />
+          {errorExcepcion ? (
+            <p className="mt-1 text-sm text-error-600">{errorExcepcion}</p>
+          ) : null}
+          <button
+            type="button"
+            className="boton-primario mt-3 w-full"
+            onClick={() => void entregarComoExcepcion()}
+            disabled={enviandoExcepcion || motivoExcepcion.trim().length < 10}
+          >
+            <Gift className="h-4 w-4" aria-hidden="true" />
+            {enviandoExcepcion ? 'Entregando' : 'Entregar souvenir como excepcion'}
+          </button>
+        </div>
+      ) : null}
 
       <section aria-label="Ultimos registros">
         <h2 className="mb-2 text-sm font-semibold text-neutro-700">Ultimos registros</h2>

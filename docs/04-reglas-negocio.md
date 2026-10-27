@@ -124,6 +124,10 @@ Un duplicado **nunca** es un error de servidor.
   unicamente en la tarde **no** lo recibe, aunque tenga asistencia en esa jornada.
 - El reporte de pendientes aplica la misma regla: solo lista a quienes ingresaron en la primera
   jornada y aun no lo recibieron.
+- **Excepcion manual:** el administrador puede entregarlo a quien no cumple la condicion, con
+  **motivo obligatorio** (minimo 10 caracteres). La entrega queda marcada como excepcion, se
+  registra en la auditoria y el reporte de entregados muestra el motivo. Un operador **no** puede
+  aplicar la excepcion: el sistema le indica que llame al administrador.
 - La unicidad la impone `UNIQUE (asistente_id, tipo_souvenir_id)`, con la misma escritura atomica
   (`ON CONFLICT DO NOTHING`).
 - Un duplicado responde `resultado: "duplicado"` con la fecha y el operador de la entrega previa,

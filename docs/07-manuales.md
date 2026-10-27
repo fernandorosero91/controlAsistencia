@@ -159,5 +159,8 @@ por asistente.
    registrado su **ingreso en la primera jornada** (la manana): quien llego unicamente en la tarde
    no lo recibe, aunque tenga asistencia. El segundo intento muestra la alerta con la fecha y el
    operador que lo entrego.
+   - Si el asistente no cumple la condicion, **el administrador** puede entregarlo como
+     **excepcion manual**: la app le pide el motivo (minimo 10 caracteres) y la entrega queda
+     marcada en el reporte y en la auditoria. Un operador no puede hacer esa excepcion.
 4. Para saber quien lo recibio y quien no: **Reportes > Souvenirs entregados** y
    **Souvenirs pendientes** (CSV, Excel o PDF).
