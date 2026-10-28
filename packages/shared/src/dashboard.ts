@@ -28,6 +28,8 @@ export const resumenDashboardSchema = z.object({
   ritmoIngreso: z.array(z.object({ minuto: z.string(), registros: z.number().int() })),
   dentroAhora: z.number().int(),
   fueraAhora: z.number().int(),
+  /** Jornada que el servidor considera en curso; null si el evento ya cerro. */
+  jornadaActivaNombre: z.string().nullable().optional(),
   elegibles: z.number().int(),
   noElegibles: z.number().int(),
   emitidos: z.number().int(),

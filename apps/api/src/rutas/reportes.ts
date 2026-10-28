@@ -19,6 +19,7 @@ const parametrosReporte = z.object({
     'refrigerios-pendientes',
     'souvenirs-entregados',
     'souvenirs-pendientes',
+    'asistencia-consolidada',
     'elegibles',
     'no-elegibles',
     'certificados-emitidos',

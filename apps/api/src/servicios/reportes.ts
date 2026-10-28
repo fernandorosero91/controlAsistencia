@@ -28,6 +28,7 @@ export type TipoReporte =
   | 'refrigerios-pendientes'
   | 'souvenirs-entregados'
   | 'souvenirs-pendientes'
+  | 'asistencia-consolidada'
   | 'elegibles'
   | 'no-elegibles'
   | 'certificados-emitidos'
@@ -61,6 +62,8 @@ export async function generarReporte(
       return reporteSouvenirs(filtros, true);
     case 'souvenirs-pendientes':
       return reporteSouvenirs(filtros, false);
+    case 'asistencia-consolidada':
+      return reporteAsistenciaConsolidada(filtros);
     case 'elegibles':
       return reporteElegibilidad(filtros, true);
     case 'no-elegibles':
@@ -189,6 +192,153 @@ async function reporteAsistenciaParcial(_filtros: FiltrosReporte): Promise<Resul
       String(mapa.get(fila.id)?.length ?? 0),
       String(listaJornadas.length),
     ]),
+  };
+}
+
+/**
+ * Reporte consolidado: una fila por persona que registro su ingreso en
+ * **todas** las jornadas. Es la vista que pide la coordinacion al cerrar el
+ * evento: quien estuvo en la manana y en la tarde, con sus horas de
+ * permanencia, las cuatro marcas, la elegibilidad, los refrigerios y el
+ * souvenir.
+ *
+ * Es de solo lectura: no escribe ni corrige asistencias.
+ */
+async function reporteAsistenciaConsolidada(
+  filtros: FiltrosReporte,
+): Promise<ResultadoReporte> {
+  const config = await obtenerConfig();
+  const [listaJornadas, listaAsistencias, listaRefrigerios, listaSouvenirs] = await Promise.all([
+    db.select().from(jornadas).orderBy(asc(jornadas.orden)),
+    db
+      .select({
+        asistenteId: asistencias.asistenteId,
+        jornadaId: asistencias.jornadaId,
+        horaIngreso: asistencias.horaIngreso,
+        horaSalida: asistencias.horaSalida,
+      })
+      .from(asistencias),
+    db
+      .select({
+        asistenteId: entregasRefrigerio.asistenteId,
+        tipoRefrigerioId: entregasRefrigerio.tipoRefrigerioId,
+      })
+      .from(entregasRefrigerio),
+    db.select({ asistenteId: entregasSouvenir.asistenteId }).from(entregasSouvenir),
+  ]);
+
+  const columnas = [
+    'ID institucional',
+    'Nombres',
+    'Apellidos',
+    'Rol',
+    'Semestre',
+    'Tipo doc',
+    'Documento',
+    'Email',
+    ...listaJornadas.flatMap((jornada) => [
+      `${jornada.nombre} ingreso`,
+      `${jornada.nombre} salida`,
+    ]),
+    ...listaJornadas.map((jornada) => `Horas ${jornada.nombre}`),
+    'Cuatro marcas',
+    'Elegible',
+    'Refrigerios',
+    'Souvenir',
+  ];
+
+  if (listaJornadas.length === 0) {
+    return { titulo: 'Asistencia consolidada', columnas, filas: [] };
+  }
+
+  // Asistencias por persona y jornada.
+  const porAsistente = new Map<
+    string,
+    Map<number, { horaIngreso: Date; horaSalida: Date | null }>
+  >();
+  for (const asistencia of listaAsistencias) {
+    const porJornada = porAsistente.get(asistencia.asistenteId) ?? new Map();
+    porJornada.set(asistencia.jornadaId, {
+      horaIngreso: asistencia.horaIngreso,
+      horaSalida: asistencia.horaSalida,
+    });
+    porAsistente.set(asistencia.asistenteId, porJornada);
+  }
+
+  // Solo quienes tienen ingreso en todas las jornadas configuradas.
+  const ids = [...porAsistente.entries()]
+    .filter(([, porJornada]) => listaJornadas.every((jornada) => porJornada.has(jornada.id)))
+    .map(([id]) => id);
+
+  if (ids.length === 0) {
+    return {
+      titulo: 'Asistencia consolidada (ingreso en todas las jornadas)',
+      columnas,
+      filas: [],
+    };
+  }
+
+  const condiciones = [inArray(asistentes.id, ids)];
+  if (filtros.rol) condiciones.push(eq(asistentes.rol, filtros.rol));
+
+  const filas = await db
+    .select()
+    .from(asistentes)
+    .where(and(...condiciones))
+    .orderBy(asc(asistentes.apellidos), asc(asistentes.nombres));
+
+  const refrigeriosPor = new Map<string, number>();
+  for (const entrega of listaRefrigerios) {
+    refrigeriosPor.set(entrega.asistenteId, (refrigeriosPor.get(entrega.asistenteId) ?? 0) + 1);
+  }
+  const conSouvenir = new Set(listaSouvenirs.map((entrega) => entrega.asistenteId));
+
+  const resultado: string[][] = filas.map((fila) => {
+    const porJornada = porAsistente.get(fila.id)!;
+    const marcas = listaJornadas.map((jornada) => porJornada.get(jornada.id)!);
+    const cuatroMarcas = marcas.every((marca) => marca.horaSalida !== null);
+
+    const evaluacion = evaluarElegibilidad({
+      exigirAmbasJornadas: config.exigirAmbasJornadas,
+      horaFinSeminario: new Date(config.horaFinSeminario),
+      toleranciaMinutos: config.toleranciaMinutos,
+      minimoPermanenciaHoras: config.minimoPermanenciaHoras,
+      jornadas: listaJornadas.map((jornada) => ({ id: jornada.id, fin: jornada.fin })),
+      asistencias: listaJornadas.map((jornada) => ({
+        jornadaId: jornada.id,
+        horaIngreso: porJornada.get(jornada.id)!.horaIngreso,
+        horaSalida: porJornada.get(jornada.id)!.horaSalida,
+      })),
+    });
+
+    const horas = marcas.map((marca) => {
+      if (!marca.horaSalida) return '';
+      const diferencia = marca.horaSalida.getTime() - marca.horaIngreso.getTime();
+      return (diferencia / 3_600_000).toFixed(1);
+    });
+
+    return [
+      fila.id,
+      fila.nombres,
+      fila.apellidos,
+      fila.rol,
+      fila.semestre === null ? '' : String(fila.semestre),
+      fila.tipoDocumento === 'TI' ? 'T.I.' : 'C.C.',
+      fila.cedulaCiudadania ?? '',
+      fila.email ?? '',
+      ...marcas.flatMap((marca) => [fecha(marca.horaIngreso), fecha(marca.horaSalida)]),
+      ...horas,
+      cuatroMarcas ? 'Si' : 'No',
+      evaluacion.elegible ? 'Si' : 'No',
+      String(refrigeriosPor.get(fila.id) ?? 0),
+      conSouvenir.has(fila.id) ? 'Si' : 'No',
+    ];
+  });
+
+  return {
+    titulo: 'Asistencia consolidada (ingreso en todas las jornadas)',
+    columnas,
+    filas: resultado,
   };
 }
 
@@ -636,8 +786,11 @@ export async function reporteComoPdf(reporte: ResultadoReporte): Promise<Buffer>
   const fuente = await documento.embedFont(StandardFonts.Helvetica);
   const fuenteNegrita = await documento.embedFont(StandardFonts.HelveticaBold);
 
-  const anchoPagina = 595.28;
-  const altoPagina = 841.89;
+  // Los reportes con muchas columnas (por ejemplo el consolidado) se imprimen
+  // en horizontal para que cada columna conserve un ancho legible.
+  const horizontal = reporte.columnas.length > 10;
+  const anchoPagina = horizontal ? 841.89 : 595.28;
+  const altoPagina = horizontal ? 595.28 : 841.89;
   const margen = 32;
   const anchoUtil = anchoPagina - margen * 2;
   const altoFila = 16;

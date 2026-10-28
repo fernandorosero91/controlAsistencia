@@ -116,7 +116,11 @@ export function Dashboard() {
         <Indicador
           titulo="Adentro ahora"
           valor={formatearNumero(data.dentroAhora)}
-          detalle={`${formatearNumero(data.fueraAhora)} ya registraron salida`}
+          detalle={
+            data.jornadaActivaNombre
+              ? `${formatearNumero(data.fueraAhora)} ya registraron salida`
+              : `${formatearNumero(data.fueraAhora)} ya registraron salida · sin jornada activa`
+          }
           Icono={DoorOpen}
         />
         <Indicador
@@ -134,7 +138,10 @@ export function Dashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Tarjeta titulo="Asistencia por jornada" descripcion="Ingresos, salidas y pendientes">
+        <Tarjeta
+          titulo="Asistencia por jornada"
+          descripcion="Ingresos, salidas y faltantes de cada jornada"
+        >
           <div className="space-y-3">
             {data.porJornada.map((jornada) => (
               <div key={jornada.jornadaId} className="rounded-2xl bg-neutro-50 p-4">
@@ -156,7 +163,7 @@ export function Dashboard() {
                     style={{ width: `${Math.min(jornada.porcentajeAsistencia, 100)}%` }}
                   />
                 </div>
-                <dl className="mt-2.5 grid grid-cols-3 gap-2 text-xs">
+                <dl className="mt-2.5 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
                   <div>
                     <dt className="text-neutro-500">Ingresos</dt>
                     <dd className="font-semibold text-neutro-800">
@@ -170,7 +177,13 @@ export function Dashboard() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-neutro-500">Pendientes</dt>
+                    <dt className="text-neutro-500">Sin salida</dt>
+                    <dd className="font-semibold text-aviso-700">
+                      {formatearNumero(jornada.dentroAhora)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-neutro-500">Sin ingresar</dt>
                     <dd className="font-semibold text-neutro-800">
                       {formatearNumero(jornada.pendientes)}
                     </dd>

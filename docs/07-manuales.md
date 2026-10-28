@@ -52,7 +52,12 @@ Dos manuales de una pagina: uno para el administrador y otro para el operador.
 3. **Emita en lote** y espere el 100 %.
 4. **Descargue el ZIP** y distribuyalo.
 5. **Exporte los reportes** en CSV, Excel o PDF (asistencia, refrigerios, elegibilidad,
-   certificados y auditoria).
+   certificados y auditoria). Para el consolidado del evento use **Asistencia consolidada (ambas
+   jornadas)**: una fila por persona que ingreso a todas las jornadas, con sus horas de
+   permanencia, las cuatro marcas, si es elegible, los refrigerios y el souvenir.
+6. **Cierre la jornada forzada**: si en Accesos del operador eligio una jornada fija para el evento,
+   vuelva a **Automatica**. Con una jornada fija el panel sigue considerando ese horario como
+   vigente e "Adentro ahora" no vuelve a cero.
 
 ### Certificados en Word (.docx)
 

@@ -24,6 +24,12 @@ const REPORTES: DefinicionReporte[] = [
     descripcion: 'Asistentes que no tienen registro en todas las jornadas',
   },
   {
+    id: 'asistencia-consolidada',
+    titulo: 'Asistencia consolidada (ambas jornadas)',
+    descripcion:
+      'Una fila por persona que ingreso en todas las jornadas: horas, cuatro marcas, elegibilidad, refrigerios y souvenir',
+  },
+  {
     id: 'refrigerios-entregados',
     titulo: 'Refrigerios entregados',
     descripcion: 'Detalle de cada entrega con fecha y responsable',

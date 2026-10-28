@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { count, eq, gte, isNull, sql } from 'drizzle-orm';
+import { and, count, eq, gte, isNull, sql } from 'drizzle-orm';
 import { evaluarElegibilidad, type ResumenDashboard } from '@seminario/shared';
 import { cargarEntorno } from '../config/entorno.js';
 import { db } from '../db/cliente.js';
@@ -12,7 +12,7 @@ import {
   tiposRefrigerio,
 } from '../db/esquema.js';
 import { cache } from './cache.js';
-import { obtenerConfig } from './configuracion.js';
+import { obtenerConfig, resolverJornadaPorHorario } from './configuracion.js';
 
 const CLAVE_RESUMEN = 'dashboard:resumen';
 
@@ -24,12 +24,51 @@ export async function calcularResumen(): Promise<ResumenDashboard> {
   const config = await obtenerConfig();
   const ahora = new Date();
 
+  // Se necesita la jornada en curso antes de contar: "adentro ahora" solo tiene
+  // sentido dentro de una jornada. Al terminar el evento no queda ninguna
+  // activa y el indicador debe mostrar 0, no las salidas que faltaron registrar.
+  const listaJornadas = await db.select().from(jornadas).orderBy(jornadas.orden);
+  const vigente = resolverJornadaPorHorario(
+    listaJornadas.map((jornada) => ({
+      id: jornada.id,
+      nombre: jornada.nombre,
+      inicio: jornada.inicio.toISOString(),
+      fin: jornada.fin.toISOString(),
+      ventanaCheckinInicio: jornada.ventanaCheckinInicio.toISOString(),
+      ventanaCheckinFin: jornada.ventanaCheckinFin.toISOString(),
+      orden: jornada.orden,
+    })),
+    ahora,
+    {
+      jornadaForzadaId: config.jornadaForzadaId,
+      margenCierreMinutos: config.margenCierreMinutos,
+    },
+  );
+  const jornadaActivaId = vigente.jornada?.id ?? null;
+
   const [totalesAsistentes, totalesDentro, totalesFuera, totalEmitidos, totalRevocados] =
     await Promise.all([
       db.select({ total: count() }).from(asistentes).where(eq(asistentes.activo, true)),
-      db.select({ dentro: count() }).from(asistencias).where(isNull(asistencias.horaSalida)),
+      // Personas distintas (no filas) con ingreso y sin salida en la jornada en
+      // curso. Cada asistente tiene una fila por jornada: sumarlas hacia que
+      // quienes no registraron la salida de la manana siguieran "adentro" en la
+      // tarde.
+      jornadaActivaId
+        ? db
+            .select({
+              dentro: sql<number>`count(distinct ${asistencias.asistenteId})::int`,
+            })
+            .from(asistencias)
+            .where(
+              and(
+                eq(asistencias.jornadaId, jornadaActivaId),
+                isNull(asistencias.horaSalida),
+              ),
+            )
+        : Promise.resolve([{ dentro: 0 }]),
+      // Personas distintas con al menos una salida registrada en el evento.
       db
-        .select({ fuera: count() })
+        .select({ fuera: sql<number>`count(distinct ${asistencias.asistenteId})::int` })
         .from(asistencias)
         .where(sql`${asistencias.horaSalida} IS NOT NULL`),
       db.select({ emitidos: count() }).from(certificados).where(eq(certificados.revocado, false)),
@@ -42,7 +81,7 @@ export async function calcularResumen(): Promise<ResumenDashboard> {
   const emitidos = totalEmitidos[0]?.emitidos ?? 0;
   const revocados = totalRevocados[0]?.revocados ?? 0;
 
-  const [porJornada, porRefrigerio, ritmo, listaJornadas, tipos, asistenciasAsistentes] =
+  const [porJornada, porRefrigerio, ritmo, tipos, asistenciasAsistentes] =
     await Promise.all([
       db
         .select({
@@ -77,7 +116,6 @@ export async function calcularResumen(): Promise<ResumenDashboard> {
         .where(gte(asistencias.horaIngreso, new Date(ahora.getTime() - 60 * 60 * 1000)))
         .groupBy(sql`date_trunc('minute', ${asistencias.horaIngreso})`)
         .orderBy(sql`date_trunc('minute', ${asistencias.horaIngreso})`),
-      db.select().from(jornadas).orderBy(jornadas.orden),
       db
         .select()
         .from(tiposRefrigerio)
@@ -161,6 +199,7 @@ export async function calcularResumen(): Promise<ResumenDashboard> {
     ritmoIngreso: ritmo.map((fila) => ({ minuto: fila.minuto, registros: fila.registros })),
     dentroAhora,
     fueraAhora,
+    jornadaActivaNombre: vigente.jornada?.nombre ?? null,
     elegibles,
     noElegibles,
     emitidos,

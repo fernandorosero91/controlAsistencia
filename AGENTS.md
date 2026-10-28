@@ -311,7 +311,9 @@ tipo_refrigerio_id)`, indice por `asistentes.apellidos` y por `nombres`, indice 
   refrigerios entregados vs. pendientes, ritmo de ingreso por minuto, quienes estan dentro/fuera,
   cantidad de elegibles.
 - **Reportes** con filtros y exportacion CSV/XLSX/PDF: asistencia por jornada, asistencia parcial,
-  refrigerios entregados y pendientes, elegibles/no elegibles, certificados emitidos, auditoria.
+  **asistencia consolidada** (una fila por persona con ingreso en todas las jornadas: horas, cuatro
+  marcas, elegibilidad, refrigerios y souvenir), refrigerios entregados y pendientes,
+  elegibles/no elegibles, certificados emitidos, auditoria.
 - **Mantenimiento**: limpieza de los datos operativos (padron, asistencias, refrigerios,
   certificados y auditoria) para volver a probar. Exige la **contrasena del administrador** y la
   frase `BORRAR TODOS LOS DATOS`; conserva configuracion, jornadas, refrigerios y cuentas. Se
